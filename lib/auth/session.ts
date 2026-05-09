@@ -24,7 +24,7 @@ export async function setAuthTokens(accessToken: string, refreshToken: string): 
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: FIFTEEN_MINUTES,
+    maxAge: SEVEN_DAYS,
     path: '/',
   });
 
