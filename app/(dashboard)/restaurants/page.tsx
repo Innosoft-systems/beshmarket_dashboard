@@ -25,6 +25,7 @@ export default async function RestaurantsPage({
         initialData={response.data} 
         totalPages={response.pagination.totalPages} 
         currentPage={response.pagination.page} 
+        accessToken={accessToken || ""}
       />
     )
   } catch (error) {

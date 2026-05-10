@@ -66,7 +66,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       render={<Link href={item.url} />}
-                      className={`font-normal py-5 ${isActive ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : 'text-black'}`}
+                      className={`text-base font-normal py-5 ${isActive ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : 'text-black'}`}
                     >
                       <item.icon />
                       <span>{item.title}</span>
@@ -83,9 +83,9 @@ export function AppSidebar() {
         <form action={logoutAction}>
           <button
             type="submit"
-            className="flex w-full items-center gap-2 rounded-md p-2 text-sm text-red-500 hover:bg-red-500/10"
+            className="flex w-full items-center gap-2 rounded-md p-3 text-base text-red-500 hover:bg-red-500/10"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-5 w-5" />
             <span>Chiqish</span>
           </button>
         </form>
