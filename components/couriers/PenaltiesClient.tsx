@@ -1,19 +1,29 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { CheckCircle, XCircle, AlertTriangle } from "lucide-react"
+import { CheckCircle, XCircle, AlertTriangle, ChevronLeft, ChevronRight, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { approvePenaltyAction, waivePenaltyAction } from "@/lib/actions/penalties"
+import { useDebounce } from "@/hooks/use-debounce"
 
 const REASON_LABELS: Record<string, string> = {
+  all: "Barcha sabablar",
   cancellation: "Smena bekor qilish",
   no_show: "Smenaga kelmagan",
   order_reject: "Buyurtma rad etish",
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  all: "Barcha statuslar",
+  pending: "Kutilmoqda",
+  deducted: "Yechildi",
+  waived: "Bekor qilindi",
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -22,15 +32,9 @@ const STATUS_STYLES: Record<string, string> = {
   waived: "bg-green-100 text-green-700 border-green-200",
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Kutilmoqda",
-  deducted: "Yechildi",
-  waived: "Bekor qilindi",
-}
-
 interface Props {
-  initialData: { data: any[]; total: number; pages: number }
-  initialFilters: { status: string; reason: string }
+  initialData: { data: any[]; total: number; pages: number; page: number }
+  initialFilters: { status: string; reason: string; page: number; search: string }
 }
 
 export function PenaltiesClient({ initialData, initialFilters }: Props) {
@@ -38,16 +42,25 @@ export function PenaltiesClient({ initialData, initialFilters }: Props) {
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState(initialFilters.status)
   const [reason, setReason] = useState(initialFilters.reason)
+  const [search, setSearch] = useState(initialFilters.search)
+  const debouncedSearch = useDebounce(search, 400)
   const [confirmId, setConfirmId] = useState("")
   const [confirmAction, setConfirmAction] = useState<"approve" | "waive" | "">("")
   const [confirmLoading, setConfirmLoading] = useState(false)
 
-  const applyFilter = (newStatus: string, newReason: string) => {
+  const navigate = (newStatus: string, newReason: string, newSearch: string, newPage = 1) => {
     const params = new URLSearchParams()
     if (newStatus !== "all") params.set("status", newStatus)
     if (newReason !== "all") params.set("reason", newReason)
-    router.push(`/penalties?${params}`)
+    if (newSearch) params.set("search", newSearch)
+    if (newPage > 1) params.set("page", String(newPage))
+    startTransition(() => router.push(`/penalties?${params}`))
   }
+
+  useEffect(() => {
+    navigate(status, reason, debouncedSearch)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
 
   const handleConfirm = async () => {
     if (!confirmId || !confirmAction) return
@@ -66,13 +79,33 @@ export function PenaltiesClient({ initialData, initialFilters }: Props) {
     }
   }
 
+  const currentPage = initialFilters.page
+  const totalPages = initialData.pages
+
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <Select value={status} onValueChange={(v) => { const val = v ?? "all"; setStatus(val); applyFilter(val, reason) }}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Status" />
+      <div className="flex gap-3 flex-wrap items-center">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Ism yoki telefon..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 w-56"
+          />
+        </div>
+
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            const val = v ?? "all"
+            setStatus(val)
+            navigate(val, reason, debouncedSearch)
+          }}
+        >
+          <SelectTrigger className="w-48">
+            <SelectValue>{STATUS_LABELS[status] ?? STATUS_LABELS.all}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Barcha statuslar</SelectItem>
@@ -82,9 +115,16 @@ export function PenaltiesClient({ initialData, initialFilters }: Props) {
           </SelectContent>
         </Select>
 
-        <Select value={reason} onValueChange={(v) => { const val = v ?? "all"; setReason(val); applyFilter(status, val) }}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Sabab" />
+        <Select
+          value={reason}
+          onValueChange={(v) => {
+            const val = v ?? "all"
+            setReason(val)
+            navigate(status, val, debouncedSearch)
+          }}
+        >
+          <SelectTrigger className="w-56">
+            <SelectValue>{REASON_LABELS[reason] ?? REASON_LABELS.all}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Barcha sabablar</SelectItem>
@@ -94,9 +134,9 @@ export function PenaltiesClient({ initialData, initialFilters }: Props) {
           </SelectContent>
         </Select>
 
-        <div className="ml-auto text-sm text-muted-foreground flex items-center">
+        <span className="ml-auto text-sm text-muted-foreground">
           Jami: {initialData.total} ta
-        </div>
+        </span>
       </div>
 
       {/* Table */}
@@ -137,7 +177,7 @@ export function PenaltiesClient({ initialData, initialFilters }: Props) {
                   {p.slot_id
                     ? `${p.slot_id.date} ${p.slot_id.start_time}–${p.slot_id.end_time} · ${p.slot_id.zone_name}`
                     : p.order_id
-                    ? `Buyurtma #${p.order_id.order_number}`
+                    ? `Buyurtma ${p.order_id.order_number}`
                     : p.slot_date
                     ? `${p.slot_date} ${p.slot_start_time}`
                     : "—"}
@@ -182,6 +222,35 @@ export function PenaltiesClient({ initialData, initialFilters }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {currentPage}-sahifa / {totalPages} ta
+          </p>
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage <= 1 || isPending}
+              onClick={() => navigate(status, reason, debouncedSearch, currentPage - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Oldingi
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= totalPages || isPending}
+              onClick={() => navigate(status, reason, debouncedSearch, currentPage + 1)}
+            >
+              Keyingi
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={!!confirmId}

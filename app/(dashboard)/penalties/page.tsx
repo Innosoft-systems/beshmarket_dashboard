@@ -6,7 +6,7 @@ import { PenaltiesClient } from "@/components/couriers/PenaltiesClient"
 export const metadata: Metadata = { title: "Jarimalar | BeshMarket" }
 
 interface Props {
-  searchParams: Promise<{ status?: string; reason?: string; page?: string }>
+  searchParams: Promise<{ status?: string; reason?: string; page?: string; search?: string }>
 }
 
 export default async function PenaltiesPage({ searchParams }: Props) {
@@ -14,11 +14,13 @@ export default async function PenaltiesPage({ searchParams }: Props) {
   const status = sp.status || "all"
   const reason = sp.reason || "all"
   const page = sp.page ? +sp.page : 1
+  const search = sp.search || ""
 
   const token = await getAccessToken()
   const qs = new URLSearchParams({ page: String(page), limit: "20" })
   if (status !== "all") qs.set("status", status)
   if (reason !== "all") qs.set("reason", reason)
+  if (search) qs.set("search", search)
 
   const res = await apiRequest<any>(`/shifts/penalties?${qs}`, { accessToken: token }).catch(
     () => ({ data: { data: [], total: 0, pages: 1 } }),
@@ -52,7 +54,7 @@ export default async function PenaltiesPage({ searchParams }: Props) {
 
       <PenaltiesClient
         initialData={res.data}
-        initialFilters={{ status, reason }}
+        initialFilters={{ status, reason, page, search }}
       />
     </div>
   )
