@@ -29,6 +29,7 @@ export interface GetUsersParams {
   limit?: number;
   search?: string;
   role?: string;
+  is_blocked?: string;
 }
 
 export async function getUsers(params: GetUsersParams = {}, accessToken?: string) {
@@ -37,6 +38,7 @@ export async function getUsers(params: GetUsersParams = {}, accessToken?: string
   if (params.limit) searchParams.append("limit", params.limit.toString());
   if (params.search) searchParams.append("search", params.search);
   if (params.role) searchParams.append("role", params.role);
+  if (params.is_blocked) searchParams.append("is_blocked", params.is_blocked);
 
   const queryString = searchParams.toString();
   const endpoint = `/users${queryString ? `?${queryString}` : ""}`;
