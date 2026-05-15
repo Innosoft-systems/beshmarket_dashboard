@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { getAccessToken } from "@/lib/auth/session"
 import { toast } from "sonner"
 
 const restaurantSchema = z.object({
