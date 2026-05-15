@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag } from "lucide-react"
+import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { logoutAction } from "@/app/(auth)/login/actions"
@@ -33,6 +33,11 @@ const items = [
     title: "Restoranlar",
     url: "/restaurants",
     icon: UtensilsCrossed,
+  },
+  {
+    title: "Bannerlar",
+    url: "/banners",
+    icon: Image,
   },
   {
     title: "Sozlamalar",
