@@ -7,28 +7,38 @@ export const metadata: Metadata = {
   title: "Restoranlar | BeshMarket",
 }
 
-export default async function RestaurantsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string; search?: string }>
-}) {
+interface Props {
+  searchParams: Promise<{ page?: string; search?: string; is_active?: string }>
+}
+
+export default async function RestaurantsPage({ searchParams }: Props) {
   const accessToken = await getAccessToken()
-  
-  const params = await searchParams;
+  const params = await searchParams
+
   const page = Number(params.page) || 1
-  
+  const search = params.search || ""
+  const is_active = params.is_active || ""
+
   try {
-    const { data: response } = await getRestaurants({ page, limit: 10 }, accessToken)
-    
+    const { data: response } = await getRestaurants(
+      {
+        page,
+        limit: 10,
+        ...(search && { search }),
+        ...(is_active && { is_active: is_active === "true" }),
+      },
+      accessToken,
+    )
+
     return (
-      <RestaurantsTableClient 
-        initialData={response.data} 
-        totalPages={response.pagination.totalPages} 
-        currentPage={response.pagination.page} 
-        accessToken={accessToken || ""}
+      <RestaurantsTableClient
+        initialData={response?.data ?? []}
+        totalPages={response?.pagination?.totalPages ?? 1}
+        currentPage={response?.pagination?.page ?? page}
+        filters={{ search, is_active }}
       />
     )
-  } catch (error) {
+  } catch {
     return (
       <div className="p-4 rounded-md bg-red-50 text-red-500">
         Restoranlarni yuklashda xatolik yuz berdi.

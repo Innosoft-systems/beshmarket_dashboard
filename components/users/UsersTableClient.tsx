@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
-import { Search, X } from "lucide-react"
-import { User } from "@/lib/api/users"
+import { Search, X, MoreHorizontal, ShieldBan, ShieldCheck, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { User } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -16,6 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { blockUserAction, unblockUserAction, deleteUserAction } from "@/app/(dashboard)/users/actions"
 
 const ROLES = [
   { value: "all", label: "Barcha rollar" },
@@ -31,46 +40,107 @@ const STATUS_OPTIONS = [
   { value: "true", label: "Bloklangan" },
 ] as const
 
-const columns: ColumnDef<User>[] = [
-  {
-    accessorKey: "full_name",
-    header: "F.I.SH",
-    cell: ({ row }) => {
-      const name = row.getValue("full_name") as string
-      return name
-        ? <span className="font-medium">{name}</span>
-        : <span className="text-muted-foreground italic">Kiritilmagan</span>
-    },
-  },
-  {
-    accessorKey: "phone",
-    header: "Telefon",
-  },
-  {
-    accessorKey: "role",
-    header: "Rol",
-    cell: ({ row }) => {
-      const role = row.getValue("role") as string
-      const label = ROLES.find((r) => r.value === role)?.label ?? role
-      return <Badge variant="outline">{label}</Badge>
-    },
-  },
-  {
-    accessorKey: "is_blocked",
-    header: "Holati",
-    cell: ({ row }) => {
-      const isBlocked = row.getValue("is_blocked") as boolean
-      return (
-        <Badge
-          variant={isBlocked ? "destructive" : "secondary"}
-          className={!isBlocked ? "bg-green-100 text-green-800" : ""}
-        >
-          {isBlocked ? "Bloklangan" : "Faol"}
-        </Badge>
+const ROLE_STYLES: Record<string, string> = {
+  admin: "bg-purple-100 text-purple-700 border-purple-200",
+  client: "bg-blue-100 text-blue-700 border-blue-200",
+  kuryer: "bg-amber-100 text-amber-700 border-amber-200",
+  restaurant: "bg-emerald-100 text-emerald-700 border-emerald-200",
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const label = ROLES.find((r) => r.value === role)?.label ?? role
+  return (
+    <Badge variant="outline" className={ROLE_STYLES[role] || ""}>
+      {label}
+    </Badge>
+  )
+}
+
+function ActionsCell({ user, onAction }: { user: User; onAction: () => void }) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [actionType, setActionType] = useState<"block" | "unblock" | "delete" | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const handleConfirm = async () => {
+    setLoading(true)
+    let result: { success: boolean; error?: string }
+
+    if (actionType === "block") {
+      result = await blockUserAction(user._id)
+    } else if (actionType === "unblock") {
+      result = await unblockUserAction(user._id)
+    } else {
+      result = await deleteUserAction(user._id)
+    }
+
+    setLoading(false)
+    setConfirmOpen(false)
+
+    if (result.success) {
+      toast.success(
+        actionType === "block" ? "Foydalanuvchi bloklandi" :
+        actionType === "unblock" ? "Foydalanuvchi blokdan chiqarildi" :
+        "Foydalanuvchi o'chirildi"
       )
-    },
-  },
-]
+      onAction()
+    } else {
+      toast.error(result.error || "Xatolik yuz berdi")
+    }
+  }
+
+  const openConfirm = (type: "block" | "unblock" | "delete") => {
+    setActionType(type)
+    setConfirmOpen(true)
+  }
+
+  const confirmMessages = {
+    block: { title: "Bloklash", description: `${user.full_name || user.phone} ni bloklashni xohlaysizmi?` },
+    unblock: { title: "Blokdan chiqarish", description: `${user.full_name || user.phone} ni blokdan chiqarishni xohlaysizmi?` },
+    delete: { title: "O'chirish", description: `${user.full_name || user.phone} ni butunlay o'chirishni xohlaysizmi? Bu amalni qaytarib bo'lmaydi.` },
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={<Button variant="ghost" size="icon-sm" />}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {user.is_blocked ? (
+            <DropdownMenuItem onClick={() => openConfirm("unblock")}>
+              <ShieldCheck className="h-4 w-4 mr-2 text-green-600" />
+              Blokdan chiqarish
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => openConfirm("block")}>
+              <ShieldBan className="h-4 w-4 mr-2 text-orange-600" />
+              Bloklash
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => openConfirm("delete")} className="text-red-600">
+            <Trash2 className="h-4 w-4 mr-2" />
+            O'chirish
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {actionType && (
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={confirmMessages[actionType].title}
+          description={confirmMessages[actionType].description}
+          confirmLabel={confirmMessages[actionType].title}
+          variant={actionType === "unblock" ? "default" : "destructive"}
+          loading={loading}
+          onConfirm={handleConfirm}
+        />
+      )}
+    </>
+  )
+}
 
 interface UsersTableClientProps {
   initialData: User[]
@@ -118,6 +188,12 @@ export function UsersTableClient({
     })
   }
 
+  const refreshData = () => {
+    startTransition(() => {
+      router.refresh()
+    })
+  }
+
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false
@@ -135,6 +211,48 @@ export function UsersTableClient({
     }
   }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const columns: ColumnDef<User>[] = [
+    {
+      accessorKey: "full_name",
+      header: "F.I.SH",
+      cell: ({ row }) => {
+        const name = row.getValue("full_name") as string
+        return name
+          ? <span className="font-medium">{name}</span>
+          : <span className="text-muted-foreground italic">Kiritilmagan</span>
+      },
+    },
+    {
+      accessorKey: "phone",
+      header: "Telefon",
+    },
+    {
+      accessorKey: "role",
+      header: "Rol",
+      cell: ({ row }) => <RoleBadge role={row.getValue("role")} />,
+    },
+    {
+      accessorKey: "is_blocked",
+      header: "Holati",
+      cell: ({ row }) => {
+        const isBlocked = row.getValue("is_blocked") as boolean
+        return (
+          <Badge
+            variant={isBlocked ? "destructive" : "secondary"}
+            className={!isBlocked ? "bg-green-100 text-green-700 border-green-200" : ""}
+          >
+            {isBlocked ? "Bloklangan" : "Faol"}
+          </Badge>
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => <ActionsCell user={row.original} onAction={refreshData} />,
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -142,8 +260,8 @@ export function UsersTableClient({
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Ism yoki telefon..."
@@ -157,7 +275,7 @@ export function UsersTableClient({
           value={filters.role || "all"}
           onValueChange={(value) => navigate({ role: value ?? "all" })}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue>
               {ROLES.find((r) => r.value === (filters.role || "all"))?.label}
             </SelectValue>
@@ -175,7 +293,7 @@ export function UsersTableClient({
           value={filters.is_blocked || "all"}
           onValueChange={(value) => navigate({ is_blocked: value ?? "all" })}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue>
               {STATUS_OPTIONS.find((s) => s.value === (filters.is_blocked || "all"))?.label}
             </SelectValue>
@@ -190,7 +308,7 @@ export function UsersTableClient({
         </Select>
 
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={resetFilters}>
+          <Button variant="outline" size="lg" onClick={resetFilters}>
             <X className="h-4 w-4 mr-1" />
             Tozalash
           </Button>

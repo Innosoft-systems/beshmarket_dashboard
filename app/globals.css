@@ -156,4 +156,7 @@
   html {
     @apply font-sans;
   }
+  button, [role="button"], select, a[href], input[type="checkbox"], input[type="radio"] {
+    cursor: pointer;
+  }
 }

@@ -1,103 +1,174 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
-import { Restaurant } from "@/lib/api/restaurants"
+import { Search, X, MoreHorizontal, Plus, Pencil, Trash2, Power } from "lucide-react"
+import { toast } from "sonner"
+import { Restaurant } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Plus, Edit, Trash2 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { RestaurantForm, RestaurantFormValues } from "./RestaurantForm"
-import { createRestaurantAction, updateRestaurantAction, deleteRestaurantAction } from "@/app/(dashboard)/restaurants/actions"
-import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { RestaurantFormDialog } from "@/components/restaurants/RestaurantFormDialog"
+import { deleteRestaurantAction, toggleRestaurantActiveAction } from "@/app/(dashboard)/restaurants/actions"
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "Barcha holatlar" },
+  { value: "true", label: "Faol" },
+  { value: "false", label: "Nofaol" },
+] as const
+
+function ActionsCell({
+  restaurant,
+  onAction,
+}: {
+  restaurant: Restaurant
+  onAction: () => void
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [actionType, setActionType] = useState<"delete" | "toggle" | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const handleConfirm = async () => {
+    setLoading(true)
+    const result = actionType === "delete"
+      ? await deleteRestaurantAction(restaurant._id)
+      : await toggleRestaurantActiveAction(restaurant._id)
+
+    setLoading(false)
+    setConfirmOpen(false)
+
+    if (result.success) {
+      toast.success(actionType === "delete" ? "Restoran o'chirildi" : "Holat o'zgartirildi")
+      onAction()
+    } else {
+      toast.error(result.error || "Xatolik yuz berdi")
+    }
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
+          <MoreHorizontal className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Tahrirlash
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { setActionType("toggle"); setConfirmOpen(true) }}>
+            <Power className="h-4 w-4 mr-2 text-amber-600" />
+            {restaurant.is_active ? "Nofaol qilish" : "Faol qilish"}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { setActionType("delete"); setConfirmOpen(true) }} className="text-red-600">
+            <Trash2 className="h-4 w-4 mr-2" />
+            O'chirish
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <RestaurantFormDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        restaurant={restaurant}
+        onSuccess={onAction}
+      />
+
+      {actionType && (
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={actionType === "delete" ? "O'chirish" : "Holatni o'zgartirish"}
+          description={
+            actionType === "delete"
+              ? `"${restaurant.name}" ni o'chirishni xohlaysizmi?`
+              : `"${restaurant.name}" ni ${restaurant.is_active ? "nofaol" : "faol"} qilishni xohlaysizmi?`
+          }
+          confirmLabel={actionType === "delete" ? "O'chirish" : "Tasdiqlash"}
+          variant={actionType === "delete" ? "destructive" : "default"}
+          loading={loading}
+          onConfirm={handleConfirm}
+        />
+      )}
+    </>
+  )
+}
 
 interface RestaurantsTableClientProps {
   initialData: Restaurant[]
   totalPages: number
   currentPage: number
-  accessToken: string
+  filters?: { search: string; is_active: string }
 }
 
-export function RestaurantsTableClient({ initialData, totalPages, currentPage, accessToken }: RestaurantsTableClientProps) {
+export function RestaurantsTableClient({
+  initialData,
+  totalPages,
+  currentPage,
+  filters = { search: "", is_active: "" },
+}: RestaurantsTableClientProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
+  const [search, setSearch] = useState(filters.search)
+  const [formOpen, setFormOpen] = useState(false)
+  const isFirstRender = useRef(true)
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Form states
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | undefined>()
+  const hasActiveFilters = filters.search || filters.is_active
 
-  // Delete states
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const navigate = useCallback(
+    (updates: Record<string, string>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value && value !== "all") params.set(key, value)
+        else params.delete(key)
+      })
+      if (!("page" in updates)) params.delete("page")
+      startTransition(() => { router.replace(`${pathname}?${params.toString()}`) })
+    },
+    [router, pathname, searchParams, startTransition],
+  )
 
-  const handlePageChange = (page: number) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set("page", page.toString())
-    
-    startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`)
-    })
+  const resetFilters = () => {
+    setSearch("")
+    startTransition(() => { router.replace(pathname) })
   }
 
-  const handleAdd = () => {
-    setEditingRestaurant(undefined)
-    setIsFormOpen(true)
+  const refreshData = () => {
+    startTransition(() => { router.refresh() })
   }
 
-  const handleEdit = (restaurant: Restaurant) => {
-    setEditingRestaurant(restaurant)
-    setIsFormOpen(true)
-  }
-
-  const handleDeleteClick = (id: string) => {
-    setDeletingId(id)
-    setIsDeleteOpen(true)
-  }
-
-  const onSubmitForm = async (values: RestaurantFormValues) => {
-    let result;
-    if (editingRestaurant) {
-      result = await updateRestaurantAction(editingRestaurant._id, values)
-    } else {
-      result = await createRestaurantAction(values)
-    }
-
-    if (result.success) {
-      toast.success(editingRestaurant ? "Restoran muvaffaqiyatli yangilandi!" : "Restoran muvaffaqiyatli qo'shildi!")
-      setIsFormOpen(false)
-    } else {
-      toast.error(result.error)
-    }
-  }
-
-  const confirmDelete = async () => {
-    if (!deletingId) return
-    setIsDeleting(true)
-    const result = await deleteRestaurantAction(deletingId)
-    setIsDeleting(false)
-
-    if (result.success) {
-      toast.success("Restoran o'chirildi")
-      setIsDeleteOpen(false)
-      setDeletingId(null)
-    } else {
-      toast.error(result.error)
-    }
-  }
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    debounceTimer.current = setTimeout(() => { navigate({ search }) }, 500)
+    return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current) }
+  }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const columns: ColumnDef<Restaurant>[] = [
     {
       accessorKey: "name",
       header: "Nomi",
-      cell: ({ row }) => {
-        const name = row.getValue("name") as string
-        return <span className="font-medium">{name}</span>
-      },
+      cell: ({ row }) => <span className="font-medium">{row.getValue("name")}</span>,
     },
     {
       accessorKey: "phone",
@@ -106,46 +177,39 @@ export function RestaurantsTableClient({ initialData, totalPages, currentPage, a
     {
       accessorKey: "city",
       header: "Shahar",
+      cell: ({ row }) => (
+        <span>{row.original.city}, {row.original.district}</span>
+      ),
     },
     {
       accessorKey: "is_active",
       header: "Holati",
       cell: ({ row }) => {
-        const isActive = row.getValue("is_active") as boolean
+        const active = row.getValue("is_active") as boolean
         return (
-          <Badge variant={isActive ? "secondary" : "destructive"} className={isActive ? "bg-green-100 text-green-800" : ""}>
-            {isActive ? "Faol" : "Nofaol"}
+          <Badge
+            variant={active ? "secondary" : "destructive"}
+            className={active ? "bg-green-100 text-green-700 border-green-200" : ""}
+          >
+            {active ? "Faol" : "Nofaol"}
           </Badge>
         )
       },
     },
     {
-      accessorKey: "is_open",
-      header: "Ochiq/Yopiq",
+      accessorKey: "avg_rating",
+      header: "Reyting",
       cell: ({ row }) => {
-        const isOpen = row.getValue("is_open") as boolean
-        return (
-          <Badge variant="outline" className={isOpen ? "text-blue-600 border-blue-600" : "text-gray-500"}>
-            {isOpen ? "Ochiq" : "Yopiq"}
-          </Badge>
-        )
+        const rating = row.getValue("avg_rating") as number
+        return <span className="text-muted-foreground">{rating?.toFixed(1) || "—"}</span>
       },
     },
     {
       id: "actions",
-      cell: ({ row }) => {
-        const restaurant = row.original
-        return (
-          <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => handleEdit(restaurant)}>
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteClick(restaurant._id)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        )
-      },
+      header: "",
+      cell: ({ row }) => (
+        <ActionsCell restaurant={row.original} onAction={refreshData} />
+      ),
     },
   ]
 
@@ -153,58 +217,64 @@ export function RestaurantsTableClient({ initialData, totalPages, currentPage, a
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-medium tracking-tight">Restoranlar</h1>
-        <Button onClick={handleAdd} className="font-medium py-5 bg-primary hover:bg-primary/90 text-primary-foreground">
-          <Plus className="mr-2 h-4 w-4" />
-          Restoran qo'shish
+        <Button onClick={() => setFormOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          Yangi restoran
         </Button>
       </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Restoran nomi..."
+            value={search}
+            className="pl-9"
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <Select
+          value={filters.is_active || "all"}
+          onValueChange={(value) => navigate({ is_active: value ?? "all" })}
+        >
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <SelectValue>
+              {STATUS_OPTIONS.find((s) => s.value === (filters.is_active || "all"))?.label}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {hasActiveFilters && (
+          <Button variant="outline" size="lg" onClick={resetFilters}>
+            <X className="h-4 w-4 mr-1" />
+            Tozalash
+          </Button>
+        )}
+      </div>
+
       <DataTable
         columns={columns}
         data={initialData}
         pageCount={totalPages}
         currentPage={currentPage}
-        onPageChange={handlePageChange}
+        onPageChange={(page) => navigate({ page: page.toString() })}
         isLoading={isPending}
       />
 
-      {/* Form Dialog */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingRestaurant ? "Restoranni tahrirlash" : "Yangi restoran qo'shish"}</DialogTitle>
-            <DialogDescription>
-              {editingRestaurant ? "Restoran ma'lumotlarini o'zgartirib saqlang." : "Yangi restoran ma'lumotlarini kiriting."}
-            </DialogDescription>
-          </DialogHeader>
-          <RestaurantForm 
-            initialData={editingRestaurant} 
-            onSubmit={onSubmitForm} 
-            onCancel={() => setIsFormOpen(false)} 
-            accessToken={accessToken}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Tasdiqlaysizmi?</DialogTitle>
-            <DialogDescription>
-              Siz rostdan ham ushbu restoranni o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 flex gap-2">
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isDeleting}>
-              Bekor qilish
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? "O'chirilmoqda..." : "Ha, o'chirish"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RestaurantFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSuccess={refreshData}
+      />
     </div>
   )
 }
-
