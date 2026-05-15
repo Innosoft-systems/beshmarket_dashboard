@@ -22,9 +22,16 @@ export default async function PenaltiesPage({ searchParams }: Props) {
   if (reason !== "all") qs.set("reason", reason)
   if (search) qs.set("search", search)
 
-  const res = await apiRequest<any>(`/shifts/penalties?${qs}`, { accessToken: token }).catch(
-    () => ({ data: { data: [], total: 0, pages: 1 } }),
-  )
+  const [res, statsRes] = await Promise.all([
+    apiRequest<any>(`/shifts/penalties?${qs}`, { accessToken: token }).catch(
+      () => ({ data: { data: [], total: 0, pages: 1 } }),
+    ),
+    apiRequest<any>(`/shifts/penalties/stats`, { accessToken: token }).catch(
+      () => ({ data: { pending: { count: 0, total: 0 }, deducted: { count: 0, total: 0 }, waived: { count: 0, total: 0 } } }),
+    ),
+  ])
+
+  const stats = statsRes.data
 
   return (
     <div className="space-y-6">
@@ -37,19 +44,21 @@ export default async function PenaltiesPage({ searchParams }: Props) {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: "Kutilmoqda", filterStatus: "pending", color: "border-amber-500 text-amber-600" },
-          { label: "Yechildi", filterStatus: "deducted", color: "border-red-500 text-red-600" },
-          { label: "Bekor qilindi", filterStatus: "waived", color: "border-green-500 text-green-600" },
-        ].map(({ label, filterStatus, color }) => {
-          const count = res.data?.data?.filter((p: any) => p.status === filterStatus).length ?? 0
-          return (
-            <div key={filterStatus} className={`rounded-xl border ${color} bg-background p-4 space-y-1`}>
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="text-2xl font-bold">{count}</p>
-            </div>
-          )
-        })}
+        <div className="rounded-xl border border-amber-500 bg-background p-4 space-y-1">
+          <p className="text-sm text-muted-foreground">Kutilmoqda</p>
+          <p className="text-2xl font-bold">{stats.pending?.count ?? 0}</p>
+          <p className="text-xs text-muted-foreground">{(stats.pending?.total ?? 0).toLocaleString()} so'm</p>
+        </div>
+        <div className="rounded-xl border border-red-500 bg-background p-4 space-y-1">
+          <p className="text-sm text-muted-foreground">Yechildi</p>
+          <p className="text-2xl font-bold">{stats.deducted?.count ?? 0}</p>
+          <p className="text-xs text-muted-foreground">{(stats.deducted?.total ?? 0).toLocaleString()} so'm</p>
+        </div>
+        <div className="rounded-xl border border-green-500 bg-background p-4 space-y-1">
+          <p className="text-sm text-muted-foreground">Bekor qilindi</p>
+          <p className="text-2xl font-bold">{stats.waived?.count ?? 0}</p>
+          <p className="text-xs text-muted-foreground">{(stats.waived?.total ?? 0).toLocaleString()} so'm</p>
+        </div>
       </div>
 
       <PenaltiesClient

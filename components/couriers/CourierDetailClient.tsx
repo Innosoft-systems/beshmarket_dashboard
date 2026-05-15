@@ -339,6 +339,11 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
                 value={payoutAmount}
                 onChange={(e) => setPayoutAmount(e.target.value)}
               />
+              {+payoutAmount > balanceData.balance && (
+                <p className="text-xs text-red-500">
+                  Balans yetarli emas. Maksimal: {balanceData.balance?.toLocaleString()} so'm
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Izoh (ixtiyoriy)</Label>
@@ -353,7 +358,7 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
                 Bekor qilish
               </Button>
               <Button
-                disabled={payoutLoading || !payoutAmount || +payoutAmount <= 0}
+                disabled={payoutLoading || !payoutAmount || +payoutAmount <= 0 || +payoutAmount > balanceData.balance}
                 onClick={async () => {
                   setPayoutLoading(true)
                   const result = await payoutCourierAction(profile._id, +payoutAmount, payoutNote || undefined)
