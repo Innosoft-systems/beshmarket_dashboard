@@ -17,11 +17,12 @@ export default async function CourierDetailPage({ params }: Props) {
   const token = await getAccessToken()
 
   try {
-    const [profileRes, balanceRes, ordersRes, incomeRes] = await Promise.all([
+    const [profileRes, balanceRes, ordersRes, incomeRes, weeklyRes] = await Promise.all([
       apiRequest<any>(`/couriers/${id}`, { accessToken: token }),
       apiRequest<any>(`/couriers/${id}/balance`, { accessToken: token }).catch(() => ({ data: { balance: 0, transactions: [] }, status: 200 })),
       apiRequest<any>(`/orders?courier_id=${id}&limit=20`, { accessToken: token }).catch(() => ({ data: { data: [] }, status: 200 })),
       apiRequest<any>(`/couriers/${id}/income?period=month`, { accessToken: token }).catch(() => ({ data: { total: 0 }, status: 200 })),
+      apiRequest<any>(`/couriers/${id}/income?period=week`, { accessToken: token }).catch(() => ({ data: { total: 0 }, status: 200 })),
     ])
 
     if (!profileRes.data) notFound()
@@ -32,6 +33,7 @@ export default async function CourierDetailPage({ params }: Props) {
         balanceData={balanceRes.data}
         orders={ordersRes.data?.data || ordersRes.data || []}
         monthlyIncome={incomeRes.data?.total || 0}
+        weeklyIncome={weeklyRes.data?.total || 0}
       />
     )
   } catch {

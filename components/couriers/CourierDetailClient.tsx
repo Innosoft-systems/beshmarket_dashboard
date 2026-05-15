@@ -17,16 +17,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { COURIER_STATUSES, ORDER_STATUSES } from "@/types"
-import { updateCourierAction, blockCourierUserAction, deleteCourierAction } from "@/lib/actions/couriers"
+import { updateCourierAction, blockCourierUserAction, deleteCourierAction, payoutCourierAction } from "@/lib/actions/couriers"
 
 interface Props {
   profile: any
   balanceData: { balance: number; transactions: any[] }
   orders?: any[]
   monthlyIncome?: number
+  weeklyIncome?: number
 }
 
-export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0 }: Props) {
+export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, weeklyIncome = 0 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -37,6 +38,16 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
     vehicle_number: profile.vehicle_number || "",
     city: profile.city,
   })
+  const [payoutOpen, setPayoutOpen] = useState(false)
+  const [payoutAmount, setPayoutAmount] = useState("")
+  const [payoutNote, setPayoutNote] = useState("")
+  const [payoutLoading, setPayoutLoading] = useState(false)
+
+  const openPayout = () => {
+    setPayoutAmount(weeklyIncome > 0 ? String(weeklyIncome) : "")
+    setPayoutNote("Haftalik to'lov")
+    setPayoutOpen(true)
+  }
 
   const user = profile.user_id
   const statusInfo = COURIER_STATUSES.find((s) => s.value === profile.status)
@@ -102,6 +113,10 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
         <Button variant="outline" onClick={() => setEditOpen(true)} disabled={isPending}>
           <Pencil className="h-4 w-4 mr-2" />
           Tahrirlash
+        </Button>
+        <Button variant="outline" onClick={openPayout} disabled={isPending}>
+          <Wallet className="h-4 w-4 mr-2" />
+          To'lov qilish
         </Button>
         <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
           <Trash2 className="h-4 w-4 mr-2" />
@@ -301,6 +316,61 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
                   startTransition(() => router.refresh())
                 } else toast.error(result.error)
               }}>Saqlash</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payout Dialog */}
+      {payoutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
+          <div className="bg-background rounded-xl p-6 w-full max-w-sm shadow-lg ring-1 ring-foreground/10 space-y-4">
+            <div>
+              <h3 className="text-base font-medium">To'lov qilish</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Joriy balans: <span className="font-semibold text-foreground">{balanceData.balance?.toLocaleString()} so'm</span>
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Summa (so'm)</Label>
+              <Input
+                type="number"
+                placeholder="Masalan: 100000"
+                value={payoutAmount}
+                onChange={(e) => setPayoutAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Izoh (ixtiyoriy)</Label>
+              <Input
+                placeholder="Haftalik to'lov..."
+                value={payoutNote}
+                onChange={(e) => setPayoutNote(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => { setPayoutOpen(false); setPayoutAmount(""); setPayoutNote("") }}>
+                Bekor qilish
+              </Button>
+              <Button
+                disabled={payoutLoading || !payoutAmount || +payoutAmount <= 0}
+                onClick={async () => {
+                  setPayoutLoading(true)
+                  const result = await payoutCourierAction(profile._id, +payoutAmount, payoutNote || undefined)
+                  setPayoutLoading(false)
+                  if (result.success) {
+                    toast.success("To'lov amalga oshirildi")
+                    setPayoutOpen(false)
+                    setPayoutAmount("")
+                    setPayoutNote("")
+                    startTransition(() => router.refresh())
+                  } else {
+                    toast.error(result.error)
+                  }
+                }}
+              >
+                {payoutLoading ? "Kutilmoqda..." : "To'lov qilish"}
+              </Button>
             </div>
           </div>
         </div>

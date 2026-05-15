@@ -61,3 +61,20 @@ export async function deleteCourierAction(id: string) {
     return { success: false, error: error.message || "Xatolik yuz berdi" }
   }
 }
+
+export async function payoutCourierAction(id: string, amount: number, note?: string) {
+  const token = await getAccessToken()
+  if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
+
+  try {
+    await apiRequest(`/couriers/${id}/payout`, {
+      method: "POST",
+      body: { amount, note },
+      accessToken: token,
+    })
+    revalidatePath(`/couriers/${id}`)
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  }
+}
