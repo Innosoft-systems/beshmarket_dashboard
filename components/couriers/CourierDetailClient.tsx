@@ -1,22 +1,42 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useTransition } from "react"
-import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Star, Wallet, Package, Calendar } from "lucide-react"
+import { useState, useTransition } from "react"
+import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Star, Wallet, Package, Calendar, Trash2, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { COURIER_STATUSES } from "@/types"
-import { updateCourierAction, blockCourierUserAction } from "@/lib/actions/couriers"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { COURIER_STATUSES, ORDER_STATUSES } from "@/types"
+import { updateCourierAction, blockCourierUserAction, deleteCourierAction } from "@/lib/actions/couriers"
 
 interface Props {
   profile: any
   balanceData: { balance: number; transactions: any[] }
+  orders?: any[]
+  monthlyIncome?: number
 }
 
-export function CourierDetailClient({ profile, balanceData }: Props) {
+export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    vehicle_type: profile.vehicle_type,
+    vehicle_number: profile.vehicle_number || "",
+    city: profile.city,
+  })
 
   const user = profile.user_id
   const statusInfo = COURIER_STATUSES.find((s) => s.value === profile.status)
@@ -79,10 +99,18 @@ export function CourierDetailClient({ profile, balanceData }: Props) {
           <ShieldBan className="h-4 w-4 mr-2" />
           {user?.is_blocked ? "Blokdan chiqarish" : "Bloklash"}
         </Button>
+        <Button variant="outline" onClick={() => setEditOpen(true)} disabled={isPending}>
+          <Pencil className="h-4 w-4 mr-2" />
+          Tahrirlash
+        </Button>
+        <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          O'chirish
+        </Button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="rounded-xl border border-blue-500 bg-background p-5 space-y-2">
           <div className="flex items-center gap-2 text-blue-500">
             <Package className="h-4 w-4" />
@@ -110,6 +138,13 @@ export function CourierDetailClient({ profile, balanceData }: Props) {
             <span className="text-sm">Reyting</span>
           </div>
           <p className="text-3xl font-bold">{profile.avg_rating ? profile.avg_rating.toFixed(1) : "—"}<span className="text-base font-normal text-muted-foreground ml-1">({profile.review_count || 0})</span></p>
+        </div>
+        <div className="rounded-xl border border-orange-500 bg-background p-5 space-y-2">
+          <div className="flex items-center gap-2 text-orange-500">
+            <Calendar className="h-4 w-4" />
+            <span className="text-sm">Oylik daromad</span>
+          </div>
+          <p className="text-3xl font-bold">{monthlyIncome.toLocaleString()}<span className="text-base font-normal text-muted-foreground ml-1">so'm</span></p>
         </div>
       </div>
 
@@ -188,6 +223,108 @@ export function CourierDetailClient({ profile, balanceData }: Props) {
           </div>
         </div>
       )}
+
+      {/* Buyurtmalar tarixi */}
+      {orders.length > 0 && (
+        <div className="rounded-xl border border-slate-300 bg-background overflow-hidden">
+          <div className="p-5 border-b">
+            <h3 className="font-semibold flex items-center gap-2"><Package className="h-5 w-5 text-blue-500" /> Buyurtmalar tarixi ({orders.length})</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="h-11 px-5 text-left font-medium">Buyurtma №</th>
+                  <th className="h-11 px-5 text-left font-medium">Restoran</th>
+                  <th className="h-11 px-5 text-left font-medium">Status</th>
+                  <th className="h-11 px-5 text-right font-medium">Summa</th>
+                  <th className="h-11 px-5 text-right font-medium">Sana</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.slice(0, 20).map((order: any, i: number) => {
+                  const statusInfo = ORDER_STATUSES.find((s) => s.value === order.status)
+                  return (
+                    <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="px-5 py-3 font-medium">{order.order_number}</td>
+                      <td className="px-5 py-3">{order.restaurant_id?.name || "—"}</td>
+                      <td className="px-5 py-3">
+                        <Badge variant="outline" className={statusInfo?.color || ""}>{statusInfo?.label || order.status}</Badge>
+                      </td>
+                      <td className="px-5 py-3 text-right">{order.total?.toLocaleString()} so'm</td>
+                      <td className="px-5 py-3 text-right text-muted-foreground">{new Date(order.createdAt).toLocaleDateString("uz")}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
+          <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-lg ring-1 ring-foreground/10 space-y-4">
+            <h3 className="text-base font-medium">Profil ma'lumotlarini tahrirlash</h3>
+            <div className="space-y-2">
+              <Label>Transport turi</Label>
+              <Select value={editForm.vehicle_type} onValueChange={(v) => setEditForm({ ...editForm, vehicle_type: v ?? editForm.vehicle_type })}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {({ bicycle: "Velosiped", motorcycle: "Mototsikl", car: "Avtomobil", on_foot: "Piyoda" } as Record<string, string>)[editForm.vehicle_type] || editForm.vehicle_type}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bicycle">Velosiped</SelectItem>
+                  <SelectItem value="motorcycle">Mototsikl</SelectItem>
+                  <SelectItem value="car">Avtomobil</SelectItem>
+                  <SelectItem value="on_foot">Piyoda</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Transport raqami</Label>
+              <Input value={editForm.vehicle_number} onChange={(e) => setEditForm({ ...editForm, vehicle_number: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Shahar</Label>
+              <Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditOpen(false)}>Bekor qilish</Button>
+              <Button onClick={async () => {
+                const result = await updateCourierAction(profile._id, editForm)
+                if (result.success) {
+                  toast.success("Saqlandi")
+                  setEditOpen(false)
+                  startTransition(() => router.refresh())
+                } else toast.error(result.error)
+              }}>Saqlash</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm */}
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Kuryerni o'chirish"
+        description={`${user?.full_name || user?.phone} ni o'chirishni xohlaysizmi? Bu amalni qaytarib bo'lmaydi.`}
+        confirmLabel="O'chirish"
+        variant="destructive"
+        loading={deleteLoading}
+        onConfirm={async () => {
+          setDeleteLoading(true)
+          const result = await deleteCourierAction(profile._id)
+          setDeleteLoading(false)
+          if (result.success) {
+            toast.success("Kuryer o'chirildi")
+            router.push("/couriers")
+          } else toast.error(result.error)
+        }}
+      />
     </div>
   )
 }

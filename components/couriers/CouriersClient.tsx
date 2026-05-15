@@ -89,7 +89,11 @@ export function CouriersClient({ couriers, accessToken }: CouriersClientProps) {
     {
       accessorKey: "vehicle_type",
       header: "Transport",
-      cell: ({ row }) => <span className="capitalize">{row.getValue("vehicle_type")}</span>,
+      cell: ({ row }) => {
+        const type = row.getValue("vehicle_type") as string
+        const labels: Record<string, string> = { bicycle: "Velosiped", motorcycle: "Mototsikl", car: "Avtomobil", on_foot: "Piyoda" }
+        return <span>{labels[type] || type}</span>
+      },
     },
     {
       accessorKey: "city",
@@ -169,9 +173,9 @@ export function CouriersClient({ couriers, accessToken }: CouriersClientProps) {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-lg border border-slate-300 bg-background p-4">
-          <p className="text-sm text-muted-foreground">Jami</p>
-          <p className="text-2xl font-semibold">{stats.total}</p>
+        <div className="rounded-lg border border-blue-500 bg-background p-4">
+          <p className="text-sm text-blue-600">Jami</p>
+          <p className="text-2xl font-semibold text-blue-600">{stats.total}</p>
         </div>
         <div className="rounded-lg border border-green-500 bg-background p-4">
           <p className="text-sm text-green-600">Onlayn</p>
