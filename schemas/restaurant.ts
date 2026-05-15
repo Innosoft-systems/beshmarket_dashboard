@@ -7,6 +7,7 @@ export const restaurantFormSchema = z.object({
   city: z.string().min(2, "Shahar kiritish shart"),
   district: z.string().min(2, "Tuman kiritish shart"),
   logo: z.string().optional(),
+  owner_phone: z.string().min(9, "Egasi telefoni kiritish shart"),
 });
 
 export type RestaurantFormValues = z.infer<typeof restaurantFormSchema>;

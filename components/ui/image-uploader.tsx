@@ -4,7 +4,7 @@ import { useState, useRef } from "react"
 import { Upload, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { uploadImageAction } from "@/lib/actions/upload"
+import { getUploadToken } from "@/lib/actions/upload"
 
 interface ImageUploaderProps {
   value?: string
@@ -33,21 +33,41 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
     setPreview(URL.createObjectURL(file))
     setUploading(true)
 
-    const formData = new FormData()
-    formData.append("file", file)
+    try {
+      const token = await getUploadToken()
+      if (!token) {
+        toast.error("Avtorizatsiya muddati tugagan. Qayta login qiling.")
+        setPreview(value || null)
+        setUploading(false)
+        return
+      }
 
-    const result = await uploadImageAction(formData)
+      const formData = new FormData()
+      formData.append("file", file)
 
-    if (result.success) {
-      onChange(result.url)
-      setPreview(result.url)
+      const res = await fetch(`${API_URL}/api/v1/upload/image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || err?.data?.error || `Yuklashda xatolik (${res.status})`)
+      }
+
+      const json = await res.json()
+      const url = json?.data?.url ?? json?.url
+      onChange(url)
+      setPreview(url)
       toast.success("Rasm yuklandi")
-    } else {
-      toast.error(result.error || "Rasm yuklashda xatolik")
+    } catch (err: any) {
+      toast.error(err.message || "Rasm yuklashda xatolik yuz berdi")
       setPreview(value || null)
+      if (inputRef.current) inputRef.current.value = ""
+    } finally {
+      setUploading(false)
     }
-
-    setUploading(false)
   }
 
   const handleRemove = () => {
@@ -65,6 +85,7 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
         type="file"
         accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
+        onClick={(e) => { (e.target as HTMLInputElement).value = "" }}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) handleFile(file)

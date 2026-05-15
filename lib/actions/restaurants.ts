@@ -16,9 +16,14 @@ export async function createRestaurantAction(data: any) {
     await apiRequest("/restaurants", {
       method: "POST",
       body: {
-        ...data,
+        name: data.name,
+        phone: data.phone,
+        address: data.address,
+        city: data.city,
+        district: data.district,
+        logo: data.logo || undefined,
         slug: slugify(data.name),
-        owner_id: "000000000000000000000000",
+        owner_phone: data.owner_phone,
         is_active: true,
       },
       accessToken: token,

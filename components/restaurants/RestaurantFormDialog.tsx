@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Restaurant } from "@/types"
-import { RestaurantFormValues } from "@/schemas"
+import { restaurantFormSchema, RestaurantFormValues } from "@/schemas"
 import { createRestaurantAction, updateRestaurantAction } from "@/app/(dashboard)/restaurants/actions"
 
 type FormValues = RestaurantFormValues
@@ -37,6 +38,7 @@ export function RestaurantFormDialog({
   const isEdit = !!restaurant
 
   const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<FormValues>({
+    resolver: zodResolver(restaurantFormSchema),
     defaultValues: {
       name: restaurant?.name || "",
       phone: restaurant?.phone || "",
@@ -44,6 +46,7 @@ export function RestaurantFormDialog({
       city: restaurant?.city || "",
       district: restaurant?.district || "",
       logo: restaurant?.logo || "",
+      owner_phone: "",
     },
   })
 
@@ -69,7 +72,7 @@ export function RestaurantFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Restoranni tahrirlash" : "Yangi restoran"}</DialogTitle>
@@ -114,6 +117,17 @@ export function RestaurantFormDialog({
             <Input {...register("address")} placeholder="To'liq manzil" />
             {errors.address && <p className="text-xs text-red-500">{errors.address.message}</p>}
           </div>
+
+          {!isEdit && (
+            <div className="border-t pt-4 mt-4">
+              <div className="space-y-2">
+                <Label>Egasi telefon raqami *</Label>
+                <Input {...register("owner_phone")} placeholder="+998901234567" />
+                {errors.owner_phone && <p className="text-xs text-red-500">{errors.owner_phone.message}</p>}
+                <p className="text-xs text-muted-foreground">Restoran panelga kirish uchun telefon raqam</p>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
