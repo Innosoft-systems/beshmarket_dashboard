@@ -10,6 +10,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { OrderTimer } from "@/components/orders/OrderTimer"
 import {
   Select,
   SelectContent,
@@ -24,10 +25,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { updateOrderStatusAction, cancelOrderAction } from "@/lib/actions/orders"
+import { useOrderSocket } from "@/hooks/use-order-socket"
 
 const STATUS_FILTER = [
   { value: "all", label: "Barcha statuslar" },
   ...ORDER_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+] as const
+
+const PERIOD_FILTER = [
+  { value: "all", label: "Barcha vaqt" },
+  { value: "today", label: "Bugun" },
+  { value: "yesterday", label: "Kecha" },
+  { value: "week", label: "Hafta" },
+  { value: "month", label: "Oy" },
 ] as const
 
 function StatusBadge({ status }: { status: string }) {
@@ -100,7 +110,9 @@ interface OrdersTableClientProps {
   initialData: Order[]
   totalPages: number
   currentPage: number
-  filters: { search: string; status: string }
+  filters: { search: string; status: string; period: string }
+  accessToken?: string
+  stats?: { todayOrders: number; totalOrders: number }
 }
 
 export function OrdersTableClient({
@@ -108,6 +120,8 @@ export function OrdersTableClient({
   totalPages,
   currentPage,
   filters,
+  accessToken,
+  stats,
 }: OrdersTableClientProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -117,7 +131,9 @@ export function OrdersTableClient({
   const isFirstRender = useRef(true)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
-  const hasActiveFilters = filters.search || filters.status
+  useOrderSocket(accessToken || null)
+
+  const hasActiveFilters = filters.search || filters.status || filters.period
 
   const navigate = useCallback(
     (updates: Record<string, string>) => {
@@ -142,7 +158,7 @@ export function OrdersTableClient({
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    debounceTimer.current = setTimeout(() => navigate({ order_number: search }), 500)
+    debounceTimer.current = setTimeout(() => navigate({ search }), 500)
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current) }
   }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -150,7 +166,14 @@ export function OrdersTableClient({
     {
       accessorKey: "order_number",
       header: "Buyurtma №",
-      cell: ({ row }) => <span className="font-medium">{row.getValue("order_number")}</span>,
+      cell: ({ row }) => (
+        <span
+          className="font-medium text-primary cursor-pointer hover:underline"
+          onClick={() => router.push(`/orders/${row.original._id}`)}
+        >
+          {row.getValue("order_number")}
+        </span>
+      ),
     },
     {
       accessorKey: "restaurant_id",
@@ -172,9 +195,14 @@ export function OrdersTableClient({
     },
     {
       accessorKey: "createdAt",
-      header: "Sana",
+      header: "Vaqt",
       cell: ({ row }) => {
-        const date = new Date(row.getValue("createdAt"))
+        const status = row.original.status
+        const createdAt = row.getValue("createdAt") as string
+        if (status === "pending" || status === "accepted") {
+          return <OrderTimer createdAt={createdAt} />
+        }
+        const date = new Date(createdAt)
         return <span className="text-muted-foreground text-sm">{date.toLocaleDateString("uz")} {date.toLocaleTimeString("uz", { hour: "2-digit", minute: "2-digit" })}</span>
       },
     },
@@ -191,11 +219,32 @@ export function OrdersTableClient({
         <h1 className="text-2xl font-medium tracking-tight">Buyurtmalar</h1>
       </div>
 
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="rounded-lg border bg-background p-4">
+            <p className="text-sm text-muted-foreground">Bugungi buyurtmalar</p>
+            <p className="text-2xl font-semibold">{stats.todayOrders}</p>
+          </div>
+          <div className="rounded-lg border bg-background p-4">
+            <p className="text-sm text-muted-foreground">Jami buyurtmalar</p>
+            <p className="text-2xl font-semibold">{stats.totalOrders}</p>
+          </div>
+          <div className="rounded-lg border bg-background p-4">
+            <p className="text-sm text-muted-foreground">Kutilmoqda</p>
+            <p className="text-2xl font-semibold text-amber-600">{initialData.filter(o => o.status === "pending").length}</p>
+          </div>
+          <div className="rounded-lg border bg-background p-4">
+            <p className="text-sm text-muted-foreground">Yo'lda</p>
+            <p className="text-2xl font-semibold text-cyan-600">{initialData.filter(o => o.status === "on_way").length}</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
         <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buyurtma raqami..."
+            placeholder="Buyurtma raqami yoki restoran..."
             value={search}
             className="pl-9"
             onChange={(e) => setSearch(e.target.value)}
@@ -215,6 +264,24 @@ export function OrdersTableClient({
             {STATUS_FILTER.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filters.period || "all"}
+          onValueChange={(value) => navigate({ period: value ?? "all" })}
+        >
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue>
+              {PERIOD_FILTER.find((p) => p.value === (filters.period || "all"))?.label}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {PERIOD_FILTER.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
               </SelectItem>
             ))}
           </SelectContent>
