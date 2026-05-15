@@ -13,13 +13,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog } from "lucide-react"
+import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog, ClipboardList } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { logoutAction } from "@/app/(auth)/login/actions"
 
 const mainItems = [
   { title: "Bosh sahifa", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Buyurtmalar", url: "/orders", icon: ClipboardList },
   { title: "Foydalanuvchilar", url: "/users", icon: Users },
   { title: "Restoranlar", url: "/restaurants", icon: UtensilsCrossed },
   { title: "Bannerlar", url: "/banners", icon: Image },
