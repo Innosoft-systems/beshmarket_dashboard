@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
-import { Search, X, MoreHorizontal, Plus, Pencil, Trash2, Power } from "lucide-react"
+import { Search, X, MoreHorizontal, Plus, Pencil, Trash2, Power, ShoppingBag } from "lucide-react"
 import { toast } from "sonner"
 import { Restaurant } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
@@ -72,6 +73,10 @@ function ActionsCell({
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Tahrirlash
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href={`/restaurants/${restaurant._id}/products`} />}>
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            Mahsulotlar
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => { setActionType("toggle"); setConfirmOpen(true) }}>
             <Power className="h-4 w-4 mr-2 text-amber-600" />
