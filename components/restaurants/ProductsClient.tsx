@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Power, FolderPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { cn, getFullImgUrl } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ProductFormDialog } from "./ProductFormDialog"
@@ -140,7 +141,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                   <tr key={p._id} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="px-4 py-2">
                       {p.images?.[0]
-                        ? <img src={p.images[0]} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                        ? <img src={getFullImgUrl(p.images[0])} alt="" className="h-12 w-12 rounded-lg object-cover" />
                         : <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">Rasm</div>
                       }
                     </td>

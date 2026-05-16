@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation"
 import {
   CalendarClock,
   ClipboardList,
+  FolderOpen,
   LayoutDashboard,
   LogOut,
   Percent,
   Settings,
-  Star,
   Store,
   UtensilsCrossed,
 } from "lucide-react"
@@ -31,7 +31,7 @@ const items = [
   { title: "Bosh sahifa", url: "/restaurant", icon: LayoutDashboard },
   { title: "Buyurtmalar", url: "/restaurant/orders", icon: ClipboardList },
   { title: "Menyu", url: "/restaurant/menu", icon: UtensilsCrossed },
-  { title: "Izohlar", url: "/restaurant/reviews", icon: Star },
+  { title: "Kategoriya", url: "/restaurant/categories", icon: FolderOpen },
   { title: "Promo kodlar", url: "/restaurant/promotions", icon: Percent },
   { title: "Profil", url: "/restaurant/profile", icon: Settings },
   { title: "Ish vaqti", url: "/restaurant/working-hours", icon: CalendarClock },

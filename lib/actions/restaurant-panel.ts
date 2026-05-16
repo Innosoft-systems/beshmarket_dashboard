@@ -64,6 +64,15 @@ export async function deleteMyProductAction(id: string) {
 export async function createMyMenuCategoryAction(data: any) {
   return withToken(async (token) => {
     await apiRequest("/menu-categories/my/menu", { method: "POST", body: data, accessToken: token })
+    revalidatePath("/restaurant/categories")
+    revalidatePath("/restaurant/menu")
+  })
+}
+
+export async function updateMyMenuCategoryAction(id: string, data: any) {
+  return withToken(async (token) => {
+    await apiRequest(`/menu-categories/my/menu/${id}`, { method: "PATCH", body: data, accessToken: token })
+    revalidatePath("/restaurant/categories")
     revalidatePath("/restaurant/menu")
   })
 }
@@ -71,6 +80,7 @@ export async function createMyMenuCategoryAction(data: any) {
 export async function deleteMyMenuCategoryAction(id: string) {
   return withToken(async (token) => {
     await apiRequest(`/menu-categories/my/menu/${id}`, { method: "DELETE", accessToken: token })
+    revalidatePath("/restaurant/categories")
     revalidatePath("/restaurant/menu")
   })
 }
