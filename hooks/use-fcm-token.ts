@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { initializeApp, getApps } from "firebase/app"
 import { getMessaging, getToken, onMessage } from "firebase/messaging"
 import { toast } from "sonner"
@@ -16,10 +16,8 @@ const firebaseConfig = {
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
 
 export function useFcmToken(accessToken: string | null) {
-  const registered = useRef(false)
-
   useEffect(() => {
-    if (!accessToken || registered.current) return
+    if (!accessToken) return
     if (typeof window === "undefined" || !("Notification" in window)) return
 
     const init = async () => {
@@ -33,15 +31,27 @@ export function useFcmToken(accessToken: string | null) {
         const token = await getToken(messaging, { vapidKey: VAPID_KEY })
         if (!token) return
 
-        // Token ni backend ga register qilish
+        // Avval register bo'lgan token bilan taqqoslash
+        const storedToken = localStorage.getItem("fcm_token")
+        if (storedToken === token) {
+          // Allaqachon register qilingan — faqat foreground listener qo'shamiz
+          onMessage(messaging, (payload) => {
+            toast.info(payload.notification?.title || "Yangi xabar", {
+              description: payload.notification?.body,
+              duration: 5000,
+            })
+          })
+          return
+        }
+
+        // Yangi token — register qilamiz
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/notifications/my/device-token`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
           body: JSON.stringify({ token, platform: "web", device_name: "Dashboard" }),
         })
-        registered.current = true
+        localStorage.setItem("fcm_token", token)
 
-        // Foreground messages
         onMessage(messaging, (payload) => {
           toast.info(payload.notification?.title || "Yangi xabar", {
             description: payload.notification?.body,
