@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+import { sendBroadcastAction } from "@/lib/actions/notifications"
+
 const TYPES = [
   { value: "system", label: "Tizim" },
   { value: "promotion", label: "Aksiya / Promo" },
@@ -40,21 +42,13 @@ export function NotificationsClient({ recentNotifications }: Props) {
 
     setLoading(true)
     setResult(null)
-    try {
-      const token = document.cookie.match(/accessToken=([^;]+)/)?.[1] || ""
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/notifications/broadcast`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      })
-      const json = await res.json()
-      const data = json.data || json
-      if (!res.ok) throw new Error(data.message || "Xatolik")
-      setResult(data)
-      toast.success(`Yuborildi: ${data.success} ta qurilma`)
+    const result = await sendBroadcastAction(form as Parameters<typeof sendBroadcastAction>[0])
+    if (result.success) {
+      setResult(result.data)
+      toast.success(`Yuborildi: ${result.data?.success ?? 0} ta qurilma`)
       setForm({ title: "", body: "", type: "system", target: "all" })
-    } catch (e: any) {
-      toast.error(e.message)
+    } else {
+      toast.error(result.error || "Xatolik")
     }
     setLoading(false)
   }
