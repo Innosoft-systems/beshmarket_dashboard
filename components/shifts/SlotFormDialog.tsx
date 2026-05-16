@@ -25,7 +25,6 @@ export function SlotFormDialog({ slot, onClose }: Props) {
   const [, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<Mode>("single")
-  const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const placemarkRef = useRef<any>(null)
 
@@ -43,18 +42,32 @@ export function SlotFormDialog({ slot, onClose }: Props) {
 
   const [bulk, setBulk] = useState({ from: "", to: "" })
 
-  // Load Yandex Maps
-  useEffect(() => {
-    if (!mapRef.current) return
+  const mapRef = useRef<HTMLDivElement | null>(null)
+  const setMapRef = (el: HTMLDivElement | null) => {
+    mapRef.current = el
+    if (!el || mapInstanceRef.current) return
 
-    const initMap = () => {
+    const doInit = () => {
       if (mapInstanceRef.current || !mapRef.current) return
       const map = new (window as any).ymaps.Map(mapRef.current, {
         center: [form.lat, form.lng],
         zoom: 12,
-        controls: ["zoomControl"],
+        controls: ["zoomControl", "searchControl"],
       })
       mapInstanceRef.current = map
+
+      // Search result tanlanganda marker ko'chirish
+      const searchControl = map.controls.get("searchControl")
+      searchControl.options.set({ float: "right", size: "large" })
+      searchControl.events.add("resultselect", () => {
+        const idx = searchControl.getSelectedIndex()
+        const result = searchControl.getResultsArray()?.[idx]
+        if (!result) return
+        const coords = result.geometry.getCoordinates()
+        placemark.geometry.setCoordinates(coords)
+        map.setCenter(coords, 15)
+        setForm((f) => ({ ...f, lat: coords[0], lng: coords[1] }))
+      })
 
       const placemark = new (window as any).ymaps.Placemark(
         [form.lat, form.lng],
@@ -68,7 +81,6 @@ export function SlotFormDialog({ slot, onClose }: Props) {
         const coords = placemark.geometry.getCoordinates()
         setForm((f) => ({ ...f, lat: coords[0], lng: coords[1] }))
       })
-
       map.events.add("click", (e: any) => {
         const coords = e.get("coords")
         placemark.geometry.setCoordinates(coords)
@@ -76,35 +88,25 @@ export function SlotFormDialog({ slot, onClose }: Props) {
       })
     }
 
-    // ymaps allaqachon tayyor bo'lsa — darhol init
     if ((window as any).ymaps?.ready) {
-      ;(window as any).ymaps.ready(initMap)
-      return () => { mapInstanceRef.current?.destroy(); mapInstanceRef.current = null; placemarkRef.current = null }
-    }
-
-    // Script hali yuklanmagan
-    if (!document.getElementById("yandex-maps-script")) {
+      ;(window as any).ymaps.ready(doInit)
+    } else if (!document.getElementById("yandex-maps-script")) {
       const script = document.createElement("script")
       script.id = "yandex-maps-script"
       script.src = `https://api-maps.yandex.ru/2.1/?apikey=${YANDEX_API_KEY}&lang=uz_UZ`
-      script.onload = () => (window as any).ymaps.ready(initMap)
+      script.onload = () => (window as any).ymaps.ready(doInit)
       document.head.appendChild(script)
     } else {
-      // Script yuklanmoqda — polling
       const t = setInterval(() => {
-        if ((window as any).ymaps?.ready) {
-          clearInterval(t)
-          ;(window as any).ymaps.ready(initMap)
-        }
+        if ((window as any).ymaps?.ready) { clearInterval(t); ;(window as any).ymaps.ready(doInit) }
       }, 100)
     }
+  }
 
-    return () => {
-      mapInstanceRef.current?.destroy()
-      mapInstanceRef.current = null
-      placemarkRef.current = null
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => {
+    mapInstanceRef.current?.destroy()
+    mapInstanceRef.current = null
+    placemarkRef.current = null
   }, [])
 
   const isEdit = !!slot
@@ -199,7 +201,7 @@ export function SlotFormDialog({ slot, onClose }: Props) {
               <MapPin className="h-4 w-4 text-red-500" />
               Boshlash nuqtasi (xaritadan tanlang)
             </Label>
-            <div ref={mapRef} className="w-full h-64 rounded-lg border overflow-hidden bg-muted" />
+            <div ref={setMapRef} className="w-full h-64 rounded-lg border overflow-hidden bg-muted" />
             <p className="text-xs text-muted-foreground">
               Lat: {form.lat.toFixed(6)}, Lng: {form.lng.toFixed(6)}
             </p>

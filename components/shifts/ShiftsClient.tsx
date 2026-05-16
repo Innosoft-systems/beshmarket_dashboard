@@ -9,7 +9,31 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SlotFormDialog } from "./SlotFormDialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { deleteSlotAction } from "@/lib/actions/shifts"
+
+const DAY_NAMES = ["Yak", "Du", "Se", "Cho", "Pay", "Ju", "Sha"]
+const DAY_NAMES_FULL = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"]
+
+function getWeekDays() {
+  const today = new Date()
+  // Haftaning dushanbasi
+  const monday = new Date(today)
+  const day = today.getDay() === 0 ? 6 : today.getDay() - 1
+  monday.setDate(today.getDate() - day)
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return {
+      date: d.toISOString().split("T")[0],
+      label: DAY_NAMES[(d.getDay())],
+      fullLabel: DAY_NAMES_FULL[d.getDay()],
+      dayNum: d.getDate(),
+      isToday: d.toISOString().split("T")[0] === today.toISOString().split("T")[0],
+    }
+  })
+}
 
 interface Props {
   initialData: { data: any[]; total: number; pages: number; page: number }
@@ -26,6 +50,8 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
   const [editSlot, setEditSlot] = useState<any>(null)
   const [deleteId, setDeleteId] = useState("")
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const weekDays = getWeekDays()
 
   const navigate = (d: string, z: string, p = 1) => {
     const params = new URLSearchParams()
@@ -58,12 +84,33 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-center">
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => { setDate(e.target.value); navigate(e.target.value, zoneName) }}
-          className="w-44"
-        />
+        <Select
+          value={date || "all"}
+          onValueChange={(v) => {
+            const val = !v || v === "all" ? "" : v
+            setDate(val)
+            navigate(val, zoneName)
+          }}
+        >
+          <SelectTrigger className="w-52">
+            <SelectValue>
+              {date
+                ? (() => {
+                    const d = weekDays.find(w => w.date === date)
+                    return d ? `${d.fullLabel} — ${d.date}` : date
+                  })()
+                : "Barcha kunlar"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Barcha kunlar</SelectItem>
+            {weekDays.map((d) => (
+              <SelectItem key={d.date} value={d.date}>
+                {d.fullLabel} — {d.date}{d.isToday ? " (Bugun)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input
           placeholder="Zona nomi..."
           value={zoneName}
@@ -72,10 +119,12 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
           className="w-44"
         />
         <Button variant="outline" onClick={() => navigate(date, zoneName)}>Qidirish</Button>
-        <Button
-          className="ml-auto"
-          onClick={() => { setEditSlot(null); setFormOpen(true) }}
-        >
+        {(date || zoneName) && (
+          <Button variant="outline" onClick={() => { setDate(""); setZoneName(""); navigate("", "") }}>
+            Tozalash
+          </Button>
+        )}
+        <Button className="ml-auto" onClick={() => { setEditSlot(null); setFormOpen(true) }}>
           <Plus className="h-4 w-4 mr-2" /> Slot qo'shish
         </Button>
       </div>
@@ -99,49 +148,55 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
             {initialData.data.length === 0 && (
               <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">Slotlar topilmadi</td></tr>
             )}
-            {initialData.data.map((slot: any) => (
-              <tr key={slot._id} className="border-b last:border-0 hover:bg-muted/20">
-                <td className="px-4 py-3 font-medium">{slot.date}</td>
-                <td className="px-4 py-3">{slot.start_time} – {slot.end_time}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                    <span>{slot.zone_name}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {slot.zone_coordinates?.lat?.toFixed(4)}, {slot.zone_coordinates?.lng?.toFixed(4)}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right font-medium">{slot.payout?.toLocaleString()} so'm</td>
-                <td className="px-4 py-3 text-right text-muted-foreground text-xs">
-                  {slot.bonus_per_order ? `+${slot.bonus_per_order?.toLocaleString()}` : "—"}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{slot.booked_by?.length ?? 0} / {slot.max_couriers}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant="outline" className={slot.is_active ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-600"}>
-                    {slot.is_active ? "Faol" : "Nofaol"}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button size="sm" variant="outline" disabled={isPending}
-                      onClick={() => { setEditSlot(slot); setFormOpen(true) }}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600"
-                      disabled={isPending || (slot.booked_by?.length ?? 0) > 0}
-                      onClick={() => setDeleteId(slot._id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {initialData.data.map((slot: any) => {
+              const slotDay = weekDays.find(d => d.date === slot.date)
+              return (
+                <tr key={slot._id} className="border-b last:border-0 hover:bg-muted/20">
+                  <td className="px-4 py-3 font-medium">
+                    <div>{slot.date}</div>
+                    {slotDay && <div className="text-xs text-muted-foreground">{slotDay.fullLabel}</div>}
+                  </td>
+                  <td className="px-4 py-3">{slot.start_time} – {slot.end_time}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                      <span>{slot.zone_name}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {slot.zone_coordinates?.lat?.toFixed(4)}, {slot.zone_coordinates?.lng?.toFixed(4)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium">{slot.payout?.toLocaleString()} so'm</td>
+                  <td className="px-4 py-3 text-right text-muted-foreground text-xs">
+                    {slot.bonus_per_order ? `+${slot.bonus_per_order?.toLocaleString()}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{slot.booked_by?.length ?? 0} / {slot.max_couriers}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant="outline" className={slot.is_active ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-600"}>
+                      {slot.is_active ? "Faol" : "Nofaol"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="outline" disabled={isPending}
+                        onClick={() => { setEditSlot(slot); setFormOpen(true) }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600"
+                        disabled={isPending || (slot.booked_by?.length ?? 0) > 0}
+                        onClick={() => setDeleteId(slot._id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -163,15 +218,10 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
         </div>
       )}
 
-      {/* Form Dialog */}
       {formOpen && (
-        <SlotFormDialog
-          slot={editSlot}
-          onClose={() => { setFormOpen(false); setEditSlot(null) }}
-        />
+        <SlotFormDialog slot={editSlot} onClose={() => { setFormOpen(false); setEditSlot(null) }} />
       )}
 
-      {/* Delete Confirm */}
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId("") }}
