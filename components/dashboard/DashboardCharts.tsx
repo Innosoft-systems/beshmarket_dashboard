@@ -53,7 +53,15 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
     revenue_today: stats.revenue_today ?? 0,
     daily_trend: stats.daily_trend ?? [],
     top_restaurants: stats.top_restaurants ?? [],
+    top_clients: stats.top_clients ?? [],
     status_breakdown: stats.status_breakdown ?? [],
+    pending_now: stats.pending_now ?? 0,
+    active_orders: stats.active_orders ?? 0,
+    avg_delivery_minutes: stats.avg_delivery_minutes ?? null,
+    pending_reviews: stats.pending_reviews ?? 0,
+    pending_penalties: stats.pending_penalties ?? 0,
+    revenue_change_pct: stats.revenue_change_pct ?? null,
+    orders_change_pct: stats.orders_change_pct ?? null,
   }
 
   const safeCourier = {
@@ -109,14 +117,16 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
           icon={ShoppingBag}
           label="Jami buyurtmalar"
           value={safeStats.total_orders.toLocaleString()}
-          sub={`Bugun: ${safeStats.today_orders.toLocaleString()} ta`}
+          sub={`Bugun: ${safeStats.today_orders.toLocaleString()} ta · Faol: ${safeStats.active_orders ?? 0}`}
           color="border-blue-500"
         />
         <KpiCard
           icon={DollarSign}
           label="30 kunlik daromad"
           value={formatSum(safeStats.revenue_30d)}
-          sub={`Bugun: ${formatSum(safeStats.revenue_today)}`}
+          sub={safeStats.revenue_change_pct != null
+            ? `${safeStats.revenue_change_pct > 0 ? "+" : ""}${safeStats.revenue_change_pct}% o'tgan oyga nisbatan`
+            : `Bugun: ${formatSum(safeStats.revenue_today)}`}
           color="border-green-500"
         />
         <KpiCard
@@ -133,6 +143,21 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
           sub={`${safeCourier.verified} ta kuryer tasdiqlangan`}
           color="border-purple-500"
         />
+      </div>
+
+      {/* Mini stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Kutilmoqda", value: safeStats.pending_now ?? 0, color: "text-amber-600", border: "border-amber-600" },
+          { label: "O'rtacha yetkazish", value: safeStats.avg_delivery_minutes ? `${safeStats.avg_delivery_minutes} daq` : "—", color: "text-blue-600", border: "border-blue-600" },
+          { label: "Tasdiq kutgan izohlar", value: safeStats.pending_reviews ?? 0, color: "text-violet-600", border: "border-violet-600" },
+          { label: "Tasdiq kutgan jarimalar", value: safeStats.pending_penalties ?? 0, color: "text-red-600", border: "border-red-600" },
+        ].map((s) => (
+          <div key={s.label} className={`rounded-xl border ${s.border} bg-background px-4 py-3 flex items-center justify-between`}>
+            <span className="text-xs text-muted-foreground">{s.label}</span>
+            <span className={`font-bold text-lg ${s.color}`}>{typeof s.value === "number" ? s.value.toLocaleString() : s.value}</span>
+          </div>
+        ))}
       </div>
 
       {/* Area Chart — 7 kunlik trend */}
@@ -176,65 +201,96 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Bar chart — Top restoranlar */}
-        <div className="md:col-span-2 rounded-xl border bg-background p-5">
-          <h3 className="font-medium mb-4 flex items-center gap-2">
-            <Star className="h-4 w-4 text-amber-500" />
-            Top 5 restoran (30 kun)
-          </h3>
-          {topRest.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">Ma'lumot yo'q</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={topRest} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value: number, name: string) =>
-                    name === "revenue" ? [formatSum(value), "Daromad"] : [value, "Buyurtmalar"]
-                  }
-                />
-                <Legend formatter={(v) => v === "revenue" ? "Daromad" : "Buyurtmalar"} />
-                <Bar dataKey="Buyurtmalar" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="revenue" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+        {/* Bar charts column */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Top restoranlar */}
+          <div className="rounded-xl border bg-background p-5">
+            <h3 className="font-medium mb-4 flex items-center gap-2">
+              <Star className="h-4 w-4 text-amber-500" />
+              Top 10 restoran (30 kun)
+            </h3>
+            {topRest.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-10">Ma'lumot yo'q</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={topRest} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number, name: string) =>
+                    name === "revenue" ? [formatSum(value), "Daromad"] : [value, "Buyurtmalar"]} />
+                  <Legend formatter={(v) => v === "revenue" ? "Daromad" : "Buyurtmalar"} />
+                  <Bar dataKey="Buyurtmalar" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Top mijozlar */}
+          <div className="rounded-xl border bg-background p-5">
+            <h3 className="font-medium mb-4 flex items-center gap-2">
+              <Users className="h-4 w-4 text-purple-500" />
+              Top 10 mijoz (30 kun)
+            </h3>
+            {safeStats.top_clients.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-10">Ma'lumot yo'q</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart
+                  data={safeStats.top_clients.map((c: any, i: number) => ({
+                    name: (c.name || c.phone || "Noma'lum").slice(0, 12),
+                    Buyurtmalar: c.orders,
+                    spent: c.spent,
+                  }))}
+                  margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="gClients" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gSpent" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => shortSum(v)} width={60} />
+                  <Tooltip formatter={(value: number, name: string) =>
+                    name === "spent" ? [formatSum(value), "Sarflagan"] : [value, "Buyurtmalar"]} />
+                  <Legend formatter={(v) => v === "spent" ? "Sarflagan" : "Buyurtmalar"} />
+                  <Area yAxisId="left" type="monotone" dataKey="Buyurtmalar" stroke="#8b5cf6" fill="url(#gClients)" strokeWidth={2} dot={{ r: 3 }} />
+                  <Area yAxisId="right" type="monotone" dataKey="spent" stroke="#ec4899" fill="url(#gSpent)" strokeWidth={2} dot={{ r: 3 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
         {/* Pie charts */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Order statuses */}
-          <div className="rounded-xl border bg-background p-5">
+          <div className="rounded-xl border bg-background p-5 py-6">
             <h3 className="font-medium mb-3 text-sm">Buyurtmalar holati</h3>
             {statusData.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-6">Ma'lumot yo'q</p>
+              <p className="text-xs text-muted-foreground text-center" style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>Ma'lumot yo'q</p>
             ) : (
-              <>
-                <ResponsiveContainer width="100%" height={150}>
-                  <PieChart>
-                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={38} outerRadius={60}
-                      dataKey="value" nameKey="name" paddingAngle={2}>
-                      {statusData.map((_: any, i: number) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => [`${v} ta`, ""]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1.5 mt-1">
-                  {statusData.slice(0, 5).map((s: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-2 w-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                        <span className="text-muted-foreground truncate max-w-[100px]">{s.name}</span>
-                      </div>
-                      <span className="font-medium">{s.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={55} outerRadius={85}
+                    dataKey="value" nameKey="name" paddingAngle={2}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}>
+                    {statusData.map((_: any, i: number) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [`${v} ta`, ""]} />
+                </PieChart>
+              </ResponsiveContainer>
             )}
           </div>
 
@@ -242,32 +298,21 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
           <div className="rounded-xl border bg-background p-5">
             <h3 className="font-medium mb-3 text-sm">Kuryerlar holati</h3>
             {courierPieData.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Kuryerlar yo'q</p>
+              <p className="text-xs text-muted-foreground text-center" style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>Kuryerlar yo'q</p>
             ) : (
-              <>
-                <ResponsiveContainer width="100%" height={110}>
-                  <PieChart>
-                    <Pie data={courierPieData} cx="50%" cy="50%" innerRadius={28} outerRadius={46}
-                      dataKey="value" nameKey="name" paddingAngle={2}>
-                      {courierPieData.map((_: any, i: number) => (
-                        <Cell key={i} fill={["#22c55e", "#f59e0b", "#9ca3af"][i]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => [`${v} ta`, ""]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex flex-col gap-1 mt-1">
-                  {courierPieData.map((d: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-2 w-2 rounded-full" style={{ background: ["#22c55e", "#f59e0b", "#9ca3af"][i] }} />
-                        <span className="text-muted-foreground">{d.name}</span>
-                      </div>
-                      <span className="font-medium">{d.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={courierPieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85}
+                    dataKey="value" nameKey="name" paddingAngle={2}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}>
+                    {courierPieData.map((_: any, i: number) => (
+                      <Cell key={i} fill={["#22c55e", "#f59e0b", "#9ca3af"][i]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [`${v} ta`, ""]} />
+                </PieChart>
+              </ResponsiveContainer>
             )}
           </div>
         </div>
@@ -275,3 +320,4 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
     </div>
   )
 }
+
