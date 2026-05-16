@@ -1,24 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_PATHS = ['/login'];
-const ACCESS_TOKEN_KEY = 'bm_access_token';
+const ADMIN_TOKEN = 'bm_access_token';
+const RM_TOKEN = 'rm_access_token';
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get(ACCESS_TOKEN_KEY)?.value;
-  const isAuthenticated = !!accessToken;
-  const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const adminToken = request.cookies.get(ADMIN_TOKEN)?.value;
+  const rmToken = request.cookies.get(RM_TOKEN)?.value;
 
-  // Authenticated users away from login
-  if (isAuthenticated && isPublicPath) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Restaurant routes
+  if (pathname.startsWith('/restaurant')) {
+    if (!rmToken && !pathname.startsWith('/restaurant/login')) {
+      return NextResponse.redirect(new URL('/restaurant/login', request.url));
+    }
+    if (rmToken && pathname === '/restaurant/login') {
+      return NextResponse.redirect(new URL('/restaurant', request.url));
+    }
+    return NextResponse.next();
   }
 
-  // Unauthenticated users to login
-  if (!isAuthenticated && !isPublicPath) {
+  // Admin routes
+  if (!adminToken && !pathname.startsWith('/login')) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+  if (adminToken && pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();
@@ -28,6 +36,6 @@ export default proxy;
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|sounds|fonts|.*\\.(?:svg|png|jpg|jpeg|gif|webp|wav)$).*)',
   ],
 };
