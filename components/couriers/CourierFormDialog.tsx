@@ -71,7 +71,7 @@ export function CourierFormDialog({ open, onOpenChange, onSuccess }: CourierForm
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="!max-w-lg">
         <DialogHeader>
           <DialogTitle>Yangi kuryer qo'shish</DialogTitle>
         </DialogHeader>

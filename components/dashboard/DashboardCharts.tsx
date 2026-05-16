@@ -64,13 +64,15 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
   }
 
   // 7 kunlik trend — to'liq so'm saqlanadi, display uchun formatlanadi
+  const UZ_MONTHS = ["Yan","Fev","Mar","Apr","May","Iyn","Iyl","Avg","Sen","Okt","Noy","Dek"]
+
   const trendData = (() => {
     const map = new Map(safeStats.daily_trend.map((d: any) => [d._id as string, d]))
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date()
       d.setDate(d.getDate() - (6 - i))
       const key = d.toISOString().split("T")[0]
-      const label = d.toLocaleDateString("uz", { day: "numeric", month: "short" })
+      const label = `${d.getDate()} ${UZ_MONTHS[d.getMonth()]}`
       const entry = (map.get(key) as any) || { orders: 0, revenue: 0 }
       return { date: label, Buyurtmalar: entry.orders, revenue: entry.revenue }
     })

@@ -112,7 +112,7 @@ interface OrdersTableClientProps {
   currentPage: number
   filters: { search: string; status: string; period: string }
   accessToken?: string
-  stats?: { todayOrders: number; totalOrders: number }
+  stats?: { todayOrders: number; totalOrders: number; pendingOrders?: number; onwayOrders?: number }
 }
 
 export function OrdersTableClient({
@@ -229,13 +229,13 @@ export function OrdersTableClient({
             <p className="text-sm text-muted-foreground">Jami buyurtmalar</p>
             <p className="text-2xl font-semibold">{stats.totalOrders}</p>
           </div>
-          <div className="rounded-lg border bg-background p-4">
-            <p className="text-sm text-muted-foreground">Kutilmoqda</p>
-            <p className="text-2xl font-semibold text-amber-600">{initialData.filter(o => o.status === "pending").length}</p>
+          <div className="rounded-lg border border-amber-400 bg-background p-4">
+            <p className="text-sm text-amber-600">Kutilmoqda</p>
+            <p className="text-2xl font-semibold text-amber-600">{stats.pendingOrders ?? 0}</p>
           </div>
-          <div className="rounded-lg border bg-background p-4">
-            <p className="text-sm text-muted-foreground">Yo'lda</p>
-            <p className="text-2xl font-semibold text-cyan-600">{initialData.filter(o => o.status === "on_way").length}</p>
+          <div className="rounded-lg border border-cyan-400 bg-background p-4">
+            <p className="text-sm text-cyan-600">Yo'lda</p>
+            <p className="text-2xl font-semibold text-cyan-600">{stats.onwayOrders ?? 0}</p>
           </div>
         </div>
       )}

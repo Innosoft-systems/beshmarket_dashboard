@@ -45,23 +45,17 @@ export default async function OrdersPage({ searchParams }: Props) {
   const todayStr = new Date().toISOString().split("T")[0]
 
   try {
-    const [responseRes, todayRes] = await Promise.all([
-      getOrders(
-        {
-          page,
-          limit: 15,
-          ...(search && { search }),
-          ...(status && { status }),
-          ...(date_from && { date_from }),
-          ...(date_to && { date_to }),
-        },
-        accessToken,
-      ),
+    const [responseRes, todayRes, pendingRes, onwayRes] = await Promise.all([
+      getOrders({ page, limit: 15, ...(search && { search }), ...(status && { status }), ...(date_from && { date_from }), ...(date_to && { date_to }) }, accessToken),
       getOrders({ limit: 1, date_from: todayStr, date_to: todayStr }, accessToken),
+      getOrders({ limit: 1, status: "pending" }, accessToken),
+      getOrders({ limit: 1, status: "on_way" }, accessToken),
     ])
 
     const response = responseRes.data
     const todayTotal = todayRes.data?.pagination?.total ?? 0
+    const pendingTotal = pendingRes.data?.pagination?.total ?? 0
+    const onwayTotal = onwayRes.data?.pagination?.total ?? 0
 
     return (
       <OrdersTableClient
@@ -70,7 +64,7 @@ export default async function OrdersPage({ searchParams }: Props) {
         currentPage={response?.pagination?.page ?? page}
         filters={{ search, status, period }}
         accessToken={accessToken || ""}
-        stats={{ todayOrders: todayTotal, totalOrders: response?.pagination?.total ?? 0 }}
+        stats={{ todayOrders: todayTotal, totalOrders: response?.pagination?.total ?? 0, pendingOrders: pendingTotal, onwayOrders: onwayTotal }}
       />
     )
   } catch {

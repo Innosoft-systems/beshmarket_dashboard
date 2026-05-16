@@ -2,161 +2,212 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, MapPin, Phone, User, Store, Truck, Package, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ORDER_STATUSES } from "@/types"
 import { updateOrderStatusAction, cancelOrderAction, assignCourierAction } from "@/lib/actions/orders"
 import { OrderTimer } from "@/components/orders/OrderTimer"
 
+// Admin uchun ruxsat etilgan status o'tishlari
+const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
+  pending:                  [{ value: "accepted", label: "Qabul qilish" }, { value: "rejected", label: "Rad etish" }],
+  accepted:                 [{ value: "ready", label: "Tayyor" }, { value: "assigned", label: "Kuryer tayinlash" }],
+  assigned:                 [{ value: "on_the_way_to_restaurant", label: "Restoranga ketmoqda" }],
+  on_the_way_to_restaurant: [{ value: "picked_up", label: "Olindi" }],
+  picked_up:                [{ value: "on_the_way_to_customer", label: "Mijozga ketmoqda" }],
+  on_the_way_to_customer:   [{ value: "arrived_at_customer", label: "Manzilga yetdi" }, { value: "delivered", label: "Yetkazildi" }],
+  arrived_at_customer:      [{ value: "delivered", label: "Yetkazildi" }],
+  ready:                    [{ value: "on_way", label: "Yo'lga chiqdi" }],
+  on_way:                   [{ value: "delivered", label: "Yetkazildi" }],
+  delivered:                [],
+  rejected:                 [],
+  cancelled:                [],
+}
+
 function StatusBadge({ status }: { status: string }) {
   const s = ORDER_STATUSES.find((o) => o.value === status)
-  return <Badge variant="outline" className={`text-sm ${s?.color || ""}`}>{s?.label || status}</Badge>
+  return <Badge variant="outline" className={s?.color || ""}>{s?.label || status}</Badge>
 }
 
-interface OrderDetailClientProps {
+function InfoCard({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border bg-background p-4 space-y-3">
+      <h3 className="font-medium flex items-center gap-2 text-sm">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+
+interface Props {
   order: any
-  couriers?: { _id: string; user_id: any; is_active: boolean }[]
+  couriers?: any[]
 }
 
-export function OrderDetailClient({ order, couriers = [] }: OrderDetailClientProps) {
+export function OrderDetailClient({ order, couriers = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [selectedCourier, setSelectedCourier] = useState("")
   const [assigningCourier, setAssigningCourier] = useState(false)
+
+  const available = ADMIN_TRANSITIONS[order.status] || []
+  const canCancel = !["delivered", "rejected", "cancelled"].includes(order.status)
 
   const changeStatus = async (status: string) => {
     const result = await updateOrderStatusAction(order._id, status)
     if (result.success) {
       toast.success("Status yangilandi")
       startTransition(() => router.refresh())
-    } else {
-      toast.error(result.error || "Xatolik")
-    }
+    } else toast.error(result.error || "Xatolik")
   }
 
-  const cancel = async () => {
-    const result = await cancelOrderAction(order._id, "Admin tomonidan bekor qilindi")
+  const handleAssignCourier = async () => {
+    if (!selectedCourier) return
+    setAssigningCourier(true)
+    const result = await assignCourierAction(order._id, selectedCourier)
+    setAssigningCourier(false)
     if (result.success) {
-      toast.success("Buyurtma bekor qilindi")
+      toast.success("Kuryer tayinlandi")
       startTransition(() => router.refresh())
-    } else {
-      toast.error(result.error || "Xatolik")
-    }
+    } else toast.error(result.error || "Xatolik")
   }
 
-  const nextStatuses: Record<string, { value: string; label: string }[]> = {
-    pending: [{ value: "accepted", label: "Qabul qilish" }],
-    accepted: [{ value: "ready", label: "Tayyor" }],
-    ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
-    on_way: [{ value: "delivered", label: "Yetkazildi" }],
-  }
-  const available = nextStatuses[order.status] || []
+  const address = order.address_id
+  const fullAddress = address?.full_address || address?.address || address?.street || "—"
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         <Button variant="ghost" size="icon-sm" onClick={() => router.push("/orders")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-medium">{order.order_number}</h1>
+        <div className="flex-1 space-y-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-semibold">{order.order_number}</h1>
+            <StatusBadge status={order.status} />
+            {["pending", "accepted"].includes(order.status) && (
+              <OrderTimer createdAt={order.createdAt} />
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             {new Date(order.createdAt).toLocaleString("uz")}
+            {order.completed_at && ` · Yetkazildi: ${new Date(order.completed_at).toLocaleString("uz")}`}
           </p>
         </div>
-        <StatusBadge status={order.status} />
-        {(order.status === "pending" || order.status === "accepted") && (
-          <OrderTimer createdAt={order.createdAt} />
-        )}
       </div>
 
       {/* Actions */}
-      {available.length > 0 && (
-        <div className="flex gap-2">
+      {(available.length > 0 || canCancel) && (
+        <div className="flex flex-wrap gap-2 p-4 rounded-xl border bg-muted/30">
           {available.map((s) => (
-            <Button key={s.value} onClick={() => changeStatus(s.value)} disabled={isPending}>
+            <Button key={s.value} size="sm" onClick={() => changeStatus(s.value)} disabled={isPending}>
               {s.label}
             </Button>
           ))}
-          <Button variant="destructive" onClick={cancel} disabled={isPending}>
-            Bekor qilish
-          </Button>
+          {canCancel && (
+            <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)} disabled={isPending}>
+              Bekor qilish
+            </Button>
+          )}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Mijoz */}
-        <div className="rounded-lg border p-4 space-y-2">
-          <h3 className="font-medium">Mijoz</h3>
-          <p>{order.client_id?.full_name || "Noma'lum"}</p>
-          <p className="text-sm text-muted-foreground">{order.client_id?.phone}</p>
-        </div>
+      {/* Info grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <InfoCard icon={User} title="Mijoz">
+          <p className="font-medium">{order.client_id?.full_name || "Noma'lum"}</p>
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+            <Phone className="h-3.5 w-3.5" />{order.client_id?.phone || "—"}
+          </p>
+        </InfoCard>
 
-        {/* Restoran */}
-        <div className="rounded-lg border p-4 space-y-2">
-          <h3 className="font-medium">Restoran</h3>
-          <p>{order.restaurant_id?.name || "—"}</p>
-        </div>
+        <InfoCard icon={Store} title="Restoran">
+          <p className="font-medium">{order.restaurant_id?.name || "—"}</p>
+          {order.restaurant_id?.phone && (
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5" />{order.restaurant_id.phone}
+            </p>
+          )}
+        </InfoCard>
 
-        {/* Manzil */}
-        {order.address_id && (
-          <div className="rounded-lg border p-4 space-y-2">
-            <h3 className="font-medium">Yetkazish manzili</h3>
-            <p>{order.address_id.address || order.address_id.street}</p>
-            {order.address_id.apartment && <p className="text-sm text-muted-foreground">Xonadon: {order.address_id.apartment}</p>}
-            {order.address_id.entrance && <p className="text-sm text-muted-foreground">Kirish: {order.address_id.entrance}</p>}
-          </div>
-        )}
+        <InfoCard icon={MapPin} title="Yetkazish manzili">
+          <p className="text-sm font-medium">{fullAddress}</p>
+          {address?.district && <p className="text-xs text-muted-foreground">{address.district}</p>}
+          {address?.entrance && <p className="text-xs text-muted-foreground">Kirish: {address.entrance}{address.floor ? `, Qavat: ${address.floor}` : ""}{address.apartment ? `, Xonadon: ${address.apartment}` : ""}</p>}
+          {address?.comment && <p className="text-xs text-muted-foreground italic">{address.comment}</p>}
+        </InfoCard>
 
-        {/* Kuryer */}
-        <div className="rounded-lg border p-4 space-y-2">
-          <h3 className="font-medium">Kuryer</h3>
+        <InfoCard icon={Truck} title="Kuryer">
           {order.courier_id ? (
-            <p>{order.courier_id.full_name || order.courier_id.phone || "Tayinlangan"}</p>
+            <div className="space-y-1">
+              <p className="font-medium">{order.courier_id?.user_id?.full_name || "Tayinlangan"}</p>
+              {order.courier_id?.user_id?.phone && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5" />{order.courier_id.user_id.phone}
+                </p>
+              )}
+              {order.estimated_delivery_time && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />ETA: {order.estimated_delivery_time} daqiqa
+                </p>
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-muted-foreground">Tayinlanmagan</p>
-              {couriers.length > 0 && !order.courier_id && (
-                <select
-                  className="w-full h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
-                  defaultValue=""
-                  onChange={async (e) => {
-                    if (!e.target.value) return
-                    setAssigningCourier(true)
-                    const result = await assignCourierAction(order._id, e.target.value)
-                    setAssigningCourier(false)
-                    if (result.success) {
-                      toast.success("Kuryer tayinlandi")
-                      startTransition(() => router.refresh())
-                    } else {
-                      toast.error(result.error || "Xatolik")
-                    }
-                  }}
-                  disabled={assigningCourier}
-                >
-                  <option value="">Kuryer tanlang...</option>
-                  {couriers.filter(c => c.is_active).map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.user_id?.full_name || c.user_id?.phone || c._id}
-                    </option>
-                  ))}
-                </select>
+              <p className="text-sm text-muted-foreground">Tayinlanmagan</p>
+              {couriers.length > 0 && (
+                <div className="flex gap-2">
+                  <Select value={selectedCourier} onValueChange={(v) => setSelectedCourier(v ?? "")}>
+                    <SelectTrigger className="flex-1 h-9">
+                      <SelectValue>
+                        {couriers.find(c => c._id === selectedCourier)?.user_id?.full_name || "Kuryer tanlang..."}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {couriers.filter(c => c.is_active).map((c) => (
+                        <SelectItem key={c._id} value={c._id}>
+                          {c.user_id?.full_name || c.user_id?.phone} · {c.status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" disabled={!selectedCourier || assigningCourier} onClick={handleAssignCourier}>
+                    Tayinlash
+                  </Button>
+                </div>
               )}
             </div>
           )}
-        </div>
+        </InfoCard>
       </div>
 
+      {/* Izohlar */}
+      {(order.courier_note || order.restaurant_note) && (
+        <div className="rounded-xl border bg-background p-4 space-y-2">
+          <h3 className="font-medium text-sm">Izohlar</h3>
+          {order.restaurant_note && <p className="text-sm"><span className="text-muted-foreground">Restoran: </span>{order.restaurant_note}</p>}
+          {order.courier_note && <p className="text-sm"><span className="text-muted-foreground">Kuryer: </span>{order.courier_note}</p>}
+        </div>
+      )}
+
       {/* Mahsulotlar */}
-      <div className="rounded-lg border">
-        <div className="p-4 border-b">
-          <h3 className="font-medium">Mahsulotlar</h3>
+      <div className="rounded-xl border overflow-hidden">
+        <div className="p-4 border-b flex items-center gap-2">
+          <Package className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-medium text-sm">Mahsulotlar ({order.items?.length || 0} ta)</h3>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b">
+            <tr className="border-b bg-muted/30">
               <th className="h-10 px-4 text-left font-medium">Nomi</th>
               <th className="h-10 px-4 text-center font-medium">Soni</th>
               <th className="h-10 px-4 text-right font-medium">Narxi</th>
@@ -168,37 +219,57 @@ export function OrderDetailClient({ order, couriers = [] }: OrderDetailClientPro
               <tr key={i} className="border-b last:border-0">
                 <td className="px-4 py-3">{item.product_name}</td>
                 <td className="px-4 py-3 text-center">{item.quantity}</td>
-                <td className="px-4 py-3 text-right">{item.unit_price?.toLocaleString()}</td>
-                <td className="px-4 py-3 text-right">{item.line_total?.toLocaleString()}</td>
+                <td className="px-4 py-3 text-right">{item.unit_price?.toLocaleString()} so'm</td>
+                <td className="px-4 py-3 text-right font-medium">{item.line_total?.toLocaleString()} so'm</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="p-4 border-t space-y-1 text-sm">
-          <div className="flex justify-between"><span>Mahsulotlar:</span><span>{order.subtotal?.toLocaleString()} so'm</span></div>
-          <div className="flex justify-between"><span>Yetkazish:</span><span>{order.delivery_fee?.toLocaleString()} so'm</span></div>
+        <div className="p-4 border-t space-y-1.5 text-sm bg-muted/10">
+          <div className="flex justify-between text-muted-foreground"><span>Mahsulotlar:</span><span>{order.subtotal?.toLocaleString()} so'm</span></div>
+          {order.delivery_fee > 0 && <div className="flex justify-between text-muted-foreground"><span>Yetkazish:</span><span>{order.delivery_fee?.toLocaleString()} so'm</span></div>}
+          {order.service_fee > 0 && <div className="flex justify-between text-muted-foreground"><span>Xizmat:</span><span>{order.service_fee?.toLocaleString()} so'm</span></div>}
           {order.discount > 0 && <div className="flex justify-between text-green-600"><span>Chegirma:</span><span>-{order.discount?.toLocaleString()} so'm</span></div>}
-          <div className="flex justify-between font-medium text-base pt-2 border-t"><span>Jami:</span><span>{order.total?.toLocaleString()} so'm</span></div>
+          <div className="flex justify-between font-semibold text-base pt-2 border-t"><span>Jami:</span><span>{order.total?.toLocaleString()} so'm</span></div>
         </div>
       </div>
 
       {/* Status tarixi */}
       {order.status_history?.length > 0 && (
-        <div className="rounded-lg border p-4 space-y-3">
-          <h3 className="font-medium">Status tarixi</h3>
+        <div className="rounded-xl border bg-background p-4 space-y-3">
+          <h3 className="font-medium text-sm">Status tarixi</h3>
           <div className="space-y-2">
-            {order.status_history.map((entry: any, i: number) => (
+            {[...order.status_history].reverse().map((entry: any, i: number) => (
               <div key={i} className="flex items-center gap-3 text-sm">
                 <StatusBadge status={entry.status} />
-                <span className="text-muted-foreground">
-                  {new Date(entry.created_at).toLocaleString("uz")}
-                </span>
-                {entry.note && <span className="text-muted-foreground">— {entry.note}</span>}
+                <span className="text-muted-foreground text-xs">{new Date(entry.created_at).toLocaleString("uz")}</span>
+                {entry.note && <span className="text-muted-foreground text-xs">— {entry.note}</span>}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Cancel confirm */}
+      <ConfirmDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        title="Buyurtmani bekor qilish"
+        description="Bu buyurtmani bekor qilishni xohlaysizmi?"
+        confirmLabel="Bekor qilish"
+        variant="destructive"
+        loading={cancelLoading}
+        onConfirm={async () => {
+          setCancelLoading(true)
+          const result = await cancelOrderAction(order._id, "Admin tomonidan bekor qilindi")
+          setCancelLoading(false)
+          setCancelOpen(false)
+          if (result.success) {
+            toast.success("Buyurtma bekor qilindi")
+            startTransition(() => router.refresh())
+          } else toast.error(result.error || "Xatolik")
+        }}
+      />
     </div>
   )
 }
