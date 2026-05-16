@@ -110,7 +110,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
           </Button>
         </div>
 
-        <Button size="sm" className="ml-auto" onClick={() => { setEditProduct(null); setFormOpen(true) }}>
+        <Button className="ml-auto" onClick={() => { setEditProduct(null); setFormOpen(true) }}>
           <Plus className="h-4 w-4 mr-1" /> Mahsulot qo'shish
         </Button>
       </div>

@@ -36,7 +36,6 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
     images: product?.images || [] as string[],
     is_active: product?.is_active ?? true,
     is_available: product?.is_available ?? true,
-    is_eco: product?.is_eco ?? false,
   })
 
   const slug = (s: string) => s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
@@ -144,7 +143,6 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
             {[
               { key: "is_active", label: "Faol" },
               { key: "is_available", label: "Mavjud" },
-              { key: "is_eco", label: "Eco" },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={(form as any)[key]}
