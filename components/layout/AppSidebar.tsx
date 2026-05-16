@@ -27,7 +27,7 @@ const mainItems = [
   { title: "Smenalar", url: "/shifts", icon: CalendarClock },
   { title: "Jarimalar", url: "/penalties", icon: AlertTriangle },
   { title: "Izohlar", url: "/reviews", icon: MessageSquare },
-  { title: "Bildirishnomalar", url: "/notifications", icon: Bell },
+  { title: "Bildirishnoma yuborish", url: "/notifications", icon: Bell },
   { title: "Bannerlar", url: "/banners", icon: Image },
 ]
 

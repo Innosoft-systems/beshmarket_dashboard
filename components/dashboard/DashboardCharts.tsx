@@ -51,6 +51,7 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
     today_orders: stats.today_orders ?? 0,
     revenue_30d: stats.revenue_30d ?? 0,
     revenue_today: stats.revenue_today ?? 0,
+    revenue_total: stats.revenue_total ?? 0,
     daily_trend: stats.daily_trend ?? [],
     top_restaurants: stats.top_restaurants ?? [],
     top_clients: stats.top_clients ?? [],
@@ -112,13 +113,20 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <KpiCard
           icon={ShoppingBag}
           label="Jami buyurtmalar"
           value={safeStats.total_orders.toLocaleString()}
           sub={`Bugun: ${safeStats.today_orders.toLocaleString()} ta · Faol: ${safeStats.active_orders ?? 0}`}
           color="border-blue-500"
+        />
+        <KpiCard
+          icon={DollarSign}
+          label="Jami daromad"
+          value={formatSum(safeStats.revenue_total)}
+          sub={`Bugun: ${formatSum(safeStats.revenue_today)}`}
+          color="border-emerald-500"
         />
         <KpiCard
           icon={DollarSign}

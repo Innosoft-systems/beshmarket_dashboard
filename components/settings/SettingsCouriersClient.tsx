@@ -13,7 +13,6 @@ const TABS = [
   { id: "terms", label: "Foydalanish shartlari" },
   { id: "privacy", label: "Maxfiylik siyosati" },
   { id: "faq", label: "FAQ" },
-  { id: "notifications", label: "Bildirishnoma" },
 ] as const
 
 interface Props {
@@ -48,7 +47,6 @@ export function SettingsCouriersClient({ settings, legalPages }: Props) {
       {tab === "terms" && <LegalEditor slug="courier-terms" legalPages={legalPages} />}
       {tab === "privacy" && <LegalEditor slug="courier-privacy" legalPages={legalPages} />}
       {tab === "faq" && <CourierFaqSettings settings={settings} />}
-      {tab === "notifications" && <CourierNotificationSender />}
     </div>
   )
 }
@@ -281,55 +279,3 @@ function CourierFaqSettings({ settings }: { settings: { key: string; value: any 
 }
 
 
-function CourierNotificationSender() {
-  const [title, setTitle] = useState("")
-  const [body, setBody] = useState("")
-  const [loading, setLoading] = useState(false)
-
-  const handleSend = async () => {
-    if (!title.trim() || !body.trim()) {
-      toast.error("Sarlavha va matn kiritish shart")
-      return
-    }
-    setLoading(true)
-    try {
-      const token = document.cookie.match(/accessToken=([^;]+)/)?.[1] || ""
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/notifications/broadcast`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title, body, type: "system", target: "couriers" }),
-      })
-      const json = await res.json()
-      const data = json.data || json
-      if (!res.ok) throw new Error(data.message || "Xatolik")
-      toast.success(`Yuborildi: ${data.success} ta kuryer qurilmasi`)
-      setTitle("")
-      setBody("")
-    } catch (e: any) {
-      toast.error(e.message)
-    }
-    setLoading(false)
-  }
-
-  return (
-    <div className="space-y-4 max-w-lg">
-      <p className="text-sm text-muted-foreground">Faqat kuryerlarga push bildirishnoma yuborish</p>
-      <div className="space-y-2">
-        <Label>Sarlavha</Label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Masalan: Yangi smena mavjud" />
-      </div>
-      <div className="space-y-2">
-        <Label>Matn</Label>
-        <textarea
-          className="w-full min-h-[100px] rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Bildirishnoma matni..."
-        />
-      </div>
-      <Button onClick={handleSend} disabled={loading}>
-        {loading ? "Yuborilmoqda..." : "Kuryerlarga yuborish"}
-      </Button>
-    </div>
-  )
-}

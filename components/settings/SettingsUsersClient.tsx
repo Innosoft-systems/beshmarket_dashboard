@@ -52,7 +52,6 @@ export function SettingsUsersClient({ settings, legalPages }: Props) {
       {tab === "support" && <SupportSettings settings={settings} />}
       {tab === "faq" && <FaqSettings settings={settings} />}
       {tab === "social" && <SocialSettings settings={settings} />}
-      {tab === "notifications" && <NotificationSender />}
     </div>
   )
 }
@@ -377,55 +376,3 @@ function OrderSettings({ settings }: { settings: { key: string; value: any }[] }
   )
 }
 
-function NotificationSender() {
-  const [title, setTitle] = useState("")
-  const [body, setBody] = useState("")
-  const [loading, setLoading] = useState(false)
-
-  const handleSend = async () => {
-    if (!title.trim() || !body.trim()) {
-      toast.error("Sarlavha va matn kiritish shart")
-      return
-    }
-
-    setLoading(true)
-    const { sendNotificationAction } = await import("@/lib/actions/settings")
-    const result = await sendNotificationAction({
-      user_id: "000000000000000000000000",
-      type: "admin_broadcast",
-      title,
-      body,
-    })
-    setLoading(false)
-
-    if (result.success) {
-      toast.success("Bildirishnoma yuborildi")
-      setTitle("")
-      setBody("")
-    } else {
-      toast.error(result.error || "Xatolik")
-    }
-  }
-
-  return (
-    <div className="space-y-4 max-w-lg">
-      <p className="text-sm text-muted-foreground">Barcha foydalanuvchilarga bildirishnoma yuborish</p>
-      <div className="space-y-2">
-        <Label>Sarlavha</Label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bildirishnoma sarlavhasi" />
-      </div>
-      <div className="space-y-2">
-        <Label>Matn</Label>
-        <textarea
-          className="w-full min-h-[100px] rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Bildirishnoma matni"
-        />
-      </div>
-      <Button onClick={handleSend} disabled={loading}>
-        {loading ? "Yuborilmoqda..." : "Yuborish"}
-      </Button>
-    </div>
-  )
-}
