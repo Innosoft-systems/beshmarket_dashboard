@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  BarChart3,
   CalendarClock,
   ClipboardList,
   LayoutDashboard,
@@ -34,7 +33,6 @@ const items = [
   { title: "Menyu", url: "/restaurant/menu", icon: UtensilsCrossed },
   { title: "Izohlar", url: "/restaurant/reviews", icon: Star },
   { title: "Promo kodlar", url: "/restaurant/promotions", icon: Percent },
-  { title: "Analitika", url: "/restaurant/analytics", icon: BarChart3 },
   { title: "Profil", url: "/restaurant/profile", icon: Settings },
   { title: "Ish vaqti", url: "/restaurant/working-hours", icon: CalendarClock },
 ]
