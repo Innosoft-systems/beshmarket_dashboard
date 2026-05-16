@@ -57,7 +57,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => {
-                const isActive = pathname.startsWith(item.url)
+                // /dashboard uchun exact match, qolganlar uchun startsWith
+                const isActive = item.url === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname.startsWith(item.url)
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -85,12 +88,12 @@ export function AppSidebar() {
 
               <div className={`overflow-hidden transition-all duration-200 flex flex-col gap-1 ${settingsOpen ? "max-h-60 opacity-100" : "max-h-0 opacity-0"}`}>
                 {settingsItems.map((item) => {
-                  const isActive = pathname === item.url
+                  const isActive = pathname.startsWith(item.url)
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         render={<Link href={item.url} />}
-                        className={`text-base font-normal py-5 pl-9 ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
+                        className={`text-base font-normal py-5 pl-9 ${isActive ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : 'text-muted-foreground'}`}
                       >
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>

@@ -7,6 +7,8 @@ import { MapPin, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { createSlotAction, updateSlotAction, bulkCreateSlotsAction } from "@/lib/actions/shifts"
 
 const YANDEX_API_KEY = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY || ""
@@ -45,54 +47,64 @@ export function SlotFormDialog({ slot, onClose }: Props) {
   useEffect(() => {
     if (!mapRef.current) return
 
-    const loadMap = () => {
-      if (!(window as any).ymaps) return
-      ;(window as any).ymaps.ready(() => {
-        if (mapInstanceRef.current) return
-        const map = new (window as any).ymaps.Map(mapRef.current, {
-          center: [form.lat, form.lng],
-          zoom: 12,
-          controls: ["zoomControl"],
-        })
-        mapInstanceRef.current = map
+    const initMap = () => {
+      if (mapInstanceRef.current || !mapRef.current) return
+      const map = new (window as any).ymaps.Map(mapRef.current, {
+        center: [form.lat, form.lng],
+        zoom: 12,
+        controls: ["zoomControl"],
+      })
+      mapInstanceRef.current = map
 
-        const placemark = new (window as any).ymaps.Placemark(
-          [form.lat, form.lng],
-          { balloonContent: form.zone_name || "Zona" },
-          { preset: "islands#redDotIcon", draggable: true },
-        )
-        map.geoObjects.add(placemark)
-        placemarkRef.current = placemark
+      const placemark = new (window as any).ymaps.Placemark(
+        [form.lat, form.lng],
+        { balloonContent: form.zone_name || "Zona" },
+        { preset: "islands#redDotIcon", draggable: true },
+      )
+      map.geoObjects.add(placemark)
+      placemarkRef.current = placemark
 
-        placemark.events.add("dragend", () => {
-          const coords = placemark.geometry.getCoordinates()
-          setForm((f) => ({ ...f, lat: coords[0], lng: coords[1] }))
-        })
+      placemark.events.add("dragend", () => {
+        const coords = placemark.geometry.getCoordinates()
+        setForm((f) => ({ ...f, lat: coords[0], lng: coords[1] }))
+      })
 
-        map.events.add("click", (e: any) => {
-          const coords = e.get("coords")
-          placemark.geometry.setCoordinates(coords)
-          setForm((f) => ({ ...f, lat: coords[0], lng: coords[1] }))
-        })
+      map.events.add("click", (e: any) => {
+        const coords = e.get("coords")
+        placemark.geometry.setCoordinates(coords)
+        setForm((f) => ({ ...f, lat: coords[0], lng: coords[1] }))
       })
     }
 
-    if ((window as any).ymaps) {
-      loadMap()
-    } else {
+    // ymaps allaqachon tayyor bo'lsa — darhol init
+    if ((window as any).ymaps?.ready) {
+      ;(window as any).ymaps.ready(initMap)
+      return () => { mapInstanceRef.current?.destroy(); mapInstanceRef.current = null; placemarkRef.current = null }
+    }
+
+    // Script hali yuklanmagan
+    if (!document.getElementById("yandex-maps-script")) {
       const script = document.createElement("script")
+      script.id = "yandex-maps-script"
       script.src = `https://api-maps.yandex.ru/2.1/?apikey=${YANDEX_API_KEY}&lang=uz_UZ`
-      script.onload = loadMap
+      script.onload = () => (window as any).ymaps.ready(initMap)
       document.head.appendChild(script)
+    } else {
+      // Script yuklanmoqda — polling
+      const t = setInterval(() => {
+        if ((window as any).ymaps?.ready) {
+          clearInterval(t)
+          ;(window as any).ymaps.ready(initMap)
+        }
+      }, 100)
     }
 
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.destroy()
-        mapInstanceRef.current = null
-        placemarkRef.current = null
-      }
+      mapInstanceRef.current?.destroy()
+      mapInstanceRef.current = null
+      placemarkRef.current = null
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const isEdit = !!slot
@@ -143,15 +155,16 @@ export function SlotFormDialog({ slot, onClose }: Props) {
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
-      <div className="bg-background rounded-xl shadow-lg ring-1 ring-foreground/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent showCloseButton={false} className="!max-w-2xl w-full p-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h2 className="font-semibold">{isEdit ? "Slotni tahrirlash" : "Yangi slot yaratish"}</h2>
           <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <ScrollArea className="max-h-[calc(90vh-130px)]">
+          <div className="px-6 py-5 space-y-5">
           {/* Mode tabs — only for create */}
           {!isEdit && (
             <div className="flex gap-2">
@@ -199,6 +212,7 @@ export function SlotFormDialog({ slot, onClose }: Props) {
             {F("Maks. kuryerlar", <Input type="number" min={1} value={form.max_couriers} onChange={(e) => setForm({ ...form, max_couriers: +e.target.value })} />)}
           </div>
         </div>
+        </ScrollArea>
 
         {/* Footer */}
         <div className="flex justify-end gap-3 px-6 py-4 border-t">
@@ -207,7 +221,7 @@ export function SlotFormDialog({ slot, onClose }: Props) {
             {loading ? "Saqlanmoqda..." : isEdit ? "Saqlash" : mode === "bulk" ? "Bulk yaratish" : "Yaratish"}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

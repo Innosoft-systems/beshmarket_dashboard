@@ -71,9 +71,8 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
           onKeyDown={(e) => e.key === "Enter" && navigate(date, zoneName)}
           className="w-44"
         />
-        <Button variant="outline" size="sm" onClick={() => navigate(date, zoneName)}>Qidirish</Button>
+        <Button variant="outline" onClick={() => navigate(date, zoneName)}>Qidirish</Button>
         <Button
-          size="sm"
           className="ml-auto"
           onClick={() => { setEditSlot(null); setFormOpen(true) }}
         >
