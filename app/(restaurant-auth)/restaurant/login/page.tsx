@@ -75,9 +75,6 @@ export default function RestaurantLoginPage() {
               <Button className="w-full" onClick={handleVerify} disabled={loading || !code.trim()}>
                 {loading ? 'Tekshirilmoqda...' : 'Kirish'}
               </Button>
-              <button onClick={() => setStep('phone')} className="w-full text-sm text-muted-foreground hover:text-foreground">
-                ← Raqamni o'zgartirish
-              </button>
             </>
           )}
         </div>

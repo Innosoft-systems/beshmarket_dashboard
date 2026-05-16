@@ -8,8 +8,8 @@ export function proxy(request: NextRequest) {
   const adminToken = request.cookies.get(ADMIN_TOKEN)?.value;
   const rmToken = request.cookies.get(RM_TOKEN)?.value;
 
-  // Restaurant routes
-  if (pathname.startsWith('/restaurant')) {
+  // Restaurant panel routes (/restaurant, /restaurant/*)
+  if (pathname === '/restaurant' || pathname.startsWith('/restaurant/')) {
     if (!rmToken && !pathname.startsWith('/restaurant/login')) {
       return NextResponse.redirect(new URL('/restaurant/login', request.url));
     }

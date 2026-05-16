@@ -19,7 +19,7 @@ const navItems = [
   { title: 'Profil', url: '/restaurant/profile', icon: User },
 ]
 
-export function RestaurantSidebar() {
+export function RestaurantSidebar({ restaurantName }: { restaurantName?: string }) {
   const pathname = usePathname()
 
   return (
@@ -30,7 +30,7 @@ export function RestaurantSidebar() {
             <ShoppingBag className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <p className="text-sm font-bold leading-none">BeshMarket</p>
+            <p className="text-sm font-bold leading-none">{restaurantName || 'Restoran'}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Restoran paneli</p>
           </div>
         </div>
