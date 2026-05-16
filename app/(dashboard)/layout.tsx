@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { getAccessToken } from '@/lib/auth/session';
+import { getCurrentUser } from '@/lib/auth/current-user';
 import { apiRequest } from '@/lib/api/client';
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
@@ -12,6 +14,11 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const token = await getAccessToken()
+  const user = await getCurrentUser()
+
+  if (!token || !user) redirect("/login")
+  if (user.role === "restaurant") redirect("/restaurant")
+  if (user.role !== "admin") redirect("/login")
 
   const unreadRes = await apiRequest<any>('/admin-notifications/unread-count', { accessToken: token || undefined })
     .catch(() => ({ data: { count: 0 } }))

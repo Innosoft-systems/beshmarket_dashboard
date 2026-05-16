@@ -1,32 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_TOKEN = 'bm_access_token';
-const RM_TOKEN = 'rm_access_token';
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const adminToken = request.cookies.get(ADMIN_TOKEN)?.value;
-  const rmToken = request.cookies.get(RM_TOKEN)?.value;
 
-  // Restaurant panel routes (/restaurant, /restaurant/*)
-  if (pathname === '/restaurant' || pathname.startsWith('/restaurant/')) {
-    if (!rmToken && !pathname.startsWith('/restaurant/login')) {
-      return NextResponse.redirect(new URL('/restaurant/login', request.url));
-    }
-    if (rmToken && pathname === '/restaurant/login') {
-      return NextResponse.redirect(new URL('/restaurant', request.url));
-    }
-    return NextResponse.next();
-  }
+  const isLoginPath = pathname.startsWith('/login') || pathname.startsWith('/restaurant/login');
 
-  // Admin routes
-  if (!adminToken && !pathname.startsWith('/login')) {
-    const loginUrl = new URL('/login', request.url);
+  if (!adminToken && !isLoginPath) {
+    const loginUrl = new URL(pathname.startsWith('/restaurant') ? '/restaurant/login' : '/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
   }
+
   if (adminToken && pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  if (adminToken && pathname.startsWith('/restaurant/login')) {
+    return NextResponse.redirect(new URL('/restaurant', request.url));
   }
 
   return NextResponse.next();

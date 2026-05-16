@@ -3,7 +3,7 @@ export interface Restaurant {
   name: string;
   slug?: string;
   category_id?: string;
-  owner_id?: string;
+  owner_id?: string | { _id: string; phone: string };
   phone: string;
   address: string;
   city: string;

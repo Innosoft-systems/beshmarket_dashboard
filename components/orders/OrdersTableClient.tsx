@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { updateOrderStatusAction, cancelOrderAction } from "@/lib/actions/orders"
 import { useOrderSocket } from "@/hooks/use-order-socket"
+import { useRestaurantSocket } from "@/hooks/use-restaurant-socket"
 
 const STATUS_FILTER = [
   { value: "all", label: "Barcha statuslar" },
@@ -49,7 +50,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function ActionsCell({ order, onAction }: { order: Order; onAction: () => void }) {
+function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAction: () => void; scope?: "admin" | "restaurant" }) {
   const [loading, setLoading] = useState(false)
 
   const changeStatus = async (status: string) => {
@@ -78,12 +79,20 @@ function ActionsCell({ order, onAction }: { order: Order; onAction: () => void }
 
   if (order.status === "delivered" || order.status === "rejected") return null
 
-  const nextStatuses = {
-    pending: [{ value: "accepted", label: "Qabul qilish" }],
-    accepted: [{ value: "ready", label: "Tayyor" }],
-    ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
-    on_way: [{ value: "delivered", label: "Yetkazildi" }],
-  } as Record<string, { value: string; label: string }[]>
+  const nextStatuses = scope === "restaurant"
+    ? {
+        pending: [
+          { value: "accepted", label: "Qabul qilish" },
+          { value: "rejected", label: "Rad etish" },
+        ],
+        accepted: [{ value: "ready", label: "Tayyor" }],
+      }
+    : {
+        pending: [{ value: "accepted", label: "Qabul qilish" }],
+        accepted: [{ value: "ready", label: "Tayyor" }],
+        ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
+        on_way: [{ value: "delivered", label: "Yetkazildi" }],
+      } as Record<string, { value: string; label: string }[]>
 
   const available = nextStatuses[order.status] || []
 
@@ -113,6 +122,7 @@ interface OrdersTableClientProps {
   filters: { search: string; status: string; period: string }
   accessToken?: string
   stats?: { todayOrders: number; totalOrders: number; pendingOrders?: number; onwayOrders?: number }
+  scope?: "admin" | "restaurant"
 }
 
 export function OrdersTableClient({
@@ -122,6 +132,7 @@ export function OrdersTableClient({
   filters,
   accessToken,
   stats,
+  scope = "admin",
 }: OrdersTableClientProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -131,7 +142,8 @@ export function OrdersTableClient({
   const isFirstRender = useRef(true)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
-  useOrderSocket(accessToken || null)
+  useOrderSocket(scope === "admin" ? (accessToken || null) : null)
+  useRestaurantSocket(scope === "restaurant" ? (accessToken || null) : null)
 
   const hasActiveFilters = filters.search || filters.status || filters.period
 
@@ -169,20 +181,22 @@ export function OrdersTableClient({
       cell: ({ row }) => (
         <span
           className="font-medium text-primary cursor-pointer hover:underline"
-          onClick={() => router.push(`/orders/${row.original._id}`)}
+          onClick={() => router.push(`${scope === "restaurant" ? "/restaurant/orders" : "/orders"}/${row.original._id}`)}
         >
           {row.getValue("order_number")}
         </span>
       ),
     },
-    {
-      accessorKey: "restaurant_id",
-      header: "Restoran",
-      cell: ({ row }) => {
-        const r = row.original.restaurant_id
-        return <span>{typeof r === "object" ? r?.name : "—"}</span>
-      },
-    },
+    ...(scope === "admin"
+      ? [{
+          accessorKey: "restaurant_id",
+          header: "Restoran",
+          cell: ({ row }: any) => {
+            const r = row.original.restaurant_id
+            return <span>{typeof r === "object" ? r?.name : "—"}</span>
+          },
+        } as ColumnDef<Order>]
+      : []),
     {
       accessorKey: "total",
       header: "Summa",
@@ -209,7 +223,7 @@ export function OrdersTableClient({
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => <ActionsCell order={row.original} onAction={refreshData} />,
+      cell: ({ row }) => <ActionsCell order={row.original} onAction={refreshData} scope={scope} />,
     },
   ]
 

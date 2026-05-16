@@ -10,14 +10,21 @@ import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ProductFormDialog } from "./ProductFormDialog"
 import { deleteProductAction, updateProductAction, createMenuCategoryAction, deleteMenuCategoryAction } from "@/lib/actions/products"
+import {
+  createMyMenuCategoryAction,
+  deleteMyMenuCategoryAction,
+  deleteMyProductAction,
+  updateMyProductAction,
+} from "@/lib/actions/restaurant-panel"
 
 interface Props {
   restaurant: any
   products: any[]
   categories: any[]
+  scope?: "admin" | "restaurant"
 }
 
-export function ProductsClient({ restaurant, products, categories }: Props) {
+export function ProductsClient({ restaurant, products, categories, scope = "admin" }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [formOpen, setFormOpen] = useState(false)
@@ -36,14 +43,17 @@ export function ProductsClient({ restaurant, products, categories }: Props) {
       })
 
   const toggleActive = async (p: any) => {
-    const r = await updateProductAction(p._id, { is_active: !p.is_active })
+    const r = scope === "restaurant"
+      ? await updateMyProductAction(p._id, { is_active: !p.is_active })
+      : await updateProductAction(p._id, { is_active: !p.is_active })
     r.success ? startTransition(() => router.refresh()) : toast.error(r.error)
   }
 
   const addCategory = async () => {
     if (!newCatName.trim()) return
     setAddingCat(true)
-    const r = await createMenuCategoryAction({
+    const action = scope === "restaurant" ? createMyMenuCategoryAction : createMenuCategoryAction
+    const r = await action({
       restaurant_id: restaurant._id,
       name_uz: newCatName,
       name_ru: newCatName,
@@ -74,7 +84,9 @@ export function ProductsClient({ restaurant, products, categories }: Props) {
             </button>
             <button
               onClick={async () => {
-                const r = await deleteMenuCategoryAction(cat._id)
+                const r = scope === "restaurant"
+                  ? await deleteMyMenuCategoryAction(cat._id)
+                  : await deleteMenuCategoryAction(cat._id)
                 r.success ? startTransition(() => router.refresh()) : toast.error(r.error)
               }}
               className="text-muted-foreground hover:text-red-500 p-0.5"
@@ -173,6 +185,7 @@ export function ProductsClient({ restaurant, products, categories }: Props) {
           product={editProduct}
           restaurantId={restaurant._id}
           categories={categories}
+          scope={scope}
           onClose={() => { setFormOpen(false); setEditProduct(null) }}
         />
       )}
@@ -187,7 +200,9 @@ export function ProductsClient({ restaurant, products, categories }: Props) {
         loading={deleteLoading}
         onConfirm={async () => {
           setDeleteLoading(true)
-          const r = await deleteProductAction(deleteId)
+          const r = scope === "restaurant"
+            ? await deleteMyProductAction(deleteId)
+            : await deleteProductAction(deleteId)
           setDeleteLoading(false)
           setDeleteId("")
           r.success ? (toast.success("O'chirildi"), startTransition(() => router.refresh()))

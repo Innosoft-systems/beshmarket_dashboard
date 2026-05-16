@@ -4,6 +4,17 @@ export interface AdminUser {
   role: 'admin';
 }
 
+export type UserRole = 'admin' | 'client' | 'kuryer' | 'restaurant';
+
+export interface CurrentUser {
+  _id?: string;
+  id?: string;
+  full_name?: string;
+  phone?: string;
+  username?: string;
+  role: UserRole;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -11,6 +22,11 @@ export interface AuthTokens {
 
 export interface AdminLoginResponse extends AuthTokens {
   user: AdminUser;
+}
+
+export interface OtpLoginResponse extends AuthTokens {
+  user: CurrentUser;
+  isNewUser?: boolean;
 }
 
 export interface AdminLoginPayload {

@@ -48,9 +48,10 @@ function InfoCard({ icon: Icon, title, children }: { icon: any; title: string; c
 interface Props {
   order: any
   couriers?: any[]
+  scope?: "admin" | "restaurant"
 }
 
-export function OrderDetailClient({ order, couriers = [] }: Props) {
+export function OrderDetailClient({ order, couriers = [], scope = "admin" }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -58,7 +59,13 @@ export function OrderDetailClient({ order, couriers = [] }: Props) {
   const [selectedCourier, setSelectedCourier] = useState("")
   const [assigningCourier, setAssigningCourier] = useState(false)
 
-  const available = ADMIN_TRANSITIONS[order.status] || []
+  const restaurantTransitions: Record<string, { value: string; label: string }[]> = {
+    pending: [{ value: "accepted", label: "Qabul qilish" }, { value: "rejected", label: "Rad etish" }],
+    accepted: [{ value: "ready", label: "Tayyor" }],
+  }
+  const available = scope === "restaurant"
+    ? restaurantTransitions[order.status] || []
+    : ADMIN_TRANSITIONS[order.status] || []
   const canCancel = !["delivered", "rejected", "cancelled"].includes(order.status)
 
   const changeStatus = async (status: string) => {
@@ -87,7 +94,7 @@ export function OrderDetailClient({ order, couriers = [] }: Props) {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Button variant="ghost" size="icon-sm" onClick={() => router.push("/orders")}>
+        <Button variant="ghost" size="icon-sm" onClick={() => router.push(scope === "restaurant" ? "/restaurant/orders" : "/orders")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 space-y-1">
@@ -164,7 +171,7 @@ export function OrderDetailClient({ order, couriers = [] }: Props) {
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Tayinlanmagan</p>
-              {couriers.length > 0 && (
+              {scope === "admin" && couriers.length > 0 && (
                 <div className="flex gap-2">
                   <Select value={selectedCourier} onValueChange={(v) => setSelectedCourier(v ?? "")}>
                     <SelectTrigger className="flex-1 h-9">
@@ -261,7 +268,7 @@ export function OrderDetailClient({ order, couriers = [] }: Props) {
         loading={cancelLoading}
         onConfirm={async () => {
           setCancelLoading(true)
-          const result = await cancelOrderAction(order._id, "Admin tomonidan bekor qilindi")
+          const result = await cancelOrderAction(order._id, scope === "restaurant" ? "Restoran tomonidan bekor qilindi" : "Admin tomonidan bekor qilindi")
           setCancelLoading(false)
           setCancelOpen(false)
           if (result.success) {

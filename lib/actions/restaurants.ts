@@ -40,7 +40,10 @@ export async function updateRestaurantAction(id: string, data: any) {
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
   try {
-    await apiRequest(`/restaurants/${id}`, { method: "PATCH", body: data, accessToken: token })
+    await apiRequest(`/restaurants/${id}`, { method: "PATCH", body: {
+      ...data,
+      owner_phone: data.owner_phone || undefined,
+    }, accessToken: token })
     revalidatePath("/restaurants")
     return { success: true }
   } catch (error: any) {

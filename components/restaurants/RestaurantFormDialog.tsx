@@ -46,7 +46,7 @@ export function RestaurantFormDialog({
       city: restaurant?.city || "",
       district: restaurant?.district || "",
       logo: restaurant?.logo || "",
-      owner_phone: "",
+      owner_phone: typeof restaurant?.owner_id === "object" ? restaurant.owner_id.phone : "",
     },
   })
 
@@ -125,6 +125,17 @@ export function RestaurantFormDialog({
                 <Input {...register("owner_phone")} placeholder="+998901234567" />
                 {errors.owner_phone && <p className="text-xs text-red-500">{errors.owner_phone.message}</p>}
                 <p className="text-xs text-muted-foreground">Restoran panelga kirish uchun telefon raqam</p>
+              </div>
+            </div>
+          )}
+
+          {isEdit && (
+            <div className="border-t pt-4 mt-4">
+              <div className="space-y-2">
+                <Label>Egasi telefon raqami</Label>
+                <Input {...register("owner_phone")} placeholder="+998901234567" />
+                {errors.owner_phone && <p className="text-xs text-red-500">{errors.owner_phone.message}</p>}
+                <p className="text-xs text-muted-foreground">Bo'sh qoldirsangiz o'zgartirilmaydi</p>
               </div>
             </div>
           )}

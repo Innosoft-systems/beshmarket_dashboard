@@ -9,15 +9,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createProductAction, updateProductAction } from "@/lib/actions/products"
+import { createMyProductAction, updateMyProductAction } from "@/lib/actions/restaurant-panel"
 
 interface Props {
   product?: any
   restaurantId: string
   categories: any[]
   onClose: () => void
+  scope?: "admin" | "restaurant"
 }
 
-export function ProductFormDialog({ product, restaurantId, categories, onClose }: Props) {
+export function ProductFormDialog({ product, restaurantId, categories, onClose, scope = "admin" }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
@@ -44,12 +46,9 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose }
     try {
       const fd = new FormData()
       fd.append("file", file)
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/upload/image`, {
-        method: "POST",
-        body: fd,
-        headers: { Authorization: `Bearer ${document.cookie.match(/accessToken=([^;]+)/)?.[1] || ""}` },
-      })
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
       const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Xatolik")
       const url = `${process.env.NEXT_PUBLIC_API_URL}${json.data?.url || json.url}`
       setForm(f => ({ ...f, images: [...f.images, url] }))
     } catch { toast.error("Rasm yuklanmadi") }
@@ -70,8 +69,12 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose }
 
     setLoading(true)
     const result = product
-      ? await updateProductAction(product._id, body)
-      : await createProductAction(body)
+      ? scope === "restaurant"
+        ? await updateMyProductAction(product._id, body)
+        : await updateProductAction(product._id, body)
+      : scope === "restaurant"
+        ? await createMyProductAction(body)
+        : await createProductAction(body)
     setLoading(false)
 
     if (result.success) {
