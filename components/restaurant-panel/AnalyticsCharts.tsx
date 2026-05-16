@@ -23,6 +23,7 @@ interface Props {
     total_orders: number
     pending_orders: number
     avg_rating: number
+    total_revenue?: number
   }
 }
 
@@ -103,7 +104,7 @@ export function AnalyticsCharts({ stats }: Props) {
               : <span className="flex items-center gap-1 text-xs text-red-500"><TrendingDown className="h-3 w-3" /> {stats.revenue_growth}%</span>
           }
         </KPI>
-        <KPI label="O'tgan oy" value={`${fmt(stats.last_month_revenue)} so'm`} muted />
+        <KPI label="Jami daromad" value={`${fmt(stats.total_revenue ?? 0)} so'm`} />
         <KPI label="Bugungi buyurtma" value={stats.today_orders} />
         <KPI label="Reyting" value={stats.avg_rating ? stats.avg_rating.toFixed(1) : "—"} />
       </div>

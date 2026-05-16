@@ -6,13 +6,26 @@ import { AnalyticsCharts } from "@/components/restaurant-panel/AnalyticsCharts"
 export default async function RestaurantHomePage() {
   const token = await getAccessToken()
 
-  const [restaurantRes, statsRes] = await Promise.all([
-    apiRequest<any>("/restaurants/my", { accessToken: token }),
-    apiRequest<any>("/restaurants/my/stats", { accessToken: token }).catch(() => ({ data: {} })),
-  ])
+  let restaurant: any = null
+  let s: any = {}
 
-  const restaurant = restaurantRes.data
-  const s = statsRes.data || {}
+  try {
+    const [restaurantRes, statsRes] = await Promise.all([
+      apiRequest<any>("/restaurants/my", { accessToken: token }),
+      apiRequest<any>("/restaurants/my/stats", { accessToken: token }).catch(() => ({ data: {} })),
+    ])
+    restaurant = restaurantRes.data
+    s = statsRes.data || {}
+  } catch {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <h2 className="text-xl font-semibold">Restoran topilmadi</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Akkauntingizga restoran biriktirilmagan. Admin bilan bog'laning.
+        </p>
+      </div>
+    )
+  }
 
   const stats = {
     weekly_trend:       s.weekly_trend || [],
@@ -27,6 +40,7 @@ export default async function RestaurantHomePage() {
     total_orders:       s.total_orders || restaurant?.total_orders || 0,
     pending_orders:     s.pending_orders || 0,
     avg_rating:         restaurant?.avg_rating || 0,
+    total_revenue:      s.total_revenue || 0,
   }
 
   return (

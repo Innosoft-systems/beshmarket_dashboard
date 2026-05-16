@@ -48,12 +48,12 @@ export default async function RestaurantOrdersPage({ searchParams }: Props) {
   })
 
   const [ordersRes, todayRes, pendingRes, activeRes] = await Promise.all([
-    apiRequest<any>(`/orders?${query.toString()}`, { accessToken: token }),
+    apiRequest<any>(`/orders?${query.toString()}`, { accessToken: token }).catch(() => null),
     apiRequest<any>(`/orders?limit=1&date_from=${todayStr}&date_to=${todayStr}`, { accessToken: token }).catch(() => null),
     apiRequest<any>("/orders?limit=1&status=pending", { accessToken: token }).catch(() => null),
     apiRequest<any>("/orders?limit=1&status=accepted", { accessToken: token }).catch(() => null),
   ])
-  const response = ordersRes.data
+  const response = ordersRes?.data
 
   return (
     <OrdersTableClient

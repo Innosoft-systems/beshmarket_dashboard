@@ -6,13 +6,13 @@ export default async function RestaurantMenuPage() {
   const token = await getAccessToken()
 
   const [restaurantRes, productsRes, categoriesRes] = await Promise.all([
-    apiRequest<any>("/restaurants/my", { accessToken: token }),
-    apiRequest<any>("/products/my?limit=100", { accessToken: token }),
-    apiRequest<any>("/menu-categories/my/menu", { accessToken: token }),
+    apiRequest<any>("/restaurants/my", { accessToken: token }).catch(() => null),
+    apiRequest<any>("/products/my?limit=100", { accessToken: token }).catch(() => null),
+    apiRequest<any>("/menu-categories/my/menu", { accessToken: token }).catch(() => null),
   ])
 
-  const products = productsRes.data?.data || productsRes.data || []
-  const categories = Array.isArray(categoriesRes.data) ? categoriesRes.data : []
+  const products = productsRes?.data?.data || productsRes?.data || []
+  const categories = Array.isArray(categoriesRes?.data) ? categoriesRes.data : []
 
   return (
     <div className="space-y-6">
