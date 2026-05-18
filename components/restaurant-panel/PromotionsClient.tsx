@@ -130,23 +130,63 @@ export function PromotionsClient({ promotions }: { promotions: any[] }) {
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
         <div className="rounded-lg border bg-background p-4 space-y-3">
           <h2 className="font-medium">{editing ? "Promo tahrirlash" : "Yangi promo"}</h2>
-          <Input placeholder="Kod" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
-          <Input placeholder="Sarlavha UZ *" value={form.title_uz} onChange={(e) => setForm({ ...form, title_uz: e.target.value })} />
-          <Input placeholder="Sarlavha RU" value={form.title_ru} onChange={(e) => setForm({ ...form, title_ru: e.target.value })} />
-          <Input placeholder="Sarlavha EN" value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value })} />
-          <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })}>
-            <option value="percentage">Foiz</option>
-            <option value="fixed">Aniq summa</option>
-          </select>
-          <div className="grid grid-cols-2 gap-2">
-            <Input type="number" placeholder="Chegirma *" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} />
-            <Input type="number" placeholder="Min summa" value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} />
-            <Input type="number" placeholder="Max chegirma" value={form.max_discount_amount} onChange={(e) => setForm({ ...form, max_discount_amount: e.target.value })} />
-            <Input type="number" placeholder="Limit" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: e.target.value })} />
-            <Input type="date" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} />
-            <Input type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Kod</label>
+            <Input placeholder="SUMMER20" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
           </div>
-          <label className="flex items-center gap-2 text-sm">
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Sarlavha (UZ) <span className="text-red-500">*</span></label>
+            <Input placeholder="Yozuv" value={form.title_uz} onChange={(e) => setForm({ ...form, title_uz: e.target.value })} />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Sarlavha (RU)</label>
+            <Input placeholder="Название" value={form.title_ru} onChange={(e) => setForm({ ...form, title_ru: e.target.value })} />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Sarlavha (EN)</label>
+            <Input placeholder="Title" value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value })} />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Chegirma turi</label>
+            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })}>
+              <option value="percentage">Foiz (%)</option>
+              <option value="fixed">Aniq summa (so'm)</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Chegirma <span className="text-red-500">*</span></label>
+              <Input type="number" placeholder="10" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Min buyurtma (so'm)</label>
+              <Input type="number" placeholder="0" value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Max chegirma (so'm)</label>
+              <Input type="number" placeholder="—" value={form.max_discount_amount} onChange={(e) => setForm({ ...form, max_discount_amount: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Foydalanish limiti</label>
+              <Input type="number" placeholder="100" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Boshlanish sanasi</label>
+              <Input type="date" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Tugash sanasi</label>
+              <Input type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
             Faol
           </label>

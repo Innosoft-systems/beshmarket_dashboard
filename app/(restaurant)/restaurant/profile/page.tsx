@@ -1,10 +1,28 @@
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
 import { RestaurantProfileForm } from "@/components/restaurant-panel/RestaurantProfileForm"
 
 export default async function RestaurantProfilePage() {
   const token = await getAccessToken()
-  const { data: restaurant } = await apiRequest<any>("/restaurants/my", { accessToken: token })
+
+  let restaurant: any = null
+  try {
+    const { data } = await apiRequest<any>("/restaurants/my", {
+      accessToken: token,
+      revalidate: 30,
+    })
+    restaurant = data
+  } catch (err) {
+    if (err instanceof ApiError && err.statusCode === 429) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-center">
+          <p className="text-lg font-medium">Juda ko'p so'rov</p>
+          <p className="text-sm text-muted-foreground">Iltimos, bir necha soniya kutib qayta urinib ko'ring.</p>
+        </div>
+      )
+    }
+    throw err
+  }
 
   return (
     <div className="space-y-6">

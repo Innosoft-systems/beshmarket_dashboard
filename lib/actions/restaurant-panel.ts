@@ -29,17 +29,6 @@ export async function toggleMyRestaurantOpenAction() {
   })
 }
 
-export async function saveMyWorkingHoursAction(hours: any[]) {
-  return withToken(async (token) => {
-    await apiRequest("/restaurants/my/working-hours", {
-      method: "POST",
-      body: { hours },
-      accessToken: token,
-    })
-    revalidatePath("/restaurant/working-hours")
-  })
-}
-
 export async function createMyProductAction(data: any) {
   return withToken(async (token) => {
     await apiRequest("/products/my", { method: "POST", body: data, accessToken: token })

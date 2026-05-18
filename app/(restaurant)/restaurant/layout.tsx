@@ -2,10 +2,11 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getAccessToken } from "@/lib/auth/session"
 import { getCurrentUser } from "@/lib/auth/current-user"
-import { Bell } from "lucide-react"
 import { RestaurantSidebar } from "@/components/layout/RestaurantSidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { RestaurantSocketProvider } from "@/components/restaurant-panel/RestaurantSocketProvider"
+import { RestaurantNotificationBell } from "@/components/layout/RestaurantNotificationBell"
+import { apiRequest } from "@/lib/api/client"
 
 export const metadata: Metadata = {
   title: "Restaurant — BeshMarket",
@@ -19,6 +20,9 @@ export default async function RestaurantLayout({ children }: { children: React.R
   if (!token || !user) redirect("/restaurant/login")
   if (user.role !== "restaurant") redirect("/dashboard")
 
+  const unreadRes = await apiRequest<any>('/restaurant-notifications/unread-count', { accessToken: token })
+    .catch(() => ({ data: { count: 0 } }))
+
   return (
     <SidebarProvider>
       <RestaurantSocketProvider accessToken={token} />
@@ -26,9 +30,10 @@ export default async function RestaurantLayout({ children }: { children: React.R
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-muted/30">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
           <SidebarTrigger />
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg opacity-40 cursor-not-allowed" title="Tez kunda">
-            <Bell className="h-5 w-5 text-muted-foreground" />
-          </span>
+          <RestaurantNotificationBell
+            accessToken={token}
+            initialCount={unreadRes.data?.count ?? 0}
+          />
         </header>
         <div className="flex-1 overflow-auto p-4 md:p-6">
           {children}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { GripVertical, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react"
@@ -41,6 +41,8 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
   const [deleteId, setDeleteId] = useState("")
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+
+  useEffect(() => { setCategories(initialCategories) }, [initialCategories])
 
   const refresh = () => startTransition(() => router.refresh())
 
@@ -83,6 +85,11 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
     if (r.success) {
       toast.success(editTarget ? "Yangilandi" : "Qo'shildi")
       setModalOpen(false)
+      if (editTarget) {
+        setCategories(prev => prev.map(c => c._id === editTarget._id ? { ...c, ...payload } : c))
+      } else {
+        setCategories(prev => [...prev, { _id: `temp-${Date.now()}`, ...payload, restaurant_id: restaurant?._id }])
+      }
       refresh()
     } else toast.error(r.error)
   }
@@ -99,8 +106,11 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
     const r = await deleteMyMenuCategoryAction(deleteId)
     setLoading(false)
     setDeleteId("")
-    if (r.success) { toast.success("O'chirildi"); refresh() }
-    else toast.error(r.error)
+    if (r.success) {
+      toast.success("O'chirildi")
+      setCategories(prev => prev.filter(c => c._id !== deleteId))
+      refresh()
+    } else toast.error(r.error)
   }
 
   return (
