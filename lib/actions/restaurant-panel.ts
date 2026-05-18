@@ -22,6 +22,13 @@ export async function updateMyRestaurantAction(data: any) {
   })
 }
 
+export async function saveMyWorkingHoursAction(hours: any[]) {
+  return withToken(async (token) => {
+    await apiRequest("/restaurants/my", { method: "PATCH", body: { working_hours: hours }, accessToken: token })
+    revalidatePath("/restaurant/profile")
+  })
+}
+
 export async function toggleMyRestaurantOpenAction() {
   return withToken(async (token) => {
     await apiRequest("/restaurants/my/toggle-open", { method: "PATCH", accessToken: token })
