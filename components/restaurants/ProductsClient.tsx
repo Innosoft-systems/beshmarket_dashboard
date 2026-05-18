@@ -106,7 +106,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
       {/* Filters and actions */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
         <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value ?? "all")}>
-          <SelectTrigger className="w-full sm:w-[220px]">
+          <SelectTrigger className="w-full sm:w-55">
             <SelectValue>{selectedLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent>

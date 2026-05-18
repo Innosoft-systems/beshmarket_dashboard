@@ -90,7 +90,8 @@ export async function middleware(request: NextRequest) {
 
   // ── 2. Unauthenticated → redirect to login ──────────────────────────────────
   if (!authenticated && !isAuthPage) {
-    const loginPath = pathname.startsWith('/restaurant') ? '/restaurant/login' : '/login'
+    const isRestPanel = pathname === '/restaurant' || pathname.startsWith('/restaurant/')
+    const loginPath = isRestPanel ? '/restaurant/login' : '/login'
     const url = new URL(loginPath, request.url)
     url.searchParams.set('from', pathname)
     const res = NextResponse.redirect(url)
@@ -112,7 +113,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── 4. Role-based panel guard (prevents cross-panel access) ────────────────
-  if (authenticated && pathname.startsWith('/restaurant') && role === 'admin') {
+  const isRestaurantPanel = pathname === '/restaurant' || pathname.startsWith('/restaurant/')
+  if (authenticated && isRestaurantPanel && role === 'admin') {
     const res = NextResponse.redirect(new URL('/dashboard', request.url))
     if (refreshed) applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
     return res
