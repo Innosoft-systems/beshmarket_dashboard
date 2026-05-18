@@ -29,6 +29,6 @@ jobs:
 
             npm run build
 
-            sudo pm2 restart beshmarket-dashboard || sudo pm2 start npm --name beshmarket-dashboard -- start
+            sudo pm2 restart beshmarket_dashboard || sudo pm2 start npm --name beshmarket_dashboard -- start
 
             sudo pm2 save
