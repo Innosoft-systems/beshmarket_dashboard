@@ -6,8 +6,15 @@ import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Power, FolderPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { cn, getFullImgUrl } from "@/lib/utils"
+import { getFullImgUrl } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ProductFormDialog } from "./ProductFormDialog"
 import { deleteProductAction, updateProductAction, createMenuCategoryAction, deleteMenuCategoryAction } from "@/lib/actions/products"
@@ -35,6 +42,8 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [newCatName, setNewCatName] = useState("")
   const [addingCat, setAddingCat] = useState(false)
+  const [deleteCatId, setDeleteCatId] = useState("")
+  const [deleteCatLoading, setDeleteCatLoading] = useState(false)
 
   const filtered = selectedCategory === "all"
     ? products
@@ -42,6 +51,16 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
         const catId = p.menu_category_id?._id || p.menu_category_id
         return catId === selectedCategory
       })
+
+  const categoryOptions = [
+    { value: "all", label: `Hammasi (${products.length})` },
+    ...categories.map(cat => ({
+      value: cat._id,
+      label: `${cat.name_uz} (${products.filter(p => (p.menu_category_id?._id || p.menu_category_id) === cat._id).length})`,
+    })),
+  ]
+
+  const selectedLabel = categoryOptions.find(o => o.value === selectedCategory)?.label
 
   const toggleActive = async (p: any) => {
     const r = scope === "restaurant"
@@ -65,53 +84,66 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
     else toast.error(r.error)
   }
 
+  const deleteCategory = async () => {
+    if (!deleteCatId) return
+    setDeleteCatLoading(true)
+    const r = scope === "restaurant"
+      ? await deleteMyMenuCategoryAction(deleteCatId)
+      : await deleteMenuCategoryAction(deleteCatId)
+    setDeleteCatLoading(false)
+    setDeleteCatId("")
+    if (r.success) {
+      toast.success("Kategoriya o'chirildi")
+      setSelectedCategory("all")
+      startTransition(() => router.refresh())
+    } else {
+      toast.error(r.error)
+    }
+  }
+
   return (
     <div className="space-y-5">
-      {/* Category tabs */}
-      <div className="flex gap-2 flex-wrap items-center">
-        <button
-          onClick={() => setSelectedCategory("all")}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${selectedCategory === "all" ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-muted"}`}
-        >
-          Hammasi ({products.length})
-        </button>
-        {categories.map(cat => (
-          <div key={cat._id} className="flex items-center gap-1">
-            <button
-              onClick={() => setSelectedCategory(cat._id)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${selectedCategory === cat._id ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-muted"}`}
-            >
-              {cat.name_uz} ({products.filter(p => (p.menu_category_id?._id || p.menu_category_id) === cat._id).length})
-            </button>
-            <button
-              onClick={async () => {
-                const r = scope === "restaurant"
-                  ? await deleteMyMenuCategoryAction(cat._id)
-                  : await deleteMenuCategoryAction(cat._id)
-                r.success ? startTransition(() => router.refresh()) : toast.error(r.error)
-              }}
-              className="text-muted-foreground hover:text-red-500 p-0.5"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </div>
-        ))}
+      {/* Filters and actions */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
+        <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value ?? "all")}>
+          <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectValue>{selectedLabel}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {categoryOptions.map(o => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        {/* Add category inline */}
-        <div className="flex items-center gap-1 ml-2">
+        {selectedCategory !== "all" && (
+          <Button
+            variant="outline"
+            size="lg"
+            className="text-red-500 hover:text-red-600"
+            onClick={() => setDeleteCatId(selectedCategory)}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Kategoriyani o'chirish
+          </Button>
+        )}
+
+        <div className="flex items-center gap-1">
           <Input
             placeholder="Yangi kategoriya..."
             value={newCatName}
             onChange={e => setNewCatName(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addCategory()}
-            className="h-8 w-40 text-sm"
+            className="h-9 w-full sm:w-48"
           />
           <Button size="sm" variant="outline" disabled={addingCat || !newCatName.trim()} onClick={addCategory}>
-            <FolderPlus className="h-3.5 w-3.5" />
+            <FolderPlus className="h-4 w-4" />
           </Button>
         </div>
 
-        <Button className="ml-auto" onClick={() => { setEditProduct(null); setFormOpen(true) }}>
+        <Button className="sm:ml-auto" onClick={() => { setEditProduct(null); setFormOpen(true) }}>
           <Plus className="h-4 w-4 mr-1" /> Mahsulot qo'shish
         </Button>
       </div>
@@ -209,6 +241,17 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
           r.success ? (toast.success("O'chirildi"), startTransition(() => router.refresh()))
             : toast.error(r.error)
         }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteCatId}
+        onOpenChange={open => { if (!open) setDeleteCatId("") }}
+        title="Kategoriyani o'chirish"
+        description="Bu kategoriya o'chiriladi. Unga bog'langan mahsulotlar kategoriyasiz qoladi."
+        confirmLabel="O'chirish"
+        variant="destructive"
+        loading={deleteCatLoading}
+        onConfirm={deleteCategory}
       />
     </div>
   )
