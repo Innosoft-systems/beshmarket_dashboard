@@ -14,10 +14,11 @@ export function RestaurantOverviewClient({ restaurant }: { restaurant: any }) {
   const [isOpen, setIsOpen] = useState<boolean>(restaurant.is_open)
 
   const toggleOpen = async () => {
-    setIsOpen((prev) => !prev)
+    const nextValue = !isOpen
+    setIsOpen(nextValue)
     const result = await toggleMyRestaurantOpenAction()
     if (result.success) {
-      toast.success(isOpen ? "Restoran yopildi" : "Restoran ochildi")
+      toast.success(nextValue ? "Restoran ochildi" : "Restoran yopildi")
       startTransition(() => router.refresh())
     } else {
       setIsOpen((prev) => !prev) // rollback

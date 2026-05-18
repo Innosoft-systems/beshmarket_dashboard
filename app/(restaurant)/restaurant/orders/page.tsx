@@ -37,7 +37,6 @@ export default async function RestaurantOrdersPage({ searchParams }: Props) {
     date_to = today.toISOString().split("T")[0]
   }
 
-  const todayStr = new Date().toISOString().split("T")[0]
   const query = new URLSearchParams({
     page: String(page),
     limit: "15",
@@ -47,13 +46,13 @@ export default async function RestaurantOrdersPage({ searchParams }: Props) {
     ...(date_to ? { date_to } : {}),
   })
 
-  const [ordersRes, todayRes, pendingRes, activeRes] = await Promise.all([
+  const [ordersRes, statsRes] = await Promise.all([
     apiRequest<any>(`/orders?${query.toString()}`, { accessToken: token }).catch(() => null),
-    apiRequest<any>(`/orders?limit=1&date_from=${todayStr}&date_to=${todayStr}`, { accessToken: token }).catch(() => null),
-    apiRequest<any>("/orders?limit=1&status=pending", { accessToken: token }).catch(() => null),
-    apiRequest<any>("/orders?limit=1&status=accepted", { accessToken: token }).catch(() => null),
+    apiRequest<any>("/orders/restaurant/my-stats", { accessToken: token }).catch(() => null),
   ])
+
   const response = ordersRes?.data
+  const stats = statsRes?.data
 
   return (
     <OrdersTableClient
@@ -63,10 +62,10 @@ export default async function RestaurantOrdersPage({ searchParams }: Props) {
       filters={{ search, status, period }}
       accessToken={token || ""}
       stats={{
-        todayOrders: todayRes?.data?.pagination?.total ?? 0,
-        totalOrders: response?.pagination?.total ?? 0,
-        pendingOrders: pendingRes?.data?.pagination?.total ?? 0,
-        onwayOrders: activeRes?.data?.pagination?.total ?? 0,
+        todayOrders: stats?.todayOrders ?? 0,
+        totalOrders: stats?.totalOrders ?? response?.pagination?.total ?? 0,
+        pendingOrders: stats?.pendingOrders ?? 0,
+        onwayOrders: stats?.onwayOrders ?? 0,
       }}
       scope="restaurant"
     />

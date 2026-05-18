@@ -23,7 +23,7 @@ export default async function RestaurantMenuPage() {
         </p>
       </div>
       <ProductsClient
-        restaurant={restaurantRes.data}
+        restaurant={restaurantRes?.data}
         products={products}
         categories={categories}
         scope="restaurant"

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/current-user"
 import { Bell } from "lucide-react"
 import { RestaurantSidebar } from "@/components/layout/RestaurantSidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { RestaurantSocketProvider } from "@/components/restaurant-panel/RestaurantSocketProvider"
 
 export const metadata: Metadata = {
   title: "Restaurant — BeshMarket",
@@ -20,13 +21,14 @@ export default async function RestaurantLayout({ children }: { children: React.R
 
   return (
     <SidebarProvider>
+      <RestaurantSocketProvider accessToken={token} />
       <RestaurantSidebar />
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-muted/30">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
           <SidebarTrigger />
-          <a href="/restaurant/notifications" className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg opacity-40 cursor-not-allowed" title="Tez kunda">
             <Bell className="h-5 w-5 text-muted-foreground" />
-          </a>
+          </span>
         </header>
         <div className="flex-1 overflow-auto p-4 md:p-6">
           {children}

@@ -56,6 +56,8 @@ export function OrderDetailClient({ order, couriers = [], scope = "admin" }: Pro
   const [isPending, startTransition] = useTransition()
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
+  const [confirmStatus, setConfirmStatus] = useState<{ value: string; label: string } | null>(null)
+  const [statusLoading, setStatusLoading] = useState(false)
   const [selectedCourier, setSelectedCourier] = useState("")
   const [assigningCourier, setAssigningCourier] = useState(false)
 
@@ -68,12 +70,30 @@ export function OrderDetailClient({ order, couriers = [], scope = "admin" }: Pro
     : ADMIN_TRANSITIONS[order.status] || []
   const canCancel = !["delivered", "rejected", "cancelled"].includes(order.status)
 
+  const CONFIRM_STATUSES = ["rejected", "ready", "delivered"]
+
+  const handleStatusClick = (s: { value: string; label: string }) => {
+    if (CONFIRM_STATUSES.includes(s.value)) {
+      setConfirmStatus(s)
+    } else {
+      changeStatus(s.value)
+    }
+  }
+
   const changeStatus = async (status: string) => {
     const result = await updateOrderStatusAction(order._id, status)
     if (result.success) {
       toast.success("Status yangilandi")
       startTransition(() => router.refresh())
     } else toast.error(result.error || "Xatolik")
+  }
+
+  const confirmChangeStatus = async () => {
+    if (!confirmStatus) return
+    setStatusLoading(true)
+    await changeStatus(confirmStatus.value)
+    setStatusLoading(false)
+    setConfirmStatus(null)
   }
 
   const handleAssignCourier = async () => {
@@ -116,7 +136,7 @@ export function OrderDetailClient({ order, couriers = [], scope = "admin" }: Pro
       {(available.length > 0 || canCancel) && (
         <div className="flex flex-wrap gap-2 p-4 rounded-xl border bg-muted/30">
           {available.map((s) => (
-            <Button key={s.value} size="sm" onClick={() => changeStatus(s.value)} disabled={isPending}>
+            <Button key={s.value} size="sm" onClick={() => handleStatusClick(s)} disabled={isPending}>
               {s.label}
             </Button>
           ))}
@@ -256,6 +276,17 @@ export function OrderDetailClient({ order, couriers = [], scope = "admin" }: Pro
           </div>
         </div>
       )}
+
+      {/* Status transition confirm */}
+      <ConfirmDialog
+        open={!!confirmStatus}
+        onOpenChange={(open) => { if (!open) setConfirmStatus(null) }}
+        title={`Buyurtma statusini o'zgartirish`}
+        description={`Buyurtmani "${confirmStatus?.label}" holatiga o'tkazmoqchimisiz?`}
+        confirmLabel={confirmStatus?.label || "Tasdiqlash"}
+        loading={statusLoading}
+        onConfirm={confirmChangeStatus}
+      />
 
       {/* Cancel confirm */}
       <ConfirmDialog

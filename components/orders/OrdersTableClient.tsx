@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { updateOrderStatusAction, cancelOrderAction } from "@/lib/actions/orders"
 import { useOrderSocket } from "@/hooks/use-order-socket"
-import { useRestaurantSocket } from "@/hooks/use-restaurant-socket"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 const STATUS_FILTER = [
   { value: "all", label: "Barcha statuslar" },
@@ -52,6 +52,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAction: () => void; scope?: "admin" | "restaurant" }) {
   const [loading, setLoading] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const changeStatus = async (status: string) => {
     setLoading(true)
@@ -67,10 +68,12 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
 
   const cancel = async () => {
     setLoading(true)
-    const result = await cancelOrderAction(order._id, "Admin tomonidan bekor qilindi")
+    const reason = scope === "restaurant" ? "Restoran tomonidan bekor qilindi" : "Admin tomonidan bekor qilindi"
+    const result = await cancelOrderAction(order._id, reason)
     setLoading(false)
     if (result.success) {
       toast.success("Buyurtma bekor qilindi")
+      setConfirmOpen(false)
       onAction()
     } else {
       toast.error(result.error || "Xatolik")
@@ -97,21 +100,32 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
   const available = nextStatuses[order.status] || []
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" disabled={loading} />}>
-        <MoreHorizontal className="h-4 w-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {available.map((s) => (
-          <DropdownMenuItem key={s.value} onClick={() => changeStatus(s.value)}>
-            {s.label}
+    <>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Buyurtmani bekor qilish"
+        description={`#${order.order_number} buyurtmani bekor qilmoqchimisiz? Bu amalni qaytarib bo'lmaydi.`}
+        confirmLabel="Bekor qilish"
+        loading={loading}
+        onConfirm={cancel}
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" disabled={loading} />}>
+          <MoreHorizontal className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {available.map((s) => (
+            <DropdownMenuItem key={s.value} onClick={() => changeStatus(s.value)}>
+              {s.label}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuItem onClick={() => setConfirmOpen(true)} className="text-red-600">
+            Bekor qilish
           </DropdownMenuItem>
-        ))}
-        <DropdownMenuItem onClick={cancel} className="text-red-600">
-          Bekor qilish
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   )
 }
 
@@ -143,7 +157,6 @@ export function OrdersTableClient({
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
   useOrderSocket(scope === "admin" ? (accessToken || null) : null)
-  useRestaurantSocket(scope === "restaurant" ? (accessToken || null) : null)
 
   const hasActiveFilters = filters.search || filters.status || filters.period
 

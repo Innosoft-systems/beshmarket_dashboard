@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
 import { OrderDetailClient } from "@/components/orders/OrderDetailClient"
 
 interface Props {
@@ -15,7 +15,8 @@ export default async function RestaurantOrderDetailPage({ params }: Props) {
     const { data: order } = await apiRequest<any>(`/orders/${id}`, { accessToken: token })
     if (!order) notFound()
     return <OrderDetailClient order={order} scope="restaurant" />
-  } catch {
-    notFound()
+  } catch (err) {
+    if (err instanceof ApiError && err.statusCode === 404) notFound()
+    throw err
   }
 }

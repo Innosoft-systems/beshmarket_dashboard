@@ -5,3 +5,8 @@ export * from "./restaurant";
 export * from "./banner";
 export * from "./order";
 export * from "./courier";
+export * from "./product";
+export * from "./promotion";
+export * from "./review";
+export * from "./working-hours";
+export * from "./menu-category";
