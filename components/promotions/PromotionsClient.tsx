@@ -115,6 +115,7 @@ export function PromotionsClient({ promotions, currentUserId }: Props) {
             <tr className="border-b bg-muted/30">
               <th className="h-11 px-4 text-left font-medium">Kod</th>
               <th className="h-11 px-4 text-left font-medium">Nomi</th>
+              <th className="h-11 px-4 text-left font-medium">Restoran</th>
               <th className="h-11 px-4 text-left font-medium">Chegirma</th>
               <th className="h-11 px-4 text-right font-medium">Foydalanish</th>
               <th className="h-11 px-4 text-left font-medium">Muddat</th>
@@ -124,15 +125,22 @@ export function PromotionsClient({ promotions, currentUserId }: Props) {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="py-10 text-center text-muted-foreground">Promo kodlar topilmadi</td></tr>
+              <tr><td colSpan={8} className="py-10 text-center text-muted-foreground">Promo kodlar topilmadi</td></tr>
             )}
             {filtered.map((p: any) => {
               const expired = new Date(p.expires_at) <= now
               const active = p.is_active && !expired
+              const restName = typeof p.restaurant_id === "object" ? p.restaurant_id?.name : null
               return (
                 <tr key={p._id} className="border-b last:border-0 hover:bg-muted/20">
                   <td className="px-4 py-3 font-mono font-semibold text-primary">{p.code}</td>
                   <td className="px-4 py-3">{p.title_uz}</td>
+                  <td className="px-4 py-3">
+                    {restName
+                      ? <Badge variant="outline" className="text-xs">{restName}</Badge>
+                      : <span className="text-xs text-muted-foreground">Global</span>
+                    }
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" className="gap-1">
                       {p.discount_type === "percentage" ? `${p.discount_value}%` : `${p.discount_value.toLocaleString()} so'm`}

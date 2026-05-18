@@ -22,7 +22,7 @@ export async function cancelOrderAction(id: string, reason: string) {
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
   try {
-    await apiRequest(`/orders/${id}/cancel`, { method: "POST", body: { reason }, accessToken: token })
+    await apiRequest(`/orders/${id}/cancel`, { method: "POST", body: { cancel_reason: reason }, accessToken: token })
     revalidatePath("/orders")
     return { success: true }
   } catch (error: any) {

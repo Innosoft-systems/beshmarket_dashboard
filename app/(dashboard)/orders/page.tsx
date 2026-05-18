@@ -45,17 +45,18 @@ export default async function OrdersPage({ searchParams }: Props) {
   const todayStr = new Date().toISOString().split("T")[0]
 
   try {
-    const [responseRes, todayRes, pendingRes, onwayRes] = await Promise.all([
-      getOrders({ page, limit: 15, ...(search && { search }), ...(status && { status }), ...(date_from && { date_from }), ...(date_to && { date_to }) }, accessToken),
-      getOrders({ limit: 1, date_from: todayStr, date_to: todayStr }, accessToken),
-      getOrders({ limit: 1, status: "pending" }, accessToken),
-      getOrders({ limit: 1, status: "on_way" }, accessToken),
-    ])
+    const responseRes = await getOrders({ page, limit: 15, ...(search && { search }), ...(status && { status }), ...(date_from && { date_from }), ...(date_to && { date_to }) }, accessToken)
 
     const response = responseRes.data
-    const todayTotal = todayRes.data?.pagination?.total ?? 0
-    const pendingTotal = pendingRes.data?.pagination?.total ?? 0
-    const onwayTotal = onwayRes.data?.pagination?.total ?? 0
+
+    // Stats — sequential to avoid throttle
+    const todayRes = await getOrders({ limit: 1, date_from: todayStr, date_to: todayStr }, accessToken).catch(() => null)
+    const pendingRes = await getOrders({ limit: 1, status: "pending" }, accessToken).catch(() => null)
+    const onwayRes = await getOrders({ limit: 1, status: "on_way" }, accessToken).catch(() => null)
+
+    const todayTotal = todayRes?.data?.pagination?.total ?? 0
+    const pendingTotal = pendingRes?.data?.pagination?.total ?? 0
+    const onwayTotal = onwayRes?.data?.pagination?.total ?? 0
 
     return (
       <OrdersTableClient
@@ -67,7 +68,8 @@ export default async function OrdersPage({ searchParams }: Props) {
         stats={{ todayOrders: todayTotal, totalOrders: response?.pagination?.total ?? 0, pendingOrders: pendingTotal, onwayOrders: onwayTotal }}
       />
     )
-  } catch {
+  } catch (err: any) {
+    console.error("[OrdersPage] Error:", err?.message || err)
     return (
       <div className="p-4 rounded-md bg-red-50 text-red-500">
         Buyurtmalarni yuklashda xatolik yuz berdi.

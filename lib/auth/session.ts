@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 const ACCESS_TOKEN_KEY = 'bm_access_token';
 const REFRESH_TOKEN_KEY = 'bm_refresh_token';
@@ -8,6 +8,11 @@ const FIFTEEN_MINUTES = 15 * ONE_MINUTE;
 const SEVEN_DAYS = 7 * 24 * 60 * ONE_MINUTE;
 
 export async function getAccessToken(): Promise<string | undefined> {
+  // Middleware passes refreshed token via header when cookie is stale
+  const h = await headers()
+  const fromHeader = h.get('x-access-token')
+  if (fromHeader) return fromHeader
+
   const cookieStore = await cookies();
   return cookieStore.get(ACCESS_TOKEN_KEY)?.value;
 }

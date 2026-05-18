@@ -114,19 +114,26 @@ export async function middleware(request: NextRequest) {
 
   // ── 4. Role-based panel guard (prevents cross-panel access) ────────────────
   const isRestaurantPanel = pathname === '/restaurant' || pathname.startsWith('/restaurant/')
+  const isAdminPanel = !isRestaurantPanel && !isAuthPage
+
   if (authenticated && isRestaurantPanel && role === 'admin') {
     const res = NextResponse.redirect(new URL('/dashboard', request.url))
     if (refreshed) applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
     return res
   }
-  if (authenticated && pathname.startsWith('/dashboard') && role === 'restaurant') {
+  if (authenticated && isAdminPanel && role === 'restaurant') {
     const res = NextResponse.redirect(new URL('/restaurant', request.url))
     if (refreshed) applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
     return res
   }
 
   // ── 5. All good — continue and persist refreshed tokens if any ──────────────
-  const res = NextResponse.next()
+  const requestHeaders = new Headers(request.headers)
+  if (refreshed) {
+    // Pass refreshed access token to server components via header
+    requestHeaders.set('x-access-token', refreshed.accessToken)
+  }
+  const res = NextResponse.next({ request: { headers: requestHeaders } })
   if (refreshed) applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
   return res
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { io, Socket } from "socket.io-client"
 import { Send, MessageSquare } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -70,6 +71,12 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
       if (msg.user_id === selectedUserId) {
         setMessages(prev => [...prev, msg])
       }
+
+      // Boshqa konversatsiyadan yangi xabar — ovoz + toast
+      if (msg.sender === "user" && msg.user_id !== selectedUserId) {
+        new Audio("/sounds/order_sound.wav").play().catch(() => {})
+        toast("Yangi xabar", { description: msg.text.slice(0, 80) })
+      }
       // Konversatsiyalar listini yangilash
       setConvs(prev => {
         const idx = prev.findIndex(c => c.user_id === msg.user_id)
@@ -129,7 +136,7 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
   return (
     <div className="flex h-full rounded-xl border overflow-hidden bg-background">
       {/* Conversations list */}
-      <div className="w-80 border-r flex flex-col shrink-0">
+      <div className="w-96 border-r flex flex-col shrink-0">
         <div className="px-4 py-3 border-b">
           <h2 className="font-semibold text-sm">Muloqotlar</h2>
         </div>
