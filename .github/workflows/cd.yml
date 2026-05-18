@@ -25,10 +25,10 @@ jobs:
             git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
             git pull origin main
 
-            npm ci
+            npm install --legacy-peer-deps
 
             npm run build
 
-            pm2 restart beshmarket-dashboard || pm2 start npm --name beshmarket-dashboard -- start
+            sudo pm2 restart beshmarket-dashboard || sudo pm2 start npm --name beshmarket-dashboard -- start
 
-            pm2 save
+            sudo pm2 save
