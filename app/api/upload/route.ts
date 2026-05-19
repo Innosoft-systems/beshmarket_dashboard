@@ -25,5 +25,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(json, { status: response.status })
   }
 
-  return NextResponse.json(json)
+  // Backend wraps responses in { success, data, timestamp } via TransformInterceptor;
+  // unwrap so clients can access { url, filename, ... } directly.
+  const payload = json?.data ?? json
+  return NextResponse.json(payload)
 }
