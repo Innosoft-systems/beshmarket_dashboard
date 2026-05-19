@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { toast } from "sonner"
-import { Send, Users, Truck, Globe, Bell } from "lucide-react"
+import { Send, Users, Truck, Globe, Bell, ImagePlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,6 +30,9 @@ interface Props {
 export function NotificationsClient({ recentNotifications }: Props) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     title: "",
     body: "",
@@ -37,16 +40,44 @@ export function NotificationsClient({ recentNotifications }: Props) {
     target: "all",
   })
 
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    e.target.value = ""
+  }
+
+  const clearImage = () => { setImageFile(null); setImagePreview(null) }
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const data = await res.json()
+      return data.url || null
+    } catch { return null }
+  }
+
   const handleSend = async () => {
     if (!form.title.trim() || !form.body.trim()) return toast.error("Sarlavha va matn majburiy")
 
     setLoading(true)
     setResult(null)
-    const result = await sendBroadcastAction(form as Parameters<typeof sendBroadcastAction>[0])
+
+    let image_url: string | undefined
+    if (imageFile) {
+      image_url = (await uploadImage(imageFile)) || undefined
+      if (!image_url) { toast.error("Rasm yuklanmadi"); setLoading(false); return }
+    }
+
+    const result = await sendBroadcastAction({ ...form, image_url } as Parameters<typeof sendBroadcastAction>[0])
     if (result.success) {
       setResult(result.data)
       toast.success(`Yuborildi: ${result.data?.success ?? 0} ta qurilma`)
       setForm({ title: "", body: "", type: "system", target: "all" })
+      clearImage()
     } else {
       toast.error(result.error || "Xatolik")
     }
@@ -120,6 +151,25 @@ export function NotificationsClient({ recentNotifications }: Props) {
               maxLength={300}
             />
             <p className="text-xs text-muted-foreground text-right">{form.body.length}/300</p>
+          </div>
+
+          {/* Image */}
+          <div className="space-y-1.5">
+            <Label>Rasm (ixtiyoriy)</Label>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
+            {imagePreview ? (
+              <div className="relative inline-block">
+                <img src={imagePreview} alt="Preview" className="h-24 rounded-lg object-cover" />
+                <button onClick={clearImage} className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-0.5">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <ImagePlus className="h-4 w-4 mr-2" />
+                Rasm qo&apos;shish
+              </Button>
+            )}
           </div>
 
           <Button className="w-full" disabled={loading || !form.title || !form.body} onClick={handleSend}>

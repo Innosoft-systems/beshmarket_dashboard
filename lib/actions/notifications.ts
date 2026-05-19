@@ -8,6 +8,7 @@ export async function sendBroadcastAction(data: {
   body: string
   type: string
   target: "all" | "clients" | "couriers"
+  image_url?: string
 }) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiya" }
