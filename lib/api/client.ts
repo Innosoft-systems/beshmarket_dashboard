@@ -44,7 +44,7 @@ async function tryRefreshToken(): Promise<string | null> {
       const tokens = json?.data ?? json;
 
       if (tokens?.accessToken && tokens?.refreshToken) {
-        await setAuthTokens(tokens.accessToken, tokens.refreshToken);
+        try { await setAuthTokens(tokens.accessToken, tokens.refreshToken); } catch {}
         return tokens.accessToken as string;
       }
       return null;

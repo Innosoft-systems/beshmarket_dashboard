@@ -8,8 +8,8 @@ async function withToken<T>(fn: (token: string) => Promise<T>) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiya" }
   try {
-    await fn(token)
-    return { success: true }
+    const data = await fn(token)
+    return { success: true, data }
   } catch (e: any) {
     return { success: false, error: e.message || "Xatolik yuz berdi" }
   }
@@ -59,9 +59,10 @@ export async function deleteMyProductAction(id: string) {
 
 export async function createMyMenuCategoryAction(data: any) {
   return withToken(async (token) => {
-    await apiRequest("/menu-categories/my/menu", { method: "POST", body: data, accessToken: token })
+    const res = await apiRequest("/menu-categories/my/menu", { method: "POST", body: data, accessToken: token })
     revalidatePath("/restaurant/categories")
     revalidatePath("/restaurant/menu")
+    return res.data
   })
 }
 
@@ -78,6 +79,13 @@ export async function deleteMyMenuCategoryAction(id: string) {
     await apiRequest(`/menu-categories/my/menu/${id}`, { method: "DELETE", accessToken: token })
     revalidatePath("/restaurant/categories")
     revalidatePath("/restaurant/menu")
+  })
+}
+
+export async function fetchMyCategoriesAction() {
+  return withToken(async (token) => {
+    const res = await apiRequest<any[]>("/menu-categories/my/menu", { accessToken: token })
+    return res.data
   })
 }
 

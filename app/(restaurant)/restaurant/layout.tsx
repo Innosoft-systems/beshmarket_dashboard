@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getAccessToken } from "@/lib/auth/session"
-import { getCurrentUser } from "@/lib/auth/current-user"
 import { RestaurantSidebar } from "@/components/layout/RestaurantSidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { RestaurantSocketProvider } from "@/components/restaurant-panel/RestaurantSocketProvider"
@@ -15,10 +14,8 @@ export const metadata: Metadata = {
 
 export default async function RestaurantLayout({ children }: { children: React.ReactNode }) {
   const token = await getAccessToken()
-  const user = await getCurrentUser()
 
-  if (!token || !user) redirect("/restaurant/login")
-  if (user.role !== "restaurant") redirect("/dashboard")
+  if (!token) redirect("/restaurant/login")
 
   const unreadRes = await apiRequest<any>('/restaurant-notifications/unread-count', { accessToken: token })
     .catch(() => ({ data: { count: 0 } }))

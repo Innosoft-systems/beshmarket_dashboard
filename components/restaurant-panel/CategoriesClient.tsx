@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useTransition, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { GripVertical, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -22,6 +21,7 @@ import {
   createMyMenuCategoryAction,
   updateMyMenuCategoryAction,
   deleteMyMenuCategoryAction,
+  fetchMyCategoriesAction,
 } from "@/lib/actions/restaurant-panel"
 
 interface Props {
@@ -32,8 +32,6 @@ interface Props {
 const emptyForm = { name_uz: "", name_ru: "", name_en: "", image: "", sort_order: 0, is_active: true }
 
 export function CategoriesClient({ restaurant, categories: initialCategories }: Props) {
-  const router = useRouter()
-  const [, startTransition] = useTransition()
   const [categories, setCategories] = useState(initialCategories)
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<any>(null)
@@ -42,9 +40,12 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  useEffect(() => { setCategories(initialCategories) }, [initialCategories])
+  const refetch = async () => {
+    const res = await fetchMyCategoriesAction()
+    if (res.success && Array.isArray(res.data)) setCategories(res.data)
+  }
 
-  const refresh = () => startTransition(() => router.refresh())
+  useEffect(() => { refetch() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openCreate = () => { setEditTarget(null); setForm(emptyForm); setModalOpen(true) }
   const openEdit = (cat: any) => {
@@ -85,20 +86,14 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
     if (r.success) {
       toast.success(editTarget ? "Yangilandi" : "Qo'shildi")
       setModalOpen(false)
-      if (editTarget) {
-        setCategories(prev => prev.map(c => c._id === editTarget._id ? { ...c, ...payload } : c))
-      } else {
-        setCategories(prev => [...prev, { _id: `temp-${Date.now()}`, ...payload, restaurant_id: restaurant?._id }])
-      }
-      refresh()
+      await refetch()
     } else toast.error(r.error)
   }
 
   const toggleActive = async (cat: any) => {
     const r = await updateMyMenuCategoryAction(cat._id, { is_active: !cat.is_active })
-    if (r.success) {
-      setCategories(prev => prev.map(c => c._id === cat._id ? { ...c, is_active: !c.is_active } : c))
-    } else toast.error(r.error)
+    if (r.success) await refetch()
+    else toast.error(r.error)
   }
 
   const handleDelete = async () => {
@@ -108,8 +103,7 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
     setDeleteId("")
     if (r.success) {
       toast.success("O'chirildi")
-      setCategories(prev => prev.filter(c => c._id !== deleteId))
-      refresh()
+      await refetch()
     } else toast.error(r.error)
   }
 

@@ -9,7 +9,6 @@ export default async function RestaurantProfilePage() {
   try {
     const { data } = await apiRequest<any>("/restaurants/my", {
       accessToken: token,
-      revalidate: 30,
     })
     restaurant = data
   } catch (err) {

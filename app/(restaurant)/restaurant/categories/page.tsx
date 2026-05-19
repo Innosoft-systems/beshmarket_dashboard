@@ -5,12 +5,16 @@ import { CategoriesClient } from "@/components/restaurant-panel/CategoriesClient
 export default async function RestaurantCategoriesPage() {
   const token = await getAccessToken()
 
-  const [restaurantRes, categoriesRes] = await Promise.all([
-    apiRequest<any>("/restaurants/my", { accessToken: token }).catch(() => null),
-    apiRequest<any>("/menu-categories/my/menu", { accessToken: token }).catch(() => null),
-  ])
+  let restaurant: any = null
+  let categories: any[] = []
 
-  const categories = Array.isArray(categoriesRes?.data) ? categoriesRes.data : []
+  const restaurantRes = await apiRequest<any>("/restaurants/my", { accessToken: token }).catch(() => null)
+  restaurant = restaurantRes?.data ?? null
+
+  if (restaurant) {
+    const categoriesRes = await apiRequest<any>("/menu-categories/my/menu", { accessToken: token }).catch(() => null)
+    categories = Array.isArray(categoriesRes?.data) ? categoriesRes.data : []
+  }
 
   return (
     <div className="space-y-6">
@@ -19,7 +23,7 @@ export default async function RestaurantCategoriesPage() {
         <p className="text-sm text-muted-foreground">Menyu kategoriyalarini boshqarish</p>
       </div>
       <CategoriesClient
-        restaurant={restaurantRes?.data}
+        restaurant={restaurant}
         categories={categories}
       />
     </div>

@@ -80,7 +80,11 @@ export function PromotionsClient({ promotions }: { promotions: any[] }) {
     }
 
     const body = {
-      ...form,
+      code: form.code,
+      title_uz: form.title_uz,
+      title_ru: form.title_ru,
+      title_en: form.title_en,
+      discount_type: form.discount_type,
       discount_value: discountValue,
       min_order_amount: Number(form.min_order_amount) || 0,
       max_discount_amount: form.max_discount_amount ? Number(form.max_discount_amount) : undefined,
@@ -88,6 +92,7 @@ export function PromotionsClient({ promotions }: { promotions: any[] }) {
       max_uses_per_user: Number(form.max_uses_per_user) || 1,
       starts_at: startsAt.toISOString(),
       expires_at: expiresAt.toISOString(),
+      is_active: form.is_active,
     }
     const result = editing
       ? await updateMyPromotionAction(editing._id, body)
