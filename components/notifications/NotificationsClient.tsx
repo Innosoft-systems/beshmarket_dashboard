@@ -6,16 +6,7 @@ import { Send, Users, Truck, Globe, Bell, ImagePlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
 import { sendBroadcastAction } from "@/lib/actions/notifications"
-
-const TYPES = [
-  { value: "system", label: "Tizim" },
-  { value: "promotion", label: "Aksiya / Promo" },
-  { value: "discount", label: "Chegirma" },
-  { value: "order", label: "Buyurtma" },
-]
 
 const TARGETS = [
   { value: "all", label: "Barcha foydalanuvchilar", icon: Globe, color: "text-blue-500" },
@@ -36,7 +27,6 @@ export function NotificationsClient({ recentNotifications }: Props) {
   const [form, setForm] = useState({
     title: "",
     body: "",
-    type: "system",
     target: "all",
   })
 
@@ -72,11 +62,11 @@ export function NotificationsClient({ recentNotifications }: Props) {
       if (!image_url) { toast.error("Rasm yuklanmadi"); setLoading(false); return }
     }
 
-    const result = await sendBroadcastAction({ ...form, image_url } as Parameters<typeof sendBroadcastAction>[0])
+    const result = await sendBroadcastAction({ ...form, type: "system", image_url } as Parameters<typeof sendBroadcastAction>[0])
     if (result.success) {
       setResult(result.data)
       toast.success(`Yuborildi: ${result.data?.success ?? 0} ta qurilma`)
-      setForm({ title: "", body: "", type: "system", target: "all" })
+      setForm({ title: "", body: "", target: "all" })
       clearImage()
     } else {
       toast.error(result.error || "Xatolik")
@@ -113,19 +103,6 @@ export function NotificationsClient({ recentNotifications }: Props) {
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Type */}
-          <div className="space-y-1.5">
-            <Label>Tur</Label>
-            <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v ?? form.type })}>
-              <SelectTrigger>
-                <SelectValue>{TYPES.find(t => t.value === form.type)?.label}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Title */}
@@ -229,13 +206,6 @@ export function NotificationsClient({ recentNotifications }: Props) {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">{n.body}</p>
-                <div className="flex gap-1.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    n.type === "system" ? "bg-blue-100 text-blue-700" :
-                    n.type === "promotion" ? "bg-purple-100 text-purple-700" :
-                    "bg-gray-100 text-gray-700"
-                  }`}>{TYPES.find(t => t.value === n.type)?.label || n.type}</span>
-                </div>
               </div>
             ))}
           </div>
