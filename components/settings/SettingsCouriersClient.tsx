@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { updateSettingAction, updateLegalPageAction } from "@/lib/actions/settings"
+import { updateSettingAction, updateLegalPageAction, getCourierFaqAction, updateCourierFaqAction } from "@/lib/actions/settings"
 
 const TABS = [
   { id: "general", label: "Umumiy" },
@@ -154,16 +154,21 @@ function LegalEditor({ slug, legalPages }: { slug: string; legalPages: any[] }) 
 
 function CourierFaqSettings({ settings }: { settings: { key: string; value: any }[] }) {
   const router = useRouter()
-  const existing = settings.find((s) => s.key === "courier_faq_items")?.value || "[]"
-  const [items, setItems] = useState<{ question_uz: string; answer_uz: string; question_ru: string; answer_ru: string; question_en: string; answer_en: string }[]>(
-    typeof existing === "string" ? JSON.parse(existing) : existing
-  )
+  const [items, setItems] = useState<{ question_uz: string; answer_uz: string; question_ru: string; answer_ru: string; question_en: string; answer_en: string; is_active?: boolean }[]>([])
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState({ question_uz: "", answer_uz: "", question_ru: "", answer_ru: "", question_en: "", answer_en: "" })
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    getCourierFaqAction().then((res) => {
+      if (res.data?.faqs) setItems(res.data.faqs)
+      setLoaded(true)
+    })
+  }, [])
 
   const saveToBackend = async (updatedItems: typeof items) => {
-    await updateSettingAction("courier_faq_items", updatedItems)
+    await updateCourierFaqAction(updatedItems.map(i => ({ ...i, is_active: i.is_active !== false })))
   }
 
   const openNew = () => {

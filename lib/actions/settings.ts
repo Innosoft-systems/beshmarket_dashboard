@@ -41,3 +41,28 @@ export async function sendNotificationAction(data: { user_id: string; type: stri
     return { success: false, error: error.message || "Xatolik yuz berdi" }
   }
 }
+
+export async function getCourierFaqAction() {
+  const token = await getAccessToken()
+  if (!token) return { success: false, data: null }
+
+  try {
+    const res = await apiRequest<any>("/support/courier-help/raw", { accessToken: token })
+    return { success: true, data: res.data }
+  } catch {
+    return { success: false, data: null }
+  }
+}
+
+export async function updateCourierFaqAction(faqs: any[]) {
+  const token = await getAccessToken()
+  if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
+
+  try {
+    await apiRequest("/support/courier-help", { method: "PUT", body: { faqs }, accessToken: token })
+    revalidatePath("/settings/couriers")
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  }
+}
