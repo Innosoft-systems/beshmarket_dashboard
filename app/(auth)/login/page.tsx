@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { ShoppingBag } from 'lucide-react';
 
@@ -38,6 +39,16 @@ export default function LoginPage() {
           {/* Form */}
           <div className="px-8 py-7">
             <LoginForm />
+          </div>
+
+          {/* Restaurant login */}
+          <div className="px-8 pb-4 text-center">
+            <Link
+              href="/restaurant/login"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Restoran sifatida kirish →
+            </Link>
           </div>
 
           {/* Footer */}

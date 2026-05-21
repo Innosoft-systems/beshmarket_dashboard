@@ -70,12 +70,12 @@ export async function restaurantLoginAction(
       await sendOtp(phone)
       return { sent: true, phone }
     } catch (err) {
-      return { error: err instanceof ApiError ? err.message : "OTP yuborishda xatolik", phone }
+      return { error: err instanceof ApiError ? err.message : "Tasdiqlash kodini yuborishda xatolik", phone }
     }
   }
 
   if (!/^\d{6}$/.test(code)) {
-    return { error: "6 xonali OTP kodni kiriting", sent: true, phone }
+    return { error: "6 xonali tasdiqlash kodini kiriting", sent: true, phone }
   }
 
   try {
