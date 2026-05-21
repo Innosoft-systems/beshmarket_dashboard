@@ -3,25 +3,15 @@
 import { useState, useEffect, useRef, useTransition, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { io, Socket } from "socket.io-client"
-import { Send, MessageSquare, ImagePlus, Zap, X } from "lucide-react"
+import { Send, MessageSquare, ImagePlus, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { getChatMessages, type Message } from "@/lib/api/chat"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
-
-interface Message {
-  _id: string
-  user_id: string
-  sender: "user" | "admin"
-  text: string
-  image_url?: string | null
-  order_id?: string | null
-  is_read: boolean
-  createdAt: string
-}
 
 interface Conversation {
   user_id: string
@@ -35,11 +25,6 @@ interface Conversation {
   is_closed?: boolean
 }
 
-interface QuickReply {
-  _id: string
-  title: string
-  text: string
-}
 
 interface Props {
   conversations: Conversation[]
@@ -62,30 +47,24 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [text, setText] = useState("")
   const [sending, setSending] = useState(false)
-  const [typing, setTyping] = useState(false) // user is typing
-  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([])
-  const [showQuickReplies, setShowQuickReplies] = useState(false)
+  const [typing, setTyping] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [hasMore, setHasMore] = useState(initialMessages.length >= 50)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+
   const socketRef = useRef<Socket | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const selectedUserIdRef = useRef(selectedUserId)
+  // true during initial load or conversation switch — use instant scroll, not smooth
+  const isInitialScrollRef = useRef(true)
+
   const selectedConv = convs.find(c => c.user_id === selectedUserId)
 
   useEffect(() => { selectedUserIdRef.current = selectedUserId }, [selectedUserId])
-
-  // Load quick replies
-  useEffect(() => {
-    if (!accessToken) return
-    fetch(`${API_URL}/api/v1/chat/quick-replies`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setQuickReplies(data) })
-      .catch(() => {})
-  }, [accessToken])
 
   // Socket
   useEffect(() => {
@@ -110,7 +89,6 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
           }
           return [...prev, msg]
         })
-        // Clear typing when message arrives
         if (msg.sender === "user") setTyping(false)
       }
 
@@ -159,14 +137,30 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
     return () => { socket.disconnect() }
   }, [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to bottom
+  // Scroll to bottom when messages change — instant on initial, smart on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    const el = scrollRef.current
+    if (!el) return
+
+    if (isInitialScrollRef.current) {
+      // Initial load or conversation switch — jump instantly
+      el.scrollTop = el.scrollHeight
+      isInitialScrollRef.current = false
+      return
+    }
+
+    // New message arrived — only scroll if user is near the bottom (within 120px)
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (distanceFromBottom < 120) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
 
-  // On conversation select
+  // On conversation select — reset state and prepare for instant scroll
   useEffect(() => {
+    isInitialScrollRef.current = true
     setMessages(initialMessages)
+    setHasMore(initialMessages.length >= 50)
     setTyping(false)
     if (selectedUserId) {
       socketRef.current?.emit("chat:read", { userId: selectedUserId })
@@ -174,11 +168,45 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
     }
   }, [selectedUserId, initialMessages])
 
+  // Load older messages on scroll-up
+  const handleScroll = useCallback(async () => {
+    const el = scrollRef.current
+    if (!el || !hasMore || loadingOlder || !selectedUserId) return
+    if (el.scrollTop > 80) return // not near top yet
+
+    const oldest = messages[0]
+    if (!oldest) return
+
+    setLoadingOlder(true)
+    const prevHeight = el.scrollHeight
+
+    try {
+      const res = await getChatMessages(selectedUserId, { before: oldest.createdAt }, accessToken)
+      const older: Message[] = Array.isArray(res.data) ? res.data : []
+
+      if (older.length === 0) {
+        setHasMore(false)
+        return
+      }
+
+      setMessages(prev => [...older, ...prev])
+      if (older.length < 50) setHasMore(false)
+
+      // Restore scroll position after prepend
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop = el.scrollHeight - prevHeight
+      })
+    } catch {
+      // silent — user can scroll again
+    } finally {
+      setLoadingOlder(false)
+    }
+  }, [hasMore, loadingOlder, selectedUserId, messages, accessToken])
+
   const selectConversation = (userId: string) => {
     startTransition(() => router.push(`/chat?userId=${userId}`))
   }
 
-  // Emit typing
   const handleTextChange = (val: string) => {
     setText(val)
     if (selectedUserId && val.trim()) {
@@ -186,7 +214,6 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
     }
   }
 
-  // Image pick
   const handleImagePick = () => fileInputRef.current?.click()
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -197,7 +224,6 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
   }
   const clearImage = () => { setImageFile(null); setImagePreview(null) }
 
-  // Upload image
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     const formData = new FormData()
     formData.append("file", file)
@@ -208,7 +234,6 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
     } catch { return null }
   }, [])
 
-  // Send message
   const sendMessage = async () => {
     if ((!text.trim() && !imageFile) || !selectedUserId || sending) return
     const trimmed = text.trim()
@@ -232,15 +257,8 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
       createdAt: new Date().toISOString(),
     }
     setMessages(prev => [...prev, optimistic])
-
     socketRef.current?.emit("chat:admin_send", { userId: selectedUserId, text: trimmed, imageUrl })
     setSending(false)
-  }
-
-  // Quick reply select
-  const handleQuickReply = (qr: QuickReply) => {
-    setText(qr.text)
-    setShowQuickReplies(false)
   }
 
   const ROLE_LABELS: Record<string, string> = { kuryer: "Kuryer", client: "Mijoz", admin: "Admin" }
@@ -325,7 +343,23 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
 
             {/* Messages */}
             <div className="flex-1 overflow-hidden">
-              <ScrollArea className="h-full px-5 py-4">
+              <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="h-full overflow-y-auto px-5 py-4"
+              >
+                {/* Loading older indicator */}
+                {loadingOlder && (
+                  <div className="flex justify-center py-2 mb-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {!hasMore && messages.length > 0 && (
+                  <p className="text-center text-xs text-muted-foreground py-2 mb-2">
+                    Chat boshlanishi
+                  </p>
+                )}
+
                 <div className="space-y-3">
                   {messages.length === 0 && (
                     <p className="text-center text-sm text-muted-foreground py-8">Xabarlar yo&apos;q</p>
@@ -354,7 +388,7 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
                   ))}
                   <div ref={bottomRef} />
                 </div>
-              </ScrollArea>
+              </div>
             </div>
 
             {/* Image preview */}
@@ -369,35 +403,11 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
               </div>
             )}
 
-            {/* Quick replies */}
-            {showQuickReplies && quickReplies.length > 0 && (
-              <div className="px-5 py-2 border-t flex flex-wrap gap-1.5">
-                {quickReplies.map(qr => (
-                  <button
-                    key={qr._id}
-                    onClick={() => handleQuickReply(qr)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors"
-                  >
-                    {qr.title}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* Input */}
             <div className="px-5 py-3 border-t flex items-center gap-2">
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               <Button size="icon" variant="ghost" className="shrink-0" onClick={handleImagePick} title="Rasm yuborish">
                 <ImagePlus className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className={`shrink-0 ${showQuickReplies ? "text-primary" : ""}`}
-                onClick={() => setShowQuickReplies(!showQuickReplies)}
-                title="Tezkor javoblar"
-              >
-                <Zap className="h-4 w-4" />
               </Button>
               <Input
                 placeholder="Xabar yozing..."
