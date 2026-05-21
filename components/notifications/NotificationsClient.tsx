@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback, useTransition } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Send, Users, Truck, Globe, Bell, ImagePlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,16 +20,30 @@ interface Props {
 }
 
 export function NotificationsClient({ recentNotifications }: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [, startTransition] = useTransition()
+
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [form, setForm] = useState({
-    title: "",
-    body: "",
-    target: "all",
-  })
+  const [form, setForm] = useState({ title: "", body: "" })
+
+  const rawTarget = searchParams.get("target") ?? "all"
+  const target = TARGETS.some(t => t.value === rawTarget) ? rawTarget : "all"
+
+  const setTarget = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value && value !== "all") params.set("target", value)
+      else params.delete("target")
+      startTransition(() => router.replace(`${pathname}?${params.toString()}`))
+    },
+    [router, pathname, searchParams, startTransition],
+  )
 
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -62,11 +77,11 @@ export function NotificationsClient({ recentNotifications }: Props) {
       if (!image_url) { toast.error("Rasm yuklanmadi"); setLoading(false); return }
     }
 
-    const result = await sendBroadcastAction({ ...form, type: "system", image_url } as Parameters<typeof sendBroadcastAction>[0])
+    const result = await sendBroadcastAction({ ...form, target, type: "system", image_url } as Parameters<typeof sendBroadcastAction>[0])
     if (result.success) {
       setResult(result.data)
       toast.success(`Yuborildi: ${result.data?.success ?? 0} ta qurilma`)
-      setForm({ title: "", body: "", target: "all" })
+      setForm({ title: "", body: "" })
       clearImage()
     } else {
       toast.error(result.error || "Xatolik")
@@ -91,14 +106,14 @@ export function NotificationsClient({ recentNotifications }: Props) {
               {TARGETS.map(t => (
                 <button
                   key={t.value}
-                  onClick={() => setForm({ ...form, target: t.value })}
+                  onClick={() => setTarget(t.value)}
                   className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-sm transition-colors ${
-                    form.target === t.value
+                    target === t.value
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-input hover:bg-muted/50"
                   }`}
                 >
-                  <t.icon className={`h-5 w-5 ${form.target === t.value ? "text-primary" : t.color}`} />
+                  <t.icon className={`h-5 w-5 ${target === t.value ? "text-primary" : t.color}`} />
                   <span className="text-xs font-medium leading-tight text-center">{t.label}</span>
                 </button>
               ))}
@@ -173,7 +188,7 @@ export function NotificationsClient({ recentNotifications }: Props) {
         {/* Preview */}
         {(form.title || form.body) && (
           <div className="rounded-xl border bg-background p-5 space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">Ko'rinish</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Ko&apos;rinish</h3>
             <div className="bg-muted rounded-xl p-4 space-y-1">
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
@@ -194,7 +209,7 @@ export function NotificationsClient({ recentNotifications }: Props) {
       <div className="rounded-xl border bg-background p-5 space-y-4">
         <h2 className="font-semibold">Oxirgi xabarlar</h2>
         {recentNotifications.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Xabarlar yo'q</p>
+          <p className="text-sm text-muted-foreground text-center py-8">Xabarlar yo&apos;q</p>
         ) : (
           <div className="space-y-3">
             {recentNotifications.map((n: any) => (
