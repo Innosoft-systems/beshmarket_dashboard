@@ -17,17 +17,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { COURIER_STATUSES, ORDER_STATUSES } from "@/types"
-import { updateCourierAction, blockCourierUserAction, deleteCourierAction, payoutCourierAction } from "@/lib/actions/couriers"
+import { updateCourierAction, blockCourierUserAction, deleteCourierAction } from "@/lib/actions/couriers"
 
 interface Props {
   profile: any
   balanceData: { balance: number; transactions: any[] }
   orders?: any[]
   monthlyIncome?: number
+  monthlyChart?: { label: string; amount: number; date: string }[]
   weeklyIncome?: number
 }
 
-export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, weeklyIncome = 0 }: Props) {
+export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, monthlyChart = [], weeklyIncome = 0 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -38,17 +39,6 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
     vehicle_number: profile.vehicle_number || "",
     city: profile.city,
   })
-  const [payoutOpen, setPayoutOpen] = useState(false)
-  const [payoutAmount, setPayoutAmount] = useState("")
-  const [payoutNote, setPayoutNote] = useState("")
-  const [payoutLoading, setPayoutLoading] = useState(false)
-
-  const openPayout = () => {
-    setPayoutAmount(weeklyIncome > 0 ? String(weeklyIncome) : "")
-    setPayoutNote("Haftalik to'lov")
-    setPayoutOpen(true)
-  }
-
   const user = profile.user_id
   const statusInfo = COURIER_STATUSES.find((s) => s.value === profile.status)
 
@@ -113,10 +103,6 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
         <Button variant="outline" onClick={() => setEditOpen(true)} disabled={isPending}>
           <Pencil className="h-4 w-4 mr-2" />
           Tahrirlash
-        </Button>
-        <Button variant="outline" onClick={openPayout} disabled={isPending}>
-          <Wallet className="h-4 w-4 mr-2" />
-          To'lov qilish
         </Button>
         <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
           <Trash2 className="h-4 w-4 mr-2" />
@@ -196,49 +182,6 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
         </div>
       </div>
 
-      {/* Balans tarixi */}
-      {balanceData.transactions?.length > 0 && (
-        <div className="rounded-xl border border-indigo-500 bg-background overflow-hidden">
-          <div className="p-5 border-b">
-            <h3 className="font-semibold flex items-center gap-2"><Calendar className="h-5 w-5 text-indigo-500" /> Balans tarixi</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="h-11 px-5 text-left font-medium">Turi</th>
-                  <th className="h-11 px-5 text-left font-medium">Tavsif</th>
-                  <th className="h-11 px-5 text-right font-medium">Summa</th>
-                  <th className="h-11 px-5 text-right font-medium">Sana</th>
-                </tr>
-              </thead>
-              <tbody>
-                {balanceData.transactions.slice(0, 20).map((tx: any, i: number) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-5 py-3">
-                      <Badge variant="outline" className={
-                        tx.type === "earning" ? "bg-green-100 text-green-500 border-green-200" :
-                        tx.type === "penalty" ? "bg-red-100 text-red-700 border-red-200" :
-                        "bg-blue-100 text-blue-500 border-blue-200"
-                      }>
-                        {tx.type === "earning" ? "Daromad" : tx.type === "penalty" ? "Jarima" : "Yechish"}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-3 text-muted-foreground">{tx.description || "—"}</td>
-                    <td className={`px-5 py-3 text-right font-semibold ${tx.type === "penalty" || tx.type === "withdrawal" ? "text-red-600" : "text-green-600"}`}>
-                      {tx.type === "penalty" || tx.type === "withdrawal" ? "-" : "+"}{tx.amount?.toLocaleString()} so'm
-                    </td>
-                    <td className="px-5 py-3 text-right text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleDateString("uz")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* Buyurtmalar tarixi */}
       {orders.length > 0 && (
         <div className="rounded-xl border border-slate-300 bg-background overflow-hidden">
@@ -273,6 +216,21 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Oylik daromadlar */}
+      {monthlyChart.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-semibold flex items-center gap-2"><Wallet className="h-5 w-5 text-green-500" /> Oylik daromadlar</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {monthlyChart.map((item, i) => (
+              <div key={i} className="rounded-lg border bg-background p-3 text-center">
+                <p className="text-xs text-muted-foreground">{item.label}</p>
+                <p className="text-sm font-bold text-green-600 mt-1">{item.amount.toLocaleString()}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -316,66 +274,6 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
                   startTransition(() => router.refresh())
                 } else toast.error(result.error)
               }}>Saqlash</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Payout Dialog */}
-      {payoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-          <div className="bg-background rounded-xl p-6 w-full max-w-sm shadow-lg ring-1 ring-foreground/10 space-y-4">
-            <div>
-              <h3 className="text-base font-medium">To'lov qilish</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Joriy balans: <span className="font-semibold text-foreground">{balanceData.balance?.toLocaleString()} so'm</span>
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Summa (so'm)</Label>
-              <Input
-                type="number"
-                placeholder="Masalan: 100000"
-                value={payoutAmount}
-                onChange={(e) => setPayoutAmount(e.target.value)}
-              />
-              {+payoutAmount > balanceData.balance && (
-                <p className="text-xs text-red-500">
-                  Balans yetarli emas. Maksimal: {balanceData.balance?.toLocaleString()} so'm
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Izoh (ixtiyoriy)</Label>
-              <Input
-                placeholder="Haftalik to'lov..."
-                value={payoutNote}
-                onChange={(e) => setPayoutNote(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => { setPayoutOpen(false); setPayoutAmount(""); setPayoutNote("") }}>
-                Bekor qilish
-              </Button>
-              <Button
-                disabled={payoutLoading || !payoutAmount || +payoutAmount <= 0 || +payoutAmount > balanceData.balance}
-                onClick={async () => {
-                  setPayoutLoading(true)
-                  const result = await payoutCourierAction(profile._id, +payoutAmount, payoutNote || undefined)
-                  setPayoutLoading(false)
-                  if (result.success) {
-                    toast.success("To'lov amalga oshirildi")
-                    setPayoutOpen(false)
-                    setPayoutAmount("")
-                    setPayoutNote("")
-                    startTransition(() => router.refresh())
-                  } else {
-                    toast.error(result.error)
-                  }
-                }}
-              >
-                {payoutLoading ? "Kutilmoqda..." : "To'lov qilish"}
-              </Button>
             </div>
           </div>
         </div>
