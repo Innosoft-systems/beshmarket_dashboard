@@ -181,8 +181,7 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
     const prevHeight = el.scrollHeight
 
     try {
-      const res = await getChatMessages(selectedUserId, { before: oldest.createdAt }, accessToken)
-      const older: Message[] = Array.isArray(res.data) ? res.data : []
+      const older: Message[] = await getChatMessages(selectedUserId, { before: oldest.createdAt }, accessToken)
 
       if (older.length === 0) {
         setHasMore(false)
