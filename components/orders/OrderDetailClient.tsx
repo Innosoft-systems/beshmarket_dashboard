@@ -297,16 +297,13 @@ export function OrderDetailClient({
                     <SelectTrigger className="flex-1 h-9">
                       <SelectValue>
                         {couriers.find((c) => c._id === selectedCourier)
-                          ?.user_id?.full_name || "Kuryer tanlang..."}
+                          ?.full_name || "Kuryer tanlang..."}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {couriers
-                        .filter((c) => c.is_active)
-                        .map((c) => (
+                      {couriers.map((c) => (
                           <SelectItem key={c._id} value={c._id}>
-                            {c.user_id?.full_name || c.user_id?.phone} ·{" "}
-                            {c.status}
+                            {c.full_name || c.phone} · {c.distance_km != null ? `${c.distance_km} km` : c.status}
                           </SelectItem>
                         ))}
                     </SelectContent>

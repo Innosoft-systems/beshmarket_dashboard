@@ -19,7 +19,7 @@ export default async function OrderDetailPage({ params }: Props) {
   try {
     const [orderRes, couriersRes] = await Promise.all([
       apiRequest<any>(`/orders/${id}`, { accessToken: token }),
-      apiRequest<any[]>("/couriers", { accessToken: token }).catch(() => ({ data: [], status: 200 })),
+      apiRequest<any[]>(`/orders/${id}/suggested-couriers`, { accessToken: token }).catch(() => ({ data: [], status: 200 })),
     ])
 
     if (!orderRes.data) notFound()
