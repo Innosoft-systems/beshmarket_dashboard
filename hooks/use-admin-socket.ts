@@ -60,6 +60,13 @@ export function useAdminSocket(
       })
     })
 
+    socket.on("order.new", (payload: { orderNumber: string; restaurantName?: string; total: number }) => {
+      toast.info(`🛒 Yangi buyurtma: ${payload.orderNumber}`, {
+        description: payload.restaurantName ? `${payload.restaurantName} — ${payload.total.toLocaleString()} so'm` : `${payload.total.toLocaleString()} so'm`,
+        duration: 10000,
+      })
+    })
+
     return () => {
       socket.off("admin.notification", stableCallback)
       // Socket ni yopmang — boshqa joylarda ham ishlash kerak
