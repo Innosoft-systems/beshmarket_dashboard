@@ -338,6 +338,24 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
                   )}
                 </p>
               </div>
+              {!selectedConv?.is_closed && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await fetch(`${API_URL}/api/chat/${selectedUserId}/close`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                      })
+                      setConvs(prev => prev.map(c => c.user_id === selectedUserId ? { ...c, is_closed: true } : c))
+                      toast.success("Chat yopildi")
+                    } catch { toast.error("Xatolik") }
+                  }}
+                >
+                  Chatni yopish
+                </Button>
+              )}
             </div>
 
             {/* Messages */}
