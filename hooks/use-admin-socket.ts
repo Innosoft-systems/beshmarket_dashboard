@@ -14,6 +14,7 @@ export interface AdminNotificationPayload {
   data?: Record<string, string>
   is_read: boolean
   createdAt: string
+  actor_user_id?: string
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -25,30 +26,52 @@ const TYPE_ICONS: Record<string, string> = {
 }
 
 let globalSocket: ReturnType<typeof io> | null = null
+let globalToken: string | null = null
 
 export function useAdminSocket(
   accessToken: string | null,
   onNotification: (n: AdminNotificationPayload) => void,
+  currentUserId?: string,
 ) {
   const stableCallback = useCallback(onNotification, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!accessToken) return
-    if (globalSocket?.connected) {
-      globalSocket.on("admin.notification", stableCallback)
-      return () => { globalSocket?.off("admin.notification", stableCallback) }
+
+    // Reuse existing socket if already established for this token
+    if (globalSocket && globalToken === accessToken) {
+      globalSocket.off("admin.notification")
+      globalSocket.on("admin.notification", (payload: AdminNotificationPayload) => {
+        if (currentUserId && payload.actor_user_id === currentUserId) return
+        stableCallback(payload)
+        const icon = TYPE_ICONS[payload.type] || "🔔"
+        toast.info(`${icon} ${payload.title}`, {
+          description: payload.body,
+          duration: 6000,
+          action: payload.data?.link
+            ? { label: "Ko'rish", onClick: () => { if (typeof window !== "undefined") window.location.href = payload.data!.link } }
+            : undefined,
+        })
+      })
+      return () => { globalSocket?.off("admin.notification") }
+    }
+
+    // Token changed — disconnect stale socket before creating a new one
+    if (globalSocket && globalToken !== accessToken) {
+      globalSocket.disconnect()
+      globalSocket = null
+      globalToken = null
     }
 
     const socket = io(`${API_URL}/orders`, {
       auth: { token: accessToken },
       transports: ["websocket"],
     })
-
-    socket.on("connect", () => {
-      globalSocket = socket
-    })
+    globalSocket = socket
+    globalToken = accessToken
 
     socket.on("admin.notification", (payload: AdminNotificationPayload) => {
+      if (currentUserId && payload.actor_user_id === currentUserId) return
       stableCallback(payload)
       const icon = TYPE_ICONS[payload.type] || "🔔"
       toast.info(`${icon} ${payload.title}`, {
@@ -68,8 +91,7 @@ export function useAdminSocket(
     })
 
     return () => {
-      socket.off("admin.notification", stableCallback)
-      // Socket ni yopmang — boshqa joylarda ham ishlash kerak
+      socket.off("admin.notification")
     }
-  }, [accessToken, stableCallback])
+  }, [accessToken, stableCallback, currentUserId])
 }

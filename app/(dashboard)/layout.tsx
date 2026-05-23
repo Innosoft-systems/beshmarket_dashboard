@@ -12,11 +12,22 @@ export const metadata: Metadata = {
   description: 'BeshMarket boshqaruv paneli',
 };
 
+function decodeJwtUserId(token: string): string | undefined {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'))
+    return payload.userId ?? payload.sub ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const token = await getAccessToken()
 
   // If no token at all, middleware should have caught this — but safety fallback
   if (!token) redirect("/login")
+
+  const currentUserId = decodeJwtUserId(token)
 
   const [unreadRes, chatUnreadRes] = await Promise.all([
     apiRequest<any>('/admin-notifications/unread-count', { accessToken: token })
@@ -39,6 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <NotificationBell
               accessToken={token || ""}
               initialCount={unreadRes.data?.count ?? 0}
+              currentUserId={currentUserId}
             />
           </div>
         </header>

@@ -29,9 +29,10 @@ function timeAgo(iso: string) {
 interface Props {
   accessToken: string
   initialCount: number
+  currentUserId?: string
 }
 
-export function NotificationBell({ accessToken, initialCount }: Props) {
+export function NotificationBell({ accessToken, initialCount, currentUserId }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
@@ -43,7 +44,7 @@ export function NotificationBell({ accessToken, initialCount }: Props) {
   useAdminSocket(accessToken, (n) => {
     setUnread(prev => prev + 1)
     setNotifications(prev => [n, ...prev].slice(0, 20))
-  })
+  }, currentUserId)
 
   useFcmToken(accessToken)
 

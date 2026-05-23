@@ -13,10 +13,12 @@ async function initFirebase() {
     messaging.onBackgroundMessage((payload) => {
       const { title, body } = payload.notification || {};
       if (!title) return;
+      const imageUrl = payload.data?.image_url || payload.notification?.image;
       self.registration.showNotification(title, {
         body: body || '',
         icon: '/favicon.ico',
         data: payload.data,
+        ...(imageUrl ? { image: imageUrl } : {}),
       });
     });
   } catch (e) {
