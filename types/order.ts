@@ -30,7 +30,22 @@ export interface Order {
   completed_at?: string
   status_history?: { status: string; changed_by_role: string; note?: string; created_at: string }[]
   createdAt: string
+  group_id?: string
 }
+
+export interface GroupedOrderRow {
+  _isGroup: true
+  group_id: string
+  orders: Order[]
+  _id: string
+  order_number: string
+  restaurantNames: string
+  total: number
+  status: string
+  createdAt: string
+}
+
+export type OrderRow = (Order & { _isGroup?: false }) | GroupedOrderRow
 
 export const ORDER_STATUSES = [
   { value: "pending",                  label: "Kutilmoqda",           color: "bg-amber-100 text-amber-700 border-amber-200" },
