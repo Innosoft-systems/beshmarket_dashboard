@@ -422,7 +422,7 @@ export function OrdersTableClient({
       )}
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
+        <div className="relative w-full sm:flex-1 sm:min-w-50 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buyurtma raqami yoki restoran..."
@@ -436,7 +436,7 @@ export function OrdersTableClient({
           value={filters.status || "all"}
           onValueChange={(value) => navigate({ status: value ?? "all" })}
         >
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className="w-full sm:w-45">
             <SelectValue>
               {STATUS_FILTER.find((s) => s.value === (filters.status || "all"))?.label}
             </SelectValue>
@@ -454,7 +454,7 @@ export function OrdersTableClient({
           value={filters.period || "all"}
           onValueChange={(value) => navigate({ period: value ?? "all" })}
         >
-          <SelectTrigger className="w-full sm:w-[150px]">
+          <SelectTrigger className="w-full sm:w-37.5">
             <SelectValue>
               {PERIOD_FILTER.find((p) => p.value === (filters.period || "all"))?.label}
             </SelectValue>
