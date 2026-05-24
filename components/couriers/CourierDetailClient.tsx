@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Star, Wallet, Package, Calendar, Trash2, Pencil } from "lucide-react"
+import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Wallet, Package, Calendar, Trash2, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -111,7 +111,7 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-xl border border-blue-500 bg-background p-5 space-y-2">
           <div className="flex items-center gap-2 text-blue-500">
             <Package className="h-4 w-4" />
@@ -132,13 +132,6 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
             <span className="text-sm">Balans</span>
           </div>
           <p className="text-3xl font-bold">{balanceData.balance?.toLocaleString()}<span className="text-base font-normal text-muted-foreground ml-1">so'm</span></p>
-        </div>
-        <div className="rounded-xl border border-amber-500 bg-background p-5 space-y-2">
-          <div className="flex items-center gap-2 text-amber-500">
-            <Star className="h-4 w-4" />
-            <span className="text-sm">Reyting</span>
-          </div>
-          <p className="text-3xl font-bold">{profile.avg_rating ? profile.avg_rating.toFixed(1) : "—"}<span className="text-base font-normal text-muted-foreground ml-1">({profile.review_count || 0})</span></p>
         </div>
         <div className="rounded-xl border border-orange-500 bg-background p-5 space-y-2">
           <div className="flex items-center gap-2 text-orange-500">

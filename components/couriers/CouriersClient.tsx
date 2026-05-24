@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
 import { Search, Eye, Check, X as XIcon, Plus, ChevronLeft, ChevronRight } from "lucide-react"
@@ -61,12 +61,15 @@ export function CouriersClient({ couriers, totalPages, currentPage, filters, acc
   }
 
   // Debounced search effect
-  const prevSearch = useState(filters.search)[0]
-  if (debouncedSearch !== prevSearch && debouncedSearch !== filters.search) {
-    navigate(debouncedSearch, statusFilter, activeFilter)
-  }
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (debouncedSearch !== filters.search) {
+      navigate(debouncedSearch, statusFilter, activeFilter)
+    }
+  }, [debouncedSearch]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const columns: ColumnDef<CourierProfile>[] = [
+  const columns: ColumnDef<CourierProfile>[] = useMemo(() => [
     {
       accessorKey: "user_id",
       header: "Kuryer",
@@ -99,14 +102,6 @@ export function CouriersClient({ couriers, totalPages, currentPage, filters, acc
     },
     { accessorKey: "total_deliveries", header: "Yetkazishlar" },
     {
-      accessorKey: "avg_rating",
-      header: "Reyting",
-      cell: ({ row }) => {
-        const r = row.getValue("avg_rating") as number
-        return <span>{r ? r.toFixed(1) : "—"}</span>
-      },
-    },
-    {
       accessorKey: "balance",
       header: "Balans",
       cell: ({ row }) => (
@@ -131,7 +126,7 @@ export function CouriersClient({ couriers, totalPages, currentPage, filters, acc
         </Button>
       ),
     },
-  ]
+  ], [router]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = {
     total: couriers.length,

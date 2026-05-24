@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
@@ -169,7 +169,7 @@ export function RestaurantsTableClient({
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current) }
   }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const columns: ColumnDef<Restaurant>[] = [
+  const columns: ColumnDef<Restaurant>[] = useMemo(() => [
     {
       accessorKey: "name",
       header: "Nomi",
@@ -216,7 +216,7 @@ export function RestaurantsTableClient({
         <ActionsCell restaurant={row.original} onAction={refreshData} />
       ),
     },
-  ]
+  ], [refreshData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">

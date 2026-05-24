@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
 import { Search, X, MoreHorizontal, ShieldBan, ShieldCheck, Trash2 } from "lucide-react"
@@ -211,7 +211,7 @@ export function UsersTableClient({
     }
   }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const columns: ColumnDef<User>[] = [
+  const columns: ColumnDef<User>[] = useMemo(() => [
     {
       accessorKey: "full_name",
       header: "F.I.SH",
@@ -251,7 +251,7 @@ export function UsersTableClient({
       header: "",
       cell: ({ row }) => <ActionsCell user={row.original} onAction={refreshData} />,
     },
-  ]
+  ], [refreshData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">

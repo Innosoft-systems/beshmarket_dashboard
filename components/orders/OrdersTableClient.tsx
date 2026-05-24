@@ -206,10 +206,18 @@ export function OrdersTableClient({
   const [stats, setStats] = useState(initialStats)
   const isFirstRender = useRef(true)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const prevDataRef = useRef(initialData)
+  const prevStatsRef = useRef(initialStats)
 
-  // Sync when server re-renders with new initialData
-  useEffect(() => { setOrders(initialData) }, [initialData])
-  useEffect(() => { setStats(initialStats) }, [initialStats])
+  // Sync only when reference actually changes (server re-render with new data)
+  if (prevDataRef.current !== initialData) {
+    prevDataRef.current = initialData
+    setOrders(initialData)
+  }
+  if (prevStatsRef.current !== initialStats) {
+    prevStatsRef.current = initialStats
+    setStats(initialStats)
+  }
 
   const handleNewOrder = useCallback((payload: NewOrderPayload) => {
     const newOrder: Order = {
@@ -281,7 +289,7 @@ export function OrdersTableClient({
 
   const displayRows = useMemo(() => buildDisplayRows(orders), [orders])
 
-  const columns: ColumnDef<OrderRow>[] = [
+  const columns: ColumnDef<OrderRow>[] = useMemo(() => [
     {
       accessorKey: "order_number",
       header: "Buyurtma №",
@@ -392,7 +400,7 @@ export function OrdersTableClient({
         return <ActionsCell order={r as Order} onAction={refreshData} scope={scope} />
       },
     },
-  ]
+  ], [router, scope, refreshData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">
