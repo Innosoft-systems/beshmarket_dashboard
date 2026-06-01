@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog, ClipboardList, Bike, AlertTriangle, MessageSquare, CalendarClock, Bell, Tag, MessagesSquare } from "lucide-react"
+import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog, ClipboardList, Bike, AlertTriangle, MessageSquare, CalendarClock, Bell, Tag, MessagesSquare, MapPin } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { logoutAction } from "@/app/(auth)/login/actions"
@@ -36,6 +36,7 @@ const mainItems = [
 const settingsItems = [
   { title: "Foydalanuvchilar", url: "/settings/users", icon: UserCog },
   { title: "Kuryerlar", url: "/settings/couriers", icon: Truck },
+  { title: "Xizmat zonalari", url: "/settings/zones", icon: MapPin },
 ]
 
 export function AppSidebar() {
