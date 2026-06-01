@@ -254,7 +254,7 @@ export function RestaurantsTableClient({
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
+        <div className="relative w-full sm:flex-1 sm:min-w-50 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Restoran nomi..."
@@ -268,7 +268,7 @@ export function RestaurantsTableClient({
           value={filters.is_active || "all"}
           onValueChange={(value) => navigate({ is_active: value ?? "all" })}
         >
-          <SelectTrigger className="w-full sm:w-[160px]">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue>
               {STATUS_OPTIONS.find((s) => s.value === (filters.is_active || "all"))?.label}
             </SelectValue>
