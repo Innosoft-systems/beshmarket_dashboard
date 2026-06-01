@@ -11,15 +11,16 @@ export async function sendBroadcastAction(data: {
   image_url?: string
 }) {
   const token = await getAccessToken()
-  if (!token) return { success: false, error: "Avtorizatsiya" }
+  if (!token) return { success: false, error: "Avtorizatsiya talab qilinadi. Qayta kiring." }
   try {
-    const res = await apiRequest<any>("/notifications/broadcast", {
+    const res = await apiRequest<{ queued: boolean; userCount: number; firebase_configured: boolean }>("/notifications/broadcast", {
       method: "POST",
       body: data,
       accessToken: token,
     })
-    return { success: true, data: res.data }
+    return { success: true, data: { sent: res.data.userCount, success: res.data.userCount, failed: 0, firebase_configured: res.data.firebase_configured } }
   } catch (e: any) {
-    return { success: false, error: e.message }
+    console.error("[sendBroadcastAction]", e?.status, e?.message)
+    return { success: false, error: e?.message || "Server bilan bog'lanib bo'lmadi" }
   }
 }
