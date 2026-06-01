@@ -8,6 +8,7 @@ export const restaurantFormSchema = z.object({
   district: z.string().min(2, "Tuman kiritish shart"),
   logo: z.string().optional(),
   owner_phone: z.string().min(9, "Egasi telefoni kiritish shart").optional().or(z.literal("")),
+  type: z.enum(["restaurant", "market"]).optional(),
 });
 
 export type RestaurantFormValues = z.infer<typeof restaurantFormSchema>;

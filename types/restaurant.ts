@@ -24,6 +24,7 @@ export interface Restaurant {
   is_verified?: boolean;
   status?: string;
   avg_rating: number;
+  type?: 'restaurant' | 'market';
 }
 
 export interface GetRestaurantsParams {

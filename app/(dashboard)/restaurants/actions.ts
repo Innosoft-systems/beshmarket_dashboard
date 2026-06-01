@@ -1,1 +1,1 @@
-export { createRestaurantAction, updateRestaurantAction, deleteRestaurantAction, toggleRestaurantActiveAction } from "@/lib/actions/restaurants";
+export { createRestaurantAction, updateRestaurantAction, deleteRestaurantAction, toggleRestaurantActiveAction, toggleRestaurantVisibilityAction } from "@/lib/actions/restaurants";

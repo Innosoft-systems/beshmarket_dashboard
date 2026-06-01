@@ -9,6 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ImageUploader } from "@/components/ui/image-uploader"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -47,6 +54,7 @@ export function RestaurantFormDialog({
       district: restaurant?.district || "",
       logo: restaurant?.logo || "",
       owner_phone: typeof restaurant?.owner_id === "object" ? restaurant.owner_id.phone : "",
+      type: (restaurant?.type as "restaurant" | "market") || "restaurant",
     },
   })
 
@@ -93,10 +101,26 @@ export function RestaurantFormDialog({
             {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label>Telefon *</Label>
-            <Input {...register("phone")} placeholder="+998901234567" />
-            {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Turi</Label>
+              <Select value={watch("type")} onValueChange={(v) => setValue("type", v as "restaurant" | "market")}>
+                <SelectTrigger>
+                  <SelectValue>
+                    {watch("type") === "market" ? "Market" : "Restoran"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="restaurant">Restoran</SelectItem>
+                  <SelectItem value="market">Market</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Telefon *</Label>
+              <Input {...register("phone")} placeholder="+998901234567" />
+              {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

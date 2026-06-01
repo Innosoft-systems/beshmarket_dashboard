@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { RestaurantFormDialog } from "@/components/restaurants/RestaurantFormDialog"
-import { deleteRestaurantAction, toggleRestaurantActiveAction } from "@/app/(dashboard)/restaurants/actions"
+import { deleteRestaurantAction, toggleRestaurantActiveAction, toggleRestaurantVisibilityAction } from "@/app/(dashboard)/restaurants/actions"
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Barcha holatlar" },
@@ -43,20 +43,30 @@ function ActionsCell({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const [actionType, setActionType] = useState<"delete" | "toggle" | null>(null)
+  const [actionType, setActionType] = useState<"delete" | "toggle" | "visibility" | null>(null)
   const [loading, setLoading] = useState(false)
+  const isMarket = restaurant.type === "market"
 
   const handleConfirm = async () => {
     setLoading(true)
-    const result = actionType === "delete"
-      ? await deleteRestaurantAction(restaurant._id)
-      : await toggleRestaurantActiveAction(restaurant._id)
+    let result
+    if (actionType === "delete") {
+      result = await deleteRestaurantAction(restaurant._id)
+    } else if (actionType === "visibility") {
+      result = await toggleRestaurantVisibilityAction(restaurant._id)
+    } else {
+      result = await toggleRestaurantActiveAction(restaurant._id)
+    }
 
     setLoading(false)
     setConfirmOpen(false)
 
     if (result.success) {
-      toast.success(actionType === "delete" ? "Restoran o'chirildi" : "Holat o'zgartirildi")
+      toast.success(
+        actionType === "delete" ? "Restoran o'chirildi" :
+        actionType === "visibility" ? "Market ko'rinishi o'zgartirildi" :
+        "Holat o'zgartirildi"
+      )
       onAction()
     } else {
       toast.error(result.error || "Xatolik yuz berdi")
@@ -78,10 +88,17 @@ function ActionsCell({
             <ShoppingBag className="h-4 w-4 mr-2" />
             Mahsulotlar
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => { setActionType("toggle"); setConfirmOpen(true) }}>
-            <Power className="h-4 w-4 mr-2 text-amber-600" />
-            {restaurant.is_active ? "Nofaol qilish" : "Faol qilish"}
-          </DropdownMenuItem>
+          {isMarket ? (
+            <DropdownMenuItem onClick={() => { setActionType("visibility"); setConfirmOpen(true) }}>
+              <Power className="h-4 w-4 mr-2 text-amber-600" />
+              {restaurant.is_active ? "Mijozlardan yashirish" : "Mijozlarga ko'rsatish"}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => { setActionType("toggle"); setConfirmOpen(true) }}>
+              <Power className="h-4 w-4 mr-2 text-amber-600" />
+              {restaurant.is_active ? "Nofaol qilish" : "Faol qilish"}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => { setActionType("delete"); setConfirmOpen(true) }} className="text-red-600">
             <Trash2 className="h-4 w-4 mr-2" />
             O'chirish
@@ -100,10 +117,16 @@ function ActionsCell({
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title={actionType === "delete" ? "O'chirish" : "Holatni o'zgartirish"}
+          title={
+            actionType === "delete" ? "O'chirish" :
+            actionType === "visibility" ? "Ko'rinishni o'zgartirish" :
+            "Holatni o'zgartirish"
+          }
           description={
             actionType === "delete"
               ? `"${restaurant.name}" ni o'chirishni xohlaysizmi?`
+              : actionType === "visibility"
+              ? `"${restaurant.name}" ni mijozlarga ${restaurant.is_active ? "yashirish" : "ko'rsatish"}ni xohlaysizmi?`
               : `"${restaurant.name}" ni ${restaurant.is_active ? "nofaol" : "faol"} qilishni xohlaysizmi?`
           }
           confirmLabel={actionType === "delete" ? "O'chirish" : "Tasdiqlash"}
@@ -191,12 +214,13 @@ export function RestaurantsTableClient({
       header: "Holati",
       cell: ({ row }) => {
         const active = row.getValue("is_active") as boolean
+        const isMarket = row.original.type === "market"
         return (
           <Badge
             variant={active ? "secondary" : "destructive"}
             className={active ? "bg-green-100 text-green-700 border-green-200" : ""}
           >
-            {active ? "Faol" : "Nofaol"}
+            {isMarket ? (active ? "Ko'rinadi" : "Yashirin") : (active ? "Faol" : "Nofaol")}
           </Badge>
         )
       },
