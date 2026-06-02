@@ -28,22 +28,32 @@ interface Props {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  delivered:   "#22c55e",
-  pending:     "#f59e0b",
-  accepted:    "#6366f1",
-  ready:       "#8b5cf6",
-  on_way:      "#3b82f6",
-  rejected:    "#ef4444",
-  cancelled:   "#6b7280",
+  delivered:                "#22c55e",
+  pending:                  "#f59e0b",
+  accepted:                 "#6366f1",
+  assigned:                 "#818cf8",
+  ready:                    "#8b5cf6",
+  on_way:                   "#3b82f6",
+  on_the_way_to_restaurant: "#7c3aed",
+  picked_up:                "#f97316",
+  on_the_way_to_customer:   "#06b6d4",
+  arrived_at_customer:      "#14b8a6",
+  rejected:                 "#ef4444",
+  cancelled:                "#6b7280",
 }
 const STATUS_LABELS: Record<string, string> = {
-  delivered:   "Yetkazildi",
-  pending:     "Kutilmoqda",
-  accepted:    "Qabul qilindi",
-  ready:       "Tayyor",
-  on_way:      "Yo'lda",
-  rejected:    "Rad etildi",
-  cancelled:   "Bekor qilindi",
+  delivered:                "Yetkazildi",
+  pending:                  "Kutilmoqda",
+  accepted:                 "Qabul qilindi",
+  assigned:                 "Kuryer tayinlandi",
+  ready:                    "Tayyor",
+  on_way:                   "Yo'lda",
+  on_the_way_to_restaurant: "Restoranga ketmoqda",
+  picked_up:                "Olindi",
+  on_the_way_to_customer:   "Mijozga ketmoqda",
+  arrived_at_customer:      "Manzilga yetdi",
+  rejected:                 "Rad etildi",
+  cancelled:                "Bekor qilindi",
 }
 
 function fmt(n: number) {

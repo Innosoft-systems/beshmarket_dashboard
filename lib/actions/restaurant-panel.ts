@@ -42,6 +42,13 @@ export async function toggleMyRestaurantOpenAction() {
   })
 }
 
+export async function toggleMyRestaurantActiveAction() {
+  return withToken(async (token) => {
+    await apiRequest("/restaurants/my/toggle-active", { method: "PATCH", accessToken: token })
+    revalidatePath("/restaurant")
+  })
+}
+
 export async function createMyProductAction(data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest("/products/my", { method: "POST", body: data, accessToken: token })
