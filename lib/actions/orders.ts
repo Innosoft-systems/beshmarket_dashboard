@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
 
 export async function updateOrderStatusAction(id: string, status: string) {
   const token = await getAccessToken()
@@ -12,8 +12,8 @@ export async function updateOrderStatusAction(id: string, status: string) {
     await apiRequest(`/orders/${id}/status`, { method: "PATCH", body: { status }, accessToken: token })
     revalidatePath("/orders")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -25,8 +25,8 @@ export async function cancelOrderAction(id: string, reason: string) {
     await apiRequest(`/orders/${id}/cancel`, { method: "POST", body: { cancel_reason: reason }, accessToken: token })
     revalidatePath("/orders")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -38,7 +38,7 @@ export async function assignCourierAction(orderId: string, courierId: string) {
     await apiRequest(`/orders/${orderId}/assign-courier`, { method: "PATCH", body: { courier_id: courierId }, accessToken: token })
     revalidatePath("/orders")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }

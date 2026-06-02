@@ -103,7 +103,7 @@ function ActionsCell({ user, onAction }: { user: User; onAction: () => void }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          render={<Button variant="ghost" size="icon-sm" />}
+          render={<Button variant="ghost" size="icon-sm" aria-label="Amallar" />}
         >
           <MoreHorizontal className="h-4 w-4" />
         </DropdownMenuTrigger>

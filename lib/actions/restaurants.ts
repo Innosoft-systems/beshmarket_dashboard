@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache"
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
+import type { RestaurantFormValues } from "@/schemas/restaurant"
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").trim()
 }
 
-export async function createRestaurantAction(data: any) {
+export async function createRestaurantAction(data: RestaurantFormValues) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
@@ -31,12 +32,12 @@ export async function createRestaurantAction(data: any) {
     })
     revalidatePath("/restaurants")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
-export async function updateRestaurantAction(id: string, data: any) {
+export async function updateRestaurantAction(id: string, data: RestaurantFormValues) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
@@ -47,8 +48,8 @@ export async function updateRestaurantAction(id: string, data: any) {
     }, accessToken: token })
     revalidatePath("/restaurants")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -60,8 +61,8 @@ export async function deleteRestaurantAction(id: string) {
     await apiRequest(`/restaurants/${id}`, { method: "DELETE", accessToken: token })
     revalidatePath("/restaurants")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -73,8 +74,8 @@ export async function toggleRestaurantActiveAction(id: string) {
     await apiRequest(`/restaurants/${id}/toggle-open`, { method: "PATCH", accessToken: token })
     revalidatePath("/restaurants")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -86,7 +87,7 @@ export async function toggleRestaurantVisibilityAction(id: string) {
     await apiRequest(`/restaurants/${id}/toggle-visibility`, { method: "PATCH", accessToken: token })
     revalidatePath("/restaurants")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }

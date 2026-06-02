@@ -135,7 +135,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
 
   return (
     <div className="relative" data-restaurant-notif-bell="">
-      <Button variant="ghost" size="icon" onClick={handleToggle} className="relative h-9 w-9">
+      <Button variant="ghost" size="icon" onClick={handleToggle} className="relative h-9 w-9" aria-label="Bildirishnomalar">
         <Bell className="h-5 w-5" />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">

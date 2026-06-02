@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
 
 export async function getPenaltiesAction(params: {
   status?: string
@@ -22,10 +22,10 @@ export async function getPenaltiesAction(params: {
   if (params.limit) qs.set("limit", String(params.limit))
 
   try {
-    const res = await apiRequest<any>(`/shifts/penalties?${qs}`, { accessToken: token })
+    const res = await apiRequest<unknown>(`/shifts/penalties?${qs}`, { accessToken: token })
     return { success: true, data: res.data }
-  } catch (e: any) {
-    return { success: false, error: e.message }
+  } catch (e: unknown) {
+    return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -37,8 +37,8 @@ export async function approvePenaltyAction(id: string) {
     await apiRequest(`/shifts/penalties/${id}/approve`, { method: "PATCH", accessToken: token })
     revalidatePath("/penalties")
     return { success: true }
-  } catch (e: any) {
-    return { success: false, error: e.message }
+  } catch (e: unknown) {
+    return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -50,7 +50,7 @@ export async function waivePenaltyAction(id: string) {
     await apiRequest(`/shifts/penalties/${id}/waive`, { method: "PATCH", accessToken: token })
     revalidatePath("/penalties")
     return { success: true }
-  } catch (e: any) {
-    return { success: false, error: e.message }
+  } catch (e: unknown) {
+    return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
   }
 }

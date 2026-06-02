@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { initializeApp, getApps } from "firebase/app"
 import { getMessaging, getToken, onMessage } from "firebase/messaging"
+import { toast } from "sonner"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -24,6 +25,16 @@ function getOrCreateDeviceId(): string {
   return id
 }
 
+async function registerDeviceToken(accessToken: string, fcmToken: string, deviceId: string): Promise<void> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/notifications/my/device-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ token: fcmToken, platform: "web", device_name: "Dashboard", device_id: deviceId }),
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!res.ok) throw new Error(`Registration failed: ${res.status}`)
+}
+
 export function useFcmToken(accessToken: string | null) {
   useEffect(() => {
     if (!accessToken) return
@@ -37,27 +48,25 @@ export function useFcmToken(accessToken: string | null) {
         const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
         const messaging = getMessaging(app)
 
-        const token = await getToken(messaging, { vapidKey: VAPID_KEY })
-        if (!token) return
+        const fcmToken = await getToken(messaging, { vapidKey: VAPID_KEY })
+        if (!fcmToken) return
 
         const deviceId = getOrCreateDeviceId()
         const storedToken = localStorage.getItem("fcm_token")
 
-        if (storedToken !== token) {
-          // Token changed or first time — (re)register with stable device_id so backend
-          // can update the existing row rather than creating a duplicate.
-          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/notifications/my/device-token`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({ token, platform: "web", device_name: "Dashboard", device_id: deviceId }),
-          })
-          localStorage.setItem("fcm_token", token)
+        if (storedToken !== fcmToken) {
+          try {
+            await registerDeviceToken(accessToken, fcmToken, deviceId)
+            localStorage.setItem("fcm_token", fcmToken)
+          } catch (err) {
+            // Non-fatal: app works but push notifications won't arrive
+            console.error("FCM device registration failed", err)
+            toast.warning("Push bildirishnomalar ishlamaydi — keyinroq urinib ko'ring", { duration: 4000 })
+          }
         }
 
-        // Foreground messages: WS already shows toasts via useAdminSocket.
-        // Register the handler only to prevent the default browser notification
-        // from firing while the tab is focused (onMessage suppresses it).
-        onMessage(messaging, () => { /* intentionally suppress foreground FCM toast — WS handles it */ })
+        // Suppress browser's default foreground notification — WS handles toasts
+        onMessage(messaging, () => { /* intentionally empty */ })
       } catch (e) {
         console.error("FCM init failed", e)
       }

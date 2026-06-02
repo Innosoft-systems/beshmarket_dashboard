@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getAccessToken } from '@/lib/auth/session';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest } from '@/lib/api/client'
+import type { UnreadCountResponse } from '@/types/api';
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { NotificationBell } from "@/components/layout/NotificationBell"
@@ -30,9 +31,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const currentUserId = decodeJwtUserId(token)
 
   const [unreadRes, chatUnreadRes] = await Promise.all([
-    apiRequest<any>('/admin-notifications/unread-count', { accessToken: token })
+    apiRequest<UnreadCountResponse>('/admin-notifications/unread-count', { accessToken: token })
       .catch(() => ({ data: { count: 0 } })),
-    apiRequest<any>('/chat/unread-count', { accessToken: token })
+    apiRequest<UnreadCountResponse>('/chat/unread-count', { accessToken: token })
       .catch(() => ({ data: { count: 0 } })),
   ])
 

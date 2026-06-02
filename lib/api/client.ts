@@ -89,7 +89,15 @@ export async function apiRequest<T>(
   };
 
   const url = `${API_BASE_URL}${endpoint}`;
-  let response = await fetch(url, fetchOptions);
+  let response: Response;
+
+  try {
+    response = await fetch(url, fetchOptions);
+  } catch (networkErr) {
+    // Retry once on network-level failure (DNS, connection reset, etc.)
+    await new Promise(r => setTimeout(r, 500));
+    response = await fetch(url, fetchOptions);
+  }
 
   // 401 — try refresh token (mutex-protected)
   if (response.status === 401 && accessToken) {

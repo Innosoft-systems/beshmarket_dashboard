@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getChatMessages, type Message } from "@/lib/api/chat"
+import { refreshAccessToken } from "@/lib/auth/refresh-client"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -54,6 +55,7 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
   const [loadingOlder, setLoadingOlder] = useState(false)
 
   const socketRef = useRef<Socket | null>(null)
+  const uploadAbortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -66,13 +68,34 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
 
   useEffect(() => { selectedUserIdRef.current = selectedUserId }, [selectedUserId])
 
+  // Abort in-flight uploads on unmount
+  useEffect(() => () => { uploadAbortRef.current?.abort() }, [])
+
   // Socket
   useEffect(() => {
     if (!accessToken) return
-    const socket = io(`${API_URL}/chat`, {
-      auth: { token: accessToken },
-      transports: ["websocket"],
-    })
+
+    function createChatSocket(token: string): Socket {
+      const s = io(`${API_URL}/chat`, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnectionAttempts: 5,
+      })
+
+      s.on("connect_error", async (err) => {
+        const isAuthError = err.message?.toLowerCase().includes("auth") ||
+          (err as unknown as { data?: { statusCode?: number } }).data?.statusCode === 401
+        if (!isAuthError) return
+        const newToken = await refreshAccessToken()
+        if (!newToken) { window.location.href = "/login"; return }
+        s.disconnect()
+        socketRef.current = createChatSocket(newToken)
+      })
+
+      return s
+    }
+
+    const socket = createChatSocket(accessToken)
     socketRef.current = socket
 
     socket.on("chat:message", (msg: Message) => {
@@ -226,11 +249,16 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     const formData = new FormData()
     formData.append("file", file)
+    uploadAbortRef.current?.abort()
+    uploadAbortRef.current = new AbortController()
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const res = await fetch("/api/upload", { method: "POST", body: formData, signal: uploadAbortRef.current.signal })
       const data = await res.json()
       return data.url || null
-    } catch { return null }
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return null
+      return null
+    }
   }, [])
 
   const sendMessage = async () => {

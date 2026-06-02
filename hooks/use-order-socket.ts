@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { io, Socket } from "socket.io-client"
 import { toast } from "sonner"
+import { refreshAccessToken } from "@/lib/auth/refresh-client"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -43,38 +44,53 @@ export function useOrderSocket(
 
     audioRef.current = new Audio("/sounds/order_sound.wav")
 
-    const socket = io(`${API_URL}/orders`, {
-      auth: { token: accessToken },
-      transports: ["websocket"],
-    })
-
-    socket.on("connect", () => {
-      console.log("[WS] Connected to orders namespace")
-    })
-
-    socket.on("order.new", (payload: NewOrderPayload) => {
-      audioRef.current?.play().catch(() => {})
-
-      toast.info(`🛒 Yangi buyurtma: ${payload.orderNumber}`, {
-        description: `${payload.restaurantName} — ${payload.total.toLocaleString()} so'm`,
-        duration: 10000,
-        action: {
-          label: "Ko'rish",
-          onClick: () => { window.location.href = `/orders` },
-        },
+    function createSocket(token: string): Socket {
+      const socket = io(`${API_URL}/orders`, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnectionAttempts: 5,
       })
 
-      onNewOrderRef.current?.(payload)
-    })
+      socket.on("order.new", (payload: NewOrderPayload) => {
+        audioRef.current?.play().catch(() => {})
+        toast.info(`🛒 Yangi buyurtma: ${payload.orderNumber}`, {
+          description: `${payload.restaurantName} — ${payload.total.toLocaleString()} so'm`,
+          duration: 10000,
+          action: {
+            label: "Ko'rish",
+            onClick: () => { window.location.href = `/orders` },
+          },
+        })
+        onNewOrderRef.current?.(payload)
+      })
 
-    socket.on("order.status.updated", (payload: StatusUpdatedPayload) => {
-      onStatusUpdatedRef.current?.(payload)
-    })
+      socket.on("order.status.updated", (payload: StatusUpdatedPayload) => {
+        onStatusUpdatedRef.current?.(payload)
+      })
 
-    socketRef.current = socket
+      socket.on("connect_error", async (err) => {
+        const isAuthError = err.message?.toLowerCase().includes("auth") ||
+          (err as unknown as { data?: { statusCode?: number } }).data?.statusCode === 401
+
+        if (!isAuthError) return
+
+        const newToken = await refreshAccessToken()
+        if (!newToken) {
+          if (typeof window !== "undefined") window.location.href = "/login"
+          return
+        }
+
+        socket.disconnect()
+        socketRef.current = createSocket(newToken)
+      })
+
+      return socket
+    }
+
+    socketRef.current = createSocket(accessToken)
 
     return () => {
-      socket.disconnect()
+      socketRef.current?.disconnect()
       socketRef.current = null
     }
   }, [accessToken])

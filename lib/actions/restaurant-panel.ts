@@ -2,27 +2,33 @@
 
 import { revalidatePath } from "next/cache"
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
+import type { MenuCategory } from "@/types/menu-category"
+import type { WorkingHours } from "@/types/working-hours"
 
-async function withToken<T>(fn: (token: string) => Promise<T>) {
+type ActionResult<T = undefined> =
+  | { success: true; data: T }
+  | { success: false; error: string }
+
+async function withToken<T>(fn: (token: string) => Promise<T>): Promise<ActionResult<T>> {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiya" }
   try {
     const data = await fn(token)
     return { success: true, data }
-  } catch (e: any) {
-    return { success: false, error: e.message || "Xatolik yuz berdi" }
+  } catch (e: unknown) {
+    return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
   }
 }
 
-export async function updateMyRestaurantAction(data: any) {
+export async function updateMyRestaurantAction(data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest("/restaurants/my", { method: "PATCH", body: data, accessToken: token })
     revalidatePath("/restaurant")
   })
 }
 
-export async function saveMyWorkingHoursAction(hours: any[]) {
+export async function saveMyWorkingHoursAction(hours: WorkingHours[]) {
   return withToken(async (token) => {
     await apiRequest("/restaurants/my", { method: "PATCH", body: { working_hours: hours }, accessToken: token })
     revalidatePath("/restaurant/profile")
@@ -36,14 +42,14 @@ export async function toggleMyRestaurantOpenAction() {
   })
 }
 
-export async function createMyProductAction(data: any) {
+export async function createMyProductAction(data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest("/products/my", { method: "POST", body: data, accessToken: token })
     revalidatePath("/restaurant/menu")
   })
 }
 
-export async function updateMyProductAction(id: string, data: any) {
+export async function updateMyProductAction(id: string, data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest(`/products/my/${id}`, { method: "PATCH", body: data, accessToken: token })
     revalidatePath("/restaurant/menu")
@@ -57,16 +63,16 @@ export async function deleteMyProductAction(id: string) {
   })
 }
 
-export async function createMyMenuCategoryAction(data: any) {
+export async function createMyMenuCategoryAction(data: Record<string, unknown>) {
   return withToken(async (token) => {
-    const res = await apiRequest("/menu-categories/my/menu", { method: "POST", body: data, accessToken: token })
+    const res = await apiRequest<MenuCategory>("/menu-categories/my/menu", { method: "POST", body: data, accessToken: token })
     revalidatePath("/restaurant/categories")
     revalidatePath("/restaurant/menu")
     return res.data
   })
 }
 
-export async function updateMyMenuCategoryAction(id: string, data: any) {
+export async function updateMyMenuCategoryAction(id: string, data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest(`/menu-categories/my/menu/${id}`, { method: "PATCH", body: data, accessToken: token })
     revalidatePath("/restaurant/categories")
@@ -84,7 +90,7 @@ export async function deleteMyMenuCategoryAction(id: string) {
 
 export async function fetchMyCategoriesAction() {
   return withToken(async (token) => {
-    const res = await apiRequest<any[]>("/menu-categories/my/menu", { accessToken: token })
+    const res = await apiRequest<MenuCategory[]>("/menu-categories/my/menu", { accessToken: token })
     return res.data
   })
 }
@@ -96,14 +102,14 @@ export async function replyMyReviewAction(id: string, reply: string) {
   })
 }
 
-export async function createMyPromotionAction(data: any) {
+export async function createMyPromotionAction(data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest("/promotions/my", { method: "POST", body: data, accessToken: token })
     revalidatePath("/restaurant/promotions")
   })
 }
 
-export async function updateMyPromotionAction(id: string, data: any) {
+export async function updateMyPromotionAction(id: string, data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest(`/promotions/my/${id}`, { method: "PATCH", body: data, accessToken: token })
     revalidatePath("/restaurant/promotions")

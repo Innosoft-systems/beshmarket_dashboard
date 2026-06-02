@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { validateEnv } from "@/lib/env";
+
+validateEnv();
 
 export const metadata: Metadata = {
   title: "BeshMarket Dashboard",

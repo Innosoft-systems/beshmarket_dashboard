@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
 
 export async function blockUserAction(id: string) {
   const token = await getAccessToken()
@@ -12,8 +12,8 @@ export async function blockUserAction(id: string) {
     await apiRequest(`/users/${id}/block`, { method: "PATCH", accessToken: token })
     revalidatePath("/users")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -25,8 +25,8 @@ export async function unblockUserAction(id: string) {
     await apiRequest(`/users/${id}/unblock`, { method: "PATCH", accessToken: token })
     revalidatePath("/users")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -38,7 +38,7 @@ export async function deleteUserAction(id: string) {
     await apiRequest(`/users/${id}/hard`, { method: "DELETE", accessToken: token })
     revalidatePath("/users")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }

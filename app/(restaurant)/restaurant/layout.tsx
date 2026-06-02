@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { RestaurantSocketProvider } from "@/components/restaurant-panel/RestaurantSocketProvider"
 import { RestaurantNotificationBell } from "@/components/layout/RestaurantNotificationBell"
 import { apiRequest } from "@/lib/api/client"
+import type { UnreadCountResponse } from "@/types/api"
 
 export const metadata: Metadata = {
   title: "Restaurant — BeshMarket",
@@ -17,7 +18,7 @@ export default async function RestaurantLayout({ children }: { children: React.R
 
   if (!token) redirect("/restaurant/login")
 
-  const unreadRes = await apiRequest<any>('/restaurant-notifications/unread-count', { accessToken: token })
+  const unreadRes = await apiRequest<UnreadCountResponse>('/restaurant-notifications/unread-count', { accessToken: token })
     .catch(() => ({ data: { count: 0 } }))
 
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { X, Upload } from "lucide-react"
@@ -24,6 +24,9 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
   const [, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const uploadAbortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => { uploadAbortRef.current?.abort() }, [])
 
   const [form, setForm] = useState({
     name_uz: product?.name_uz || "",
@@ -42,15 +45,20 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
 
   const uploadImage = async (file: File) => {
     setUploading(true)
+    uploadAbortRef.current?.abort()
+    uploadAbortRef.current = new AbortController()
     try {
       const fd = new FormData()
       fd.append("file", file)
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const res = await fetch("/api/upload", { method: "POST", body: fd, signal: uploadAbortRef.current.signal })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Xatolik")
       const url = `${process.env.NEXT_PUBLIC_API_URL}${json.data?.url || json.url}`
       setForm(f => ({ ...f, images: [...f.images, url] }))
-    } catch { toast.error("Rasm yuklanmadi") }
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return
+      toast.error("Rasm yuklanmadi")
+    }
     setUploading(false)
   }
 
@@ -159,7 +167,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
             <div className="flex flex-wrap gap-2">
               {form.images.map((url: string, i: number) => (
                 <div key={i} className="relative h-20 w-20 rounded-lg overflow-hidden border">
-                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <img src={url} alt={`Mahsulot rasmi ${i + 1}`} className="h-full w-full object-cover" />
                   <button onClick={() => setForm(f => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))}
                     className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5">
                     <X className="h-3 w-3 text-white" />

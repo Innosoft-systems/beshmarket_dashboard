@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAdminSocket, AdminNotificationPayload } from "@/hooks/use-admin-socket"
 import { useFcmToken } from "@/hooks/use-fcm-token"
+import { isSafeInternalUrl } from "@/lib/utils/safe-url"
 
 const TYPE_ICONS: Record<string, string> = {
   new_order: "🛒",
@@ -53,19 +54,24 @@ export function NotificationBell({ accessToken, initialCount, currentUserId }: P
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin-notifications?limit=20`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(10_000),
       })
+      if (!res.ok) return
       const json = await res.json()
       setNotifications(json.data?.data || [])
       setLoaded(true)
-    } catch { /* ignore */ }
+    } catch { /* network error — silent, user can retry by reopening */ }
   }
 
   const markAllRead = async () => {
     setMarking(true)
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin-notifications/read-all`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin-notifications/read-all`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(10_000),
+      })
+    } catch { /* optimistic update already applied */ }
     setMarking(false)
     setUnread(0)
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
@@ -74,11 +80,14 @@ export function NotificationBell({ accessToken, initialCount, currentUserId }: P
   const markOne = async (id: string, link?: string) => {
     setNotifications(prev => prev.map(n => n._id === id ? { ...n, is_read: true } : n))
     setUnread(prev => Math.max(0, prev - 1))
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin-notifications/${id}/read`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (link) {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin-notifications/${id}/read`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(10_000),
+      })
+    } catch { /* optimistic update already applied */ }
+    if (isSafeInternalUrl(link)) {
       setOpen(false)
       startTransition(() => router.push(link))
     }
@@ -102,7 +111,7 @@ export function NotificationBell({ accessToken, initialCount, currentUserId }: P
 
   return (
     <div className="relative" data-notif-bell="">
-      <Button variant="ghost" size="icon-sm" onClick={handleToggle} className="relative">
+      <Button variant="ghost" size="icon-sm" onClick={handleToggle} className="relative" aria-label="Bildirishnomalar">
         <Bell className="h-5 w-5" />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">

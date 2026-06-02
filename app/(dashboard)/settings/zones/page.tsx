@@ -9,20 +9,9 @@ import {
   updateServiceZoneAction,
   deleteServiceZoneAction,
 } from "@/lib/actions/service-zones"
+import type { ServiceZone, ZoneType } from "@/types/service-zone"
 
 const YANDEX_API_KEY = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY || ""
-
-type ZoneType = "polygon" | "circle"
-
-interface ServiceZone {
-  _id: string
-  name: string
-  type: ZoneType
-  coordinates: number[][]
-  radius?: number
-  is_active: boolean
-  createdAt?: string
-}
 
 type DrawMode = "idle" | "polygon" | "circle"
 

@@ -7,13 +7,30 @@ export interface OrderItem {
   line_total: number
 }
 
+export interface OrderClient {
+  _id: string
+  full_name?: string
+  phone?: string
+}
+
+export interface OrderRestaurant {
+  _id?: string
+  name: string
+}
+
+export interface OrderAddress {
+  _id: string
+  label?: string
+  address?: string
+}
+
 export interface Order {
   _id: string
   order_number: string
-  client_id: any
-  restaurant_id: any
-  courier_id?: any
-  address_id?: any
+  client_id: string | OrderClient | null
+  restaurant_id: string | OrderRestaurant | null
+  courier_id?: string | OrderClient | null
+  address_id?: string | OrderAddress | null
   items: OrderItem[]
   status: string
   payment_status: string

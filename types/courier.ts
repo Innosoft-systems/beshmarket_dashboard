@@ -1,6 +1,13 @@
+export interface CourierUser {
+  _id: string;
+  full_name?: string;
+  phone?: string;
+  avatar?: string;
+}
+
 export interface CourierProfile {
   _id: string;
-  user_id: any;
+  user_id: string | CourierUser;
   vehicle_type: string;
   vehicle_number?: string;
   status: string;

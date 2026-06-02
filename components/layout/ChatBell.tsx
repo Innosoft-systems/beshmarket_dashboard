@@ -45,7 +45,7 @@ export function ChatBell({ accessToken, initialUnread }: Props) {
   }
 
   return (
-    <Button variant="ghost" size="icon-sm" onClick={handleClick} className="relative">
+    <Button variant="ghost" size="icon-sm" onClick={handleClick} className="relative" aria-label="Chat">
       <MessageSquare className="h-5 w-5" />
       {unread > 0 && (
         <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">

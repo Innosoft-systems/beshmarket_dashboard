@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache"
 import { getAccessToken } from "@/lib/auth/session"
-import { apiRequest } from "@/lib/api/client"
+import { apiRequest, ApiError } from "@/lib/api/client"
+import type { CourierFormValues } from "@/schemas/courier"
 
-export async function createCourierAction(data: any) {
+export async function createCourierAction(data: CourierFormValues) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
@@ -16,12 +17,12 @@ export async function createCourierAction(data: any) {
     })
     revalidatePath("/couriers")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
-export async function updateCourierAction(id: string, data: any) {
+export async function updateCourierAction(id: string, data: Partial<CourierFormValues> & Record<string, unknown>) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
@@ -29,8 +30,8 @@ export async function updateCourierAction(id: string, data: any) {
     await apiRequest(`/couriers/${id}`, { method: "PATCH", body: data, accessToken: token })
     revalidatePath("/couriers")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -43,11 +44,10 @@ export async function blockCourierUserAction(userId: string, block: boolean) {
     await apiRequest(endpoint, { method: "PATCH", accessToken: token })
     revalidatePath("/couriers")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
-
 
 export async function deleteCourierAction(id: string) {
   const token = await getAccessToken()
@@ -57,8 +57,8 @@ export async function deleteCourierAction(id: string) {
     await apiRequest(`/couriers/${id}`, { method: "DELETE", accessToken: token })
     revalidatePath("/couriers")
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
 
@@ -74,7 +74,7 @@ export async function payoutCourierAction(id: string, amount: number, note?: str
     })
     revalidatePath(`/couriers/${id}`)
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || "Xatolik yuz berdi" }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }

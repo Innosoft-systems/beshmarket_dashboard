@@ -1,3 +1,7 @@
+export interface UnreadCountResponse {
+  count: number;
+}
+
 export interface PaginationMeta {
   total: number;
   page: number;

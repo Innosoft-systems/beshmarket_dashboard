@@ -116,7 +116,7 @@ export function BannersClient({ banners }: BannersClientProps) {
       header: "",
       cell: ({ row }) => (
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Amallar" />}>
             <MoreHorizontal className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

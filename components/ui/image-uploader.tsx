@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Upload, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -18,6 +18,10 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(value || null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  // Abort any in-flight upload on unmount
+  useEffect(() => () => { abortRef.current?.abort() }, [])
 
   const handleFile = async (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
@@ -45,10 +49,14 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
       const formData = new FormData()
       formData.append("file", file)
 
+      abortRef.current?.abort()
+      abortRef.current = new AbortController()
+
       const res = await fetch(`${API_URL}/api/v1/upload/image`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
+        signal: abortRef.current.signal,
       })
 
       if (!res.ok) {
@@ -61,8 +69,9 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
       onChange(url)
       setPreview(url)
       toast.success("Rasm yuklandi")
-    } catch (err: any) {
-      toast.error(err.message || "Rasm yuklashda xatolik yuz berdi")
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return
+      toast.error(err instanceof Error ? err.message : "Rasm yuklashda xatolik yuz berdi")
       setPreview(value || null)
       if (inputRef.current) inputRef.current.value = ""
     } finally {
