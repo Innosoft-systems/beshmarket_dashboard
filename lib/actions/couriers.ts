@@ -62,12 +62,12 @@ export async function deleteCourierAction(id: string) {
   }
 }
 
-export async function payoutCourierAction(id: string, amount: number, note?: string) {
+export async function correctionCourierAction(id: string, amount: number, note: string) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
   try {
-    await apiRequest(`/couriers/${id}/payout`, {
+    await apiRequest(`/couriers/${id}/correction`, {
       method: "POST",
       body: { amount, note },
       accessToken: token,

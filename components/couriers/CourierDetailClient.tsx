@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { COURIER_STATUSES, ORDER_STATUSES } from "@/types"
-import { updateCourierAction, blockCourierUserAction, deleteCourierAction } from "@/lib/actions/couriers"
+import { updateCourierAction, blockCourierUserAction, deleteCourierAction, correctionCourierAction } from "@/lib/actions/couriers"
 
 interface Props {
   profile: any
@@ -33,6 +33,10 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [correctionOpen, setCorrectionOpen] = useState(false)
+  const [correctionAmount, setCorrectionAmount] = useState("")
+  const [correctionNote, setCorrectionNote] = useState("")
+  const [correctionLoading, setCorrectionLoading] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({
     vehicle_type: profile.vehicle_type,
@@ -104,6 +108,10 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
           <Pencil className="h-4 w-4 mr-2" />
           Tahrirlash
         </Button>
+        <Button variant="outline" onClick={() => setCorrectionOpen(true)} disabled={isPending}>
+          <Wallet className="h-4 w-4 mr-2" />
+          Korreksiya
+        </Button>
         <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
           <Trash2 className="h-4 w-4 mr-2" />
           O'chirish
@@ -129,9 +137,10 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
         <div className="rounded-xl border border-purple-500 bg-background p-5 space-y-2">
           <div className="flex items-center gap-2 text-purple-500">
             <Wallet className="h-4 w-4" />
-            <span className="text-sm">Balans</span>
+            <span className="text-sm">Balans (depozit)</span>
           </div>
           <p className="text-3xl font-bold">{balanceData.balance?.toLocaleString()}<span className="text-base font-normal text-muted-foreground ml-1">so'm</span></p>
+          <p className="text-xs text-muted-foreground">Naqd buyurtmalar uchun</p>
         </div>
         <div className="rounded-xl border border-orange-500 bg-background p-5 space-y-2">
           <div className="flex items-center gap-2 text-orange-500">
@@ -216,7 +225,10 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
       {/* Oylik daromadlar */}
       {monthlyChart.length > 0 && (
         <div className="space-y-3">
-          <h3 className="font-semibold flex items-center gap-2"><Wallet className="h-5 w-5 text-green-500" /> Oylik daromadlar</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2"><Wallet className="h-5 w-5 text-green-500" /> Oylik daromadlar</h3>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Naqd offline to'lanadi</span>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {monthlyChart.map((item, i) => (
               <div key={i} className="rounded-lg border bg-background p-3 text-center">
@@ -224,6 +236,53 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
                 <p className="text-sm font-bold text-green-600 mt-1">{item.amount.toLocaleString()}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Correction Dialog */}
+      {correctionOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
+          <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-lg ring-1 ring-foreground/10 space-y-4">
+            <h3 className="text-base font-medium">Balans korreksiyasi</h3>
+            <p className="text-sm text-muted-foreground">Musbat son — balans oshiradi. Manfiy son — kamaytiradi.</p>
+            <div className="space-y-2">
+              <Label>Miqdor (so'm)</Label>
+              <Input
+                type="number"
+                placeholder="+50000 yoki -20000"
+                value={correctionAmount}
+                onChange={(e) => setCorrectionAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Sabab</Label>
+              <Input
+                placeholder="Korreksiya sababi..."
+                value={correctionNote}
+                onChange={(e) => setCorrectionNote(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => { setCorrectionOpen(false); setCorrectionAmount(""); setCorrectionNote("") }}>Bekor qilish</Button>
+              <Button
+                disabled={correctionLoading || !correctionAmount || !correctionNote}
+                onClick={async () => {
+                  const amt = Number(correctionAmount)
+                  if (!amt || !correctionNote.trim()) return
+                  setCorrectionLoading(true)
+                  const result = await correctionCourierAction(profile._id, amt, correctionNote.trim())
+                  setCorrectionLoading(false)
+                  if (result.success) {
+                    toast.success("Korreksiya qo'shildi")
+                    setCorrectionOpen(false)
+                    setCorrectionAmount("")
+                    setCorrectionNote("")
+                    startTransition(() => router.refresh())
+                  } else toast.error(result.error)
+                }}
+              >{correctionLoading ? "Saqlanmoqda..." : "Saqlash"}</Button>
+            </div>
           </div>
         </div>
       )}
