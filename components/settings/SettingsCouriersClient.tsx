@@ -58,6 +58,11 @@ function CourierGeneralSettings({ settings }: { settings: { key: string; value: 
     shift_cancellation_hours: getSetting("shift_cancellation_hours"),
     shift_penalty_per_hour: getSetting("shift_penalty_per_hour"),
     courier_order_reject_penalty: getSetting("courier_order_reject_penalty"),
+    courier_per_km_rate: getSetting("courier_per_km_rate"),
+    courier_base_payout_bike: getSetting("courier_base_payout_bike"),
+    courier_base_payout_moped: getSetting("courier_base_payout_moped"),
+    courier_base_payout_motorcycle: getSetting("courier_base_payout_motorcycle"),
+    courier_base_payout_car: getSetting("courier_base_payout_car"),
   })
   const [loading, setLoading] = useState(false)
 
@@ -85,6 +90,35 @@ function CourierGeneralSettings({ settings }: { settings: { key: string; value: 
         <Label>Buyurtma rad etish jarimasi (so'm)</Label>
         <Input type="number" value={form.courier_order_reject_penalty} onChange={(e) => setForm({ ...form, courier_order_reject_penalty: e.target.value })} />
       </div>
+
+      <div className="pt-2 border-t">
+        <p className="text-sm font-medium mb-3">Kuryer payout sozlamalari</p>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label>Har km uchun stavka (so'm)</Label>
+            <Input type="number" value={form.courier_per_km_rate} onChange={(e) => setForm({ ...form, courier_per_km_rate: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Velosiped — asosiy to'lov (so'm)</Label>
+              <Input type="number" value={form.courier_base_payout_bike} onChange={(e) => setForm({ ...form, courier_base_payout_bike: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Moped — asosiy to'lov (so'm)</Label>
+              <Input type="number" value={form.courier_base_payout_moped} onChange={(e) => setForm({ ...form, courier_base_payout_moped: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Mototsiкl — asosiy to'lov (so'm)</Label>
+              <Input type="number" value={form.courier_base_payout_motorcycle} onChange={(e) => setForm({ ...form, courier_base_payout_motorcycle: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Mashina — asosiy to'lov (so'm)</Label>
+              <Input type="number" value={form.courier_base_payout_car} onChange={(e) => setForm({ ...form, courier_base_payout_car: e.target.value })} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Button onClick={handleSave} disabled={loading}>
         {loading ? "Saqlanmoqda..." : "Saqlash"}
       </Button>
