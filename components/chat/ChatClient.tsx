@@ -75,6 +75,68 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
   useEffect(() => {
     if (!accessToken) return
 
+    function attachHandlers(s: Socket) {
+      s.on("chat:message", (msg: Message) => {
+        if (msg.user_id === selectedUserIdRef.current) {
+          setMessages(prev => {
+            if (prev.some(m => m._id === msg._id)) return prev
+            if (msg.sender === "admin") {
+              const optIdx = prev.findIndex(m => m._id.startsWith("opt-") && m.text === msg.text)
+              if (optIdx !== -1) {
+                const next = [...prev]
+                next[optIdx] = msg
+                return next
+              }
+            }
+            return [...prev, msg]
+          })
+          if (msg.sender === "user") setTyping(false)
+        }
+
+        if (msg.sender === "user" && msg.user_id !== selectedUserIdRef.current) {
+          new Audio("/sounds/order_sound.wav").play().catch(() => {})
+          toast("Yangi xabar", { description: (msg.text || "📷 Rasm").slice(0, 80) })
+        }
+
+        setConvs(prev => {
+          const idx = prev.findIndex(c => c.user_id === msg.user_id)
+          const updated = { last_message: msg.text || "📷 Rasm", last_sender: msg.sender, last_at: msg.createdAt }
+          if (idx === -1) {
+            startTransition(() => router.refresh())
+            return prev
+          }
+          const newConvs = [...prev]
+          newConvs[idx] = {
+            ...newConvs[idx],
+            ...updated,
+            unread: msg.sender === "user" && msg.user_id !== selectedUserIdRef.current
+              ? (newConvs[idx].unread || 0) + 1
+              : newConvs[idx].unread,
+            ...(msg.sender === "user" ? { is_closed: false } : {}),
+          }
+          return newConvs.sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime())
+        })
+      })
+
+      s.on("chat:typing", (data: { userId?: string; sender?: string }) => {
+        if (data.sender === "user" && data.userId === selectedUserIdRef.current) {
+          setTyping(true)
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+          typingTimeoutRef.current = setTimeout(() => setTyping(false), 3000)
+        }
+      })
+
+      s.on("chat:closed", ({ userId }: { userId?: string }) => {
+        if (userId) {
+          setConvs(prev => prev.map(c => c.user_id === userId ? { ...c, is_closed: true } : c))
+        }
+      })
+
+      s.on("chat:read", ({ userId }: { userId: string }) => {
+        setConvs(prev => prev.map(c => c.user_id === userId ? { ...c, unread: 0 } : c))
+      })
+    }
+
     function createChatSocket(token: string): Socket {
       const s = io(`${API_URL}/chat`, {
         auth: { token },
@@ -89,73 +151,16 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
         const newToken = await refreshAccessToken()
         if (!newToken) { window.location.href = "/login"; return }
         s.disconnect()
-        socketRef.current = createChatSocket(newToken)
+        const newSocket = createChatSocket(newToken)
+        socketRef.current = newSocket
       })
 
+      attachHandlers(s)
       return s
     }
 
     const socket = createChatSocket(accessToken)
     socketRef.current = socket
-
-    socket.on("chat:message", (msg: Message) => {
-      if (msg.user_id === selectedUserIdRef.current) {
-        setMessages(prev => {
-          if (prev.some(m => m._id === msg._id)) return prev
-          if (msg.sender === "admin") {
-            const optIdx = prev.findIndex(m => m._id.startsWith("opt-") && m.text === msg.text)
-            if (optIdx !== -1) {
-              const next = [...prev]
-              next[optIdx] = msg
-              return next
-            }
-          }
-          return [...prev, msg]
-        })
-        if (msg.sender === "user") setTyping(false)
-      }
-
-      if (msg.sender === "user" && msg.user_id !== selectedUserIdRef.current) {
-        new Audio("/sounds/order_sound.wav").play().catch(() => {})
-        toast("Yangi xabar", { description: (msg.text || "📷 Rasm").slice(0, 80) })
-      }
-
-      setConvs(prev => {
-        const idx = prev.findIndex(c => c.user_id === msg.user_id)
-        const updated = { last_message: msg.text || "📷 Rasm", last_sender: msg.sender, last_at: msg.createdAt }
-        if (idx === -1) {
-          startTransition(() => router.refresh())
-          return prev
-        }
-        const newConvs = [...prev]
-        newConvs[idx] = {
-          ...newConvs[idx],
-          ...updated,
-          unread: msg.sender === "user" && msg.user_id !== selectedUserIdRef.current
-            ? (newConvs[idx].unread || 0) + 1
-            : newConvs[idx].unread,
-        }
-        return newConvs.sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime())
-      })
-    })
-
-    socket.on("chat:typing", (data: { userId?: string; sender?: string }) => {
-      if (data.sender === "user" && data.userId === selectedUserIdRef.current) {
-        setTyping(true)
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-        typingTimeoutRef.current = setTimeout(() => setTyping(false), 3000)
-      }
-    })
-
-    socket.on("chat:closed", ({ userId }: { userId?: string }) => {
-      if (userId) {
-        setConvs(prev => prev.map(c => c.user_id === userId ? { ...c, is_closed: true } : c))
-      }
-    })
-
-    socket.on("chat:read", ({ userId }: { userId: string }) => {
-      setConvs(prev => prev.map(c => c.user_id === userId ? { ...c, unread: 0 } : c))
-    })
 
     return () => { socket.disconnect() }
   }, [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -372,12 +377,14 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
                   size="sm"
                   onClick={async () => {
                     try {
-                      await fetch(`${API_URL}/api/chat/${selectedUserId}/close`, {
+                      const res = await fetch(`${API_URL}/api/v1/chat/${selectedUserId}/close`, {
                         method: "POST",
                         headers: { Authorization: `Bearer ${accessToken}` },
                       })
+                      if (!res.ok) throw new Error(`${res.status}`)
                       setConvs(prev => prev.map(c => c.user_id === selectedUserId ? { ...c, is_closed: true } : c))
                       toast.success("Chat yopildi")
+                      startTransition(() => router.refresh())
                     } catch { toast.error("Xatolik") }
                   }}
                 >
