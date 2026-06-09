@@ -8,6 +8,7 @@ import { RestaurantNotificationBell } from "@/components/layout/RestaurantNotifi
 import { MarketVisibilityToggle } from "@/components/restaurant-panel/MarketVisibilityToggle"
 import { apiRequest } from "@/lib/api/client"
 import type { UnreadCountResponse } from "@/types/api"
+import { Restaurant } from "@/types"
 
 export const metadata: Metadata = {
   title: "Restaurant — BeshMarket",
@@ -22,7 +23,7 @@ export default async function RestaurantLayout({ children }: { children: React.R
   const [unreadRes, restaurantRes] = await Promise.all([
     apiRequest<UnreadCountResponse>('/restaurant-notifications/unread-count', { accessToken: token })
       .catch(() => ({ data: { count: 0 } })),
-    apiRequest<any>('/restaurants/my', { accessToken: token })
+    apiRequest<Restaurant>('/restaurants/my', { accessToken: token })
       .catch(() => ({ data: null })),
   ])
 
