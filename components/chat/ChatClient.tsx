@@ -418,7 +418,7 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
             </div>
 
             {/* Active order panel */}
-            {selectedConv?.order && !["delivered", "cancelled"].includes(selectedConv.order.status) && (
+            {selectedConv?.order && !selectedConv.is_closed && !["delivered", "cancelled"].includes(selectedConv.order.status) && (
               <div className="px-5 py-2 border-b bg-muted/40 flex items-center gap-2 text-xs flex-wrap">
                 <Badge variant="secondary" className="font-mono">{selectedConv.order.order_number}</Badge>
                 {selectedConv.order.restaurant_name && (
