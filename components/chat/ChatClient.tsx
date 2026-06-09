@@ -14,6 +14,15 @@ import { refreshAccessToken } from "@/lib/auth/refresh-client"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
+interface OrderSummary {
+  _id: string
+  order_number: string
+  status: string
+  total: number
+  created_at: string
+  restaurant_name?: string
+}
+
 interface Conversation {
   user_id: string
   user_name?: string
@@ -24,8 +33,23 @@ interface Conversation {
   last_at: string
   unread: number
   is_closed?: boolean
+  order?: OrderSummary | null
 }
 
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  pending: "Kutilmoqda",
+  accepted: "Qabul qilindi",
+  preparing: "Tayyorlanmoqda",
+  assigned: "Kuryer tayinlandi",
+  on_the_way_to_restaurant: "Restoranga ketmoqda",
+  arrived_at_restaurant: "Restoranda",
+  picked_up: "Olib ketildi",
+  on_the_way_to_customer: "Mijozga ketmoqda",
+  arrived_at_customer: "Mijoz eshigida",
+  delivered: "Yetkazildi",
+  cancelled: "Bekor qilindi",
+}
 
 interface Props {
   conversations: Conversation[]
@@ -392,6 +416,26 @@ export function ChatClient({ conversations: initConvs, initialMessages, selected
                 </Button>
               )}
             </div>
+
+            {/* Active order panel */}
+            {selectedConv?.order && !["delivered", "cancelled"].includes(selectedConv.order.status) && (
+              <div className="px-5 py-2 border-b bg-muted/40 flex items-center gap-2 text-xs flex-wrap">
+                <Badge variant="secondary" className="font-mono">{selectedConv.order.order_number}</Badge>
+                {selectedConv.order.restaurant_name && (
+                  <span className="font-medium truncate max-w-[140px]">{selectedConv.order.restaurant_name}</span>
+                )}
+                <Badge>{ORDER_STATUS_LABELS[selectedConv.order.status] ?? selectedConv.order.status}</Badge>
+                <span className="ml-auto font-semibold whitespace-nowrap">
+                  {(selectedConv.order.total ?? 0).toLocaleString()} so&apos;m
+                </span>
+                <a
+                  href={`/orders/${selectedConv.order._id}`}
+                  className="text-primary underline underline-offset-2 whitespace-nowrap"
+                >
+                  Ochish
+                </a>
+              </div>
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-hidden">
