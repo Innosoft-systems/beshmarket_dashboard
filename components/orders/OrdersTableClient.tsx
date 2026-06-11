@@ -297,13 +297,12 @@ export function OrdersTableClient({
         const r = row.original
         if (r._isGroup) {
           return (
-            <div className="flex flex-col gap-0.5">
+            <div
+              className="flex flex-col gap-0.5 cursor-pointer"
+              onClick={() => router.push(`/orders/group/${r.group_id}`)}
+            >
               {r.orders.map((o) => (
-                <span
-                  key={o._id}
-                  className="font-medium text-primary cursor-pointer hover:underline text-sm"
-                  onClick={() => router.push(`/orders/${o._id}`)}
-                >
+                <span key={o._id} className="font-medium text-primary hover:underline text-sm">
                   {o.order_number}
                 </span>
               ))}

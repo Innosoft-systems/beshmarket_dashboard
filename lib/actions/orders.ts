@@ -42,3 +42,17 @@ export async function assignCourierAction(orderId: string, courierId: string) {
     return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
   }
 }
+
+export async function assignGroupCourierAction(groupId: string, courierId: string) {
+  const token = await getAccessToken()
+  if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
+
+  try {
+    await apiRequest(`/orders/group/${groupId}/assign-courier`, { method: "PATCH", body: { courier_id: courierId }, accessToken: token })
+    revalidatePath("/orders")
+    revalidatePath(`/orders/group/${groupId}`)
+    return { success: true }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
+  }
+}
