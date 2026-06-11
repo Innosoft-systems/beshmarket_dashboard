@@ -378,9 +378,11 @@ export function OrdersTableClient({
           return <OrderTimer createdAt={createdAt} />
         }
         const date = new Date(createdAt)
+        const dateStr = `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`
+        const timeStr = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
         return (
           <span className="text-muted-foreground text-sm">
-            {date.toLocaleDateString("uz")} {date.toLocaleTimeString("uz", { hour: "2-digit", minute: "2-digit" })}
+            {dateStr} {timeStr}
           </span>
         )
       },
