@@ -48,7 +48,6 @@ export function useAdminSocket(
 
     function attachListeners(socket: ReturnType<typeof io>) {
       socket.off("admin.notification")
-      socket.off("order.new")
 
       socket.on("admin.notification", (payload: AdminNotificationPayload) => {
         if (currentUserIdRef.current && payload.actor_user_id === currentUserIdRef.current) return
@@ -69,15 +68,6 @@ export function useAdminSocket(
             : undefined,
         })
       })
-
-      socket.on("order.new", (payload: { orderNumber: string; restaurantName?: string; total: number }) => {
-        toast.info(`🛒 Yangi buyurtma: ${payload.orderNumber}`, {
-          description: payload.restaurantName
-            ? `${payload.restaurantName} — ${payload.total.toLocaleString()} so'm`
-            : `${payload.total.toLocaleString()} so'm`,
-          duration: 10000,
-        })
-      })
     }
 
     // Reuse existing socket if token unchanged
@@ -85,7 +75,6 @@ export function useAdminSocket(
       attachListeners(globalSocket)
       return () => {
         globalSocket?.off("admin.notification")
-        globalSocket?.off("order.new")
       }
     }
 
@@ -136,7 +125,6 @@ export function useAdminSocket(
 
     return () => {
       socket.off("admin.notification")
-      socket.off("order.new")
     }
   }, [accessToken])
 }

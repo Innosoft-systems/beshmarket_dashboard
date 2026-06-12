@@ -188,7 +188,7 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600"
-                        disabled={isPending || (slot.booked_by?.length ?? 0) > 0}
+                        disabled={isPending}
                         onClick={() => setDeleteId(slot._id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -226,7 +226,7 @@ export function ShiftsClient({ initialData, initialFilters, stats }: Props) {
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId("") }}
         title="Slotni o'chirish"
-        description="Bu slot o'chiriladi. Bandlangan slotni o'chirib bo'lmaydi."
+        description="Bu slot o'chiriladi. Bandlangan bo'lsa, kuryerlarga notification yuboriladi (jarima yo'q)."
         confirmLabel="O'chirish"
         variant="destructive"
         loading={deleteLoading}

@@ -55,6 +55,24 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
 
   useFcmToken(accessToken)
 
+  // Polling fallback: socket ishlamasa ham badge yangilanadi
+  useEffect(() => {
+    if (!accessToken) return
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/v1/restaurant-notifications/unread-count`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!res.ok) return
+        const { data } = await res.json()
+        setUnread(data?.count ?? 0)
+      } catch {}
+    }
+    const id = setInterval(poll, 30_000)
+    return () => clearInterval(id)
+  }, [accessToken])
+
   // WebSocket connection for real-time notifications
   useEffect(() => {
     if (!accessToken) return
