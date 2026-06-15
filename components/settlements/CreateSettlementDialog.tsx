@@ -121,7 +121,9 @@ export function CreateSettlementDialog({ open, onOpenChange, restaurants }: Prop
             {restaurants.length > 0 ? (
               <Select value={restaurantId} onValueChange={(v: string | null) => { setRestaurantId(v ?? ""); setPreview(null) }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Restoran tanlang" />
+                  <SelectValue placeholder="Restoran tanlang">
+                    {restaurantId ? (restaurants.find((r) => r._id === restaurantId)?.name ?? restaurantId) : "Restoran tanlang"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {restaurants.map((r) => (

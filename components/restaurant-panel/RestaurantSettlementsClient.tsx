@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useState, useTransition } from "react"
+import { useCallback, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
-import { Plus, X } from "lucide-react"
+import { X } from "lucide-react"
 import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,27 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MarkPaidDialog } from "./MarkPaidDialog"
-import { CreateSettlementDialog } from "./CreateSettlementDialog"
-import type { Settlement } from "@/types"
-import type { Restaurant } from "@/types"
 
 function formatAmount(tiyin: number) {
   return (tiyin / 100).toLocaleString("uz-UZ") + " so'm"
 }
 
 function formatDate(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, ".")
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, ".")
 }
 
 function formatPeriod(start: string, end: string) {
   return `${formatDate(start)} – ${formatDate(end)}`
-}
-
-function getRestaurantName(restaurant_id: Settlement["restaurant_id"]): string {
-  if (!restaurant_id || typeof restaurant_id === "string") return restaurant_id as string || "—"
-  return restaurant_id.name || "—"
 }
 
 const STATUS_CONFIG = {
@@ -56,29 +46,18 @@ interface Stats {
 }
 
 interface Props {
-  initialData: Settlement[]
+  initialData: any[]
   totalPages: number
   currentPage: number
-  filters: { status: string; restaurant_id: string }
+  filters: { status: string }
   stats: Stats
-  restaurants: Restaurant[]
 }
 
-export function SettlementsClient({
-  initialData,
-  totalPages,
-  currentPage,
-  filters,
-  stats,
-  restaurants,
-}: Props) {
+export function RestaurantSettlementsClient({ initialData, totalPages, currentPage, filters, stats }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [, startTransition] = useTransition()
-
-  const [markPaidSettlement, setMarkPaidSettlement] = useState<Settlement | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
 
   const updateParam = useCallback(
     (updates: Record<string, string>) => {
@@ -99,14 +78,7 @@ export function SettlementsClient({
     startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }
 
-  const columns: ColumnDef<Settlement>[] = [
-    {
-      accessorKey: "restaurant_id",
-      header: "Restoran",
-      cell: ({ row }) => (
-        <span className="text-sm font-medium">{getRestaurantName(row.original.restaurant_id)}</span>
-      ),
-    },
+  const columns: ColumnDef<any>[] = [
     {
       id: "period",
       header: "Davr",
@@ -119,16 +91,12 @@ export function SettlementsClient({
     {
       accessorKey: "orders_count",
       header: "Buyurtmalar",
-      cell: ({ row }) => (
-        <span className="text-sm">{row.original.orders_count} ta</span>
-      ),
+      cell: ({ row }) => <span className="text-sm">{row.original.orders_count} ta</span>,
     },
     {
       accessorKey: "total_orders_amount",
       header: "Jami summa",
-      cell: ({ row }) => (
-        <span className="text-xs">{formatAmount(row.original.total_orders_amount)}</span>
-      ),
+      cell: ({ row }) => <span className="text-xs">{formatAmount(row.original.total_orders_amount)}</span>,
     },
     {
       accessorKey: "commission_amount",
@@ -157,43 +125,29 @@ export function SettlementsClient({
       },
     },
     {
-      id: "actions",
-      header: "Amallar",
-      cell: ({ row }) => {
-        if (row.original.status !== "pending") return null
-        return (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs text-green-700 border-green-300 hover:bg-green-50"
-            onClick={() => setMarkPaidSettlement(row.original)}
-          >
-            To'landi
-          </Button>
-        )
-      },
+      id: "paid_at",
+      header: "To'langan sana",
+      cell: ({ row }) =>
+        row.original.paid_at ? (
+          <span className="text-xs text-muted-foreground">{formatDate(row.original.paid_at)}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        ),
     },
   ]
 
-  const hasFilters = filters.status || filters.restaurant_id
+  const hasFilters = !!filters.status
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Hisob-kitoblar</h1>
-          <p className="text-muted-foreground text-sm mt-1">Restoran hisob-kitoblari va to'lovlar</p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Yangi hisob-kitob
-        </Button>
+      <div>
+        <h1 className="text-2xl font-semibold">Hisob-kitoblar</h1>
+        <p className="text-muted-foreground text-sm mt-1">To'lovlar va komissiya tarixi</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border bg-background p-4 space-y-1">
-          <p className="text-xs text-muted-foreground">Jami hisob-kitoblar</p>
+          <p className="text-xs text-muted-foreground">Jami</p>
           <p className="text-2xl font-bold">{stats.total.toLocaleString()}</p>
         </div>
         <div className="rounded-xl border border-yellow-500 bg-background p-4 space-y-1">
@@ -208,59 +162,32 @@ export function SettlementsClient({
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <Select
-          value={filters.status || ""}
-          onValueChange={(v) => updateParam({ status: v ?? "" })}
-        >
+        <Select value={filters.status || ""} onValueChange={(v) => updateParam({ status: v ?? "" })}>
           <SelectTrigger className="h-9 w-44 text-sm">
             <SelectValue placeholder="Barcha statuslar" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">Barcha statuslar</SelectItem>
             {STATUS_FILTER.map((s) => (
-              <SelectItem key={s.value} value={s.value}>
-                {s.label}
-              </SelectItem>
+              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         {hasFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 gap-1"
-            onClick={() => router.push(pathname)}
-          >
+          <Button variant="ghost" size="sm" className="h-9 gap-1" onClick={() => router.push(pathname)}>
             <X className="h-4 w-4" /> Tozalash
           </Button>
         )}
       </div>
 
-      {/* Table */}
       <DataTable
         columns={columns}
         data={initialData}
         pageCount={totalPages}
         currentPage={currentPage}
         onPageChange={goPage}
-      />
-
-      {/* Dialogs */}
-      {markPaidSettlement && (
-        <MarkPaidDialog
-          settlement={markPaidSettlement}
-          open={!!markPaidSettlement}
-          onOpenChange={(open) => { if (!open) setMarkPaidSettlement(null) }}
-        />
-      )}
-
-      <CreateSettlementDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        restaurants={restaurants}
       />
     </div>
   )
