@@ -335,6 +335,7 @@ function OrderSettings({ settings }: { settings: { key: string; value: any }[] }
   const [form, setForm] = useState({
     min_order_amount: getSetting("min_order_amount"),
     delivery_fee: getSetting("delivery_fee"),
+    service_fee_rate: getSetting("service_fee_rate"),
   })
   const [loading, setLoading] = useState(false)
 
@@ -357,6 +358,10 @@ function OrderSettings({ settings }: { settings: { key: string; value: any }[] }
       <div className="space-y-2">
         <Label>Yetkazib berish narxi (so'm)</Label>
         <Input type="number" value={form.delivery_fee} onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })} placeholder="5000" />
+      </div>
+      <div className="space-y-2">
+        <Label>Servis haqi foizi (%)</Label>
+        <Input type="number" value={form.service_fee_rate} onChange={(e) => setForm({ ...form, service_fee_rate: e.target.value })} placeholder="2" />
       </div>
       <Button onClick={handleSave} disabled={loading}>
         {loading ? "Saqlanmoqda..." : "Saqlash"}
