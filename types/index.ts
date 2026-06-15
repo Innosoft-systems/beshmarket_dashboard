@@ -11,3 +11,4 @@ export * from "./review";
 export * from "./working-hours";
 export * from "./menu-category";
 export * from "./payment";
+export * from "./settlement";
