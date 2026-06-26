@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Power, FolderPlus } from "lucide-react"
+import { Plus, Pencil, Trash2, Power, FolderPlus, PackageX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getFullImgUrl } from "@/lib/utils"
@@ -66,6 +66,13 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
     const r = scope === "restaurant"
       ? await updateMyProductAction(p._id, { is_active: !p.is_active })
       : await updateProductAction(p._id, { is_active: !p.is_active })
+    r.success ? startTransition(() => router.refresh()) : toast.error(r.error)
+  }
+
+  const toggleAvailable = async (p: any) => {
+    const r = scope === "restaurant"
+      ? await updateMyProductAction(p._id, { is_available: !p.is_available })
+      : await updateProductAction(p._id, { is_available: !p.is_available })
     r.success ? startTransition(() => router.refresh()) : toast.error(r.error)
   }
 
@@ -162,6 +169,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                 <th className="h-11 px-4 text-right font-medium">Narx</th>
                 <th className="h-11 px-4 text-right font-medium">Buyurtmalar</th>
                 <th className="h-11 px-4 text-center font-medium">Status</th>
+                <th className="h-11 px-4 text-center font-medium">Mavjud</th>
                 <th className="h-11 px-4 text-right font-medium">Amal</th>
               </tr>
             </thead>
@@ -192,6 +200,17 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                         {p.is_active ? "Faol" : "Nofaol"}
                       </Badge>
                     </td>
+                    <td className="px-4 py-2 text-center">
+                      <button
+                        disabled={isPending}
+                        onClick={() => toggleAvailable(p)}
+                        title={p.is_available ? "Mavjud — bosib \"Qolmadi\" deb belgilang" : "Qolmadi — bosib mavjud deb belgilang"}
+                      >
+                        <Badge variant="outline" className={p.is_available !== false ? "bg-blue-50 text-blue-700 border-blue-200 cursor-pointer hover:bg-blue-100" : "bg-orange-100 text-orange-700 border-orange-200 cursor-pointer hover:bg-orange-200"}>
+                          {p.is_available !== false ? "Mavjud" : "Qolmadi"}
+                        </Badge>
+                      </button>
+                    </td>
                     <td className="px-4 py-2">
                       <div className="flex justify-end gap-1">
                         <Button size="sm" variant="outline" disabled={isPending} onClick={() => { setEditProduct(p); setFormOpen(true) }}>
@@ -199,6 +218,9 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                         </Button>
                         <Button size="sm" variant="outline" disabled={isPending} onClick={() => toggleActive(p)}>
                           <Power className={`h-3.5 w-3.5 ${p.is_active ? "text-green-600" : "text-gray-400"}`} />
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={isPending} onClick={() => toggleAvailable(p)} title="Mavjud/Qolmadi">
+                          <PackageX className={`h-3.5 w-3.5 ${p.is_available !== false ? "text-blue-500" : "text-orange-500"}`} />
                         </Button>
                         <Button size="sm" variant="ghost" className="text-red-500" disabled={isPending} onClick={() => setDeleteId(p._id)}>
                           <Trash2 className="h-3.5 w-3.5" />

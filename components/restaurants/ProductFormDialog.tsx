@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createProductAction, updateProductAction } from "@/lib/actions/products"
 import { createMyProductAction, updateMyProductAction } from "@/lib/actions/restaurant-panel"
+import { getFullImgUrl } from "@/lib/utils"
 
 interface Props {
   product?: any
@@ -53,8 +54,8 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
       const res = await fetch("/api/upload", { method: "POST", body: fd, signal: uploadAbortRef.current.signal })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Xatolik")
-      const url = `${process.env.NEXT_PUBLIC_API_URL}${json.data?.url || json.url}`
-      setForm(f => ({ ...f, images: [...f.images, url] }))
+      const url: string = json.data?.url || json.url || ""
+      if (url) setForm(f => ({ ...f, images: [...f.images, url] }))
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") return
       toast.error("Rasm yuklanmadi")
@@ -167,7 +168,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
             <div className="flex flex-wrap gap-2">
               {form.images.map((url: string, i: number) => (
                 <div key={i} className="relative h-20 w-20 rounded-lg overflow-hidden border">
-                  <img src={url} alt={`Mahsulot rasmi ${i + 1}`} className="h-full w-full object-cover" />
+                  <img src={getFullImgUrl(url)} alt={`Mahsulot rasmi ${i + 1}`} className="h-full w-full object-cover" />
                   <button onClick={() => setForm(f => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))}
                     className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5">
                     <X className="h-3 w-3 text-white" />
