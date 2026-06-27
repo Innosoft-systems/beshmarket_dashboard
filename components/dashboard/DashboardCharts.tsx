@@ -91,7 +91,7 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
     pending: "Kutilmoqda", accepted: "Qabul qilindi", delivered: "Yetkazildi",
     rejected: "Rad etilgan", cancelled: "Bekor qilingan", assigned: "Tayinlangan",
     on_way: "Yo'lda", on_the_way_to_restaurant: "Restoranga", picked_up: "Olib ketildi",
-    on_the_way_to_customer: "Mijozga yo'lda", arrived_at_customer: "Yetib keldi", ready: "Tayyor",
+    arrived_at_customer: "Yetib keldi", ready: "Tayyor",
   }
 
   const statusData = safeStats.status_breakdown.map((s: any) => ({

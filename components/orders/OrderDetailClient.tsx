@@ -34,7 +34,6 @@ import { OrderTimer } from "@/components/orders/OrderTimer";
 // Admin uchun ruxsat etilgan status o'tishlari
 const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
   pending: [
-    { value: "accepted", label: "Qabul qilish" },
     { value: "rejected", label: "Rad etish" },
   ],
   accepted: [
@@ -45,11 +44,7 @@ const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
     { value: "on_the_way_to_restaurant", label: "Restoranga ketmoqda" },
   ],
   on_the_way_to_restaurant: [{ value: "picked_up", label: "Olindi" }],
-  picked_up: [{ value: "on_the_way_to_customer", label: "Mijozga ketmoqda" }],
-  on_the_way_to_customer: [
-    { value: "arrived_at_customer", label: "Manzilga yetdi" },
-    { value: "delivered", label: "Yetkazildi" },
-  ],
+  picked_up: [{ value: "arrived_at_customer", label: "Manzilga yetdi" }],
   arrived_at_customer: [{ value: "delivered", label: "Yetkazildi" }],
   ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
   on_way: [{ value: "delivered", label: "Yetkazildi" }],
@@ -115,7 +110,6 @@ export function OrderDetailClient({
     { value: string; label: string }[]
   > = {
     pending: [
-      { value: "accepted", label: "Qabul qilish" },
       { value: "rejected", label: "Rad etish" },
     ],
     accepted: [{ value: "ready", label: "Tayyor" }],

@@ -45,7 +45,6 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
   on_the_way_to_restaurant: "Restoranga ketmoqda",
   arrived_at_restaurant: "Restoranda",
   picked_up: "Olib ketildi",
-  on_the_way_to_customer: "Mijozga ketmoqda",
   arrived_at_customer: "Mijoz eshigida",
   delivered: "Yetkazildi",
   cancelled: "Bekor qilindi",

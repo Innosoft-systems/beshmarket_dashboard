@@ -85,13 +85,11 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
   const nextStatuses = scope === "restaurant"
     ? {
         pending: [
-          { value: "accepted", label: "Qabul qilish" },
           { value: "rejected", label: "Rad etish" },
         ],
         accepted: [{ value: "ready", label: "Tayyor" }],
       }
     : {
-        pending: [{ value: "accepted", label: "Qabul qilish" }],
         accepted: [{ value: "ready", label: "Tayyor" }],
         ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
         on_way: [{ value: "delivered", label: "Yetkazildi" }],
