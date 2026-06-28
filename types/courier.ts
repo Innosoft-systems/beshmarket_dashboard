@@ -21,6 +21,33 @@ export interface CourierProfile {
   createdAt: string;
 }
 
+export type DocumentStatus = 'pending' | 'verified' | 'rejected';
+
+export interface CourierDocuments {
+  _id: string;
+  courier_id: string;
+  // Shaxsiy
+  birth_date?: string;
+  gender?: 'male' | 'female';
+  address?: string;
+  // Passport
+  passport_series: string;
+  passport_number: string;
+  passport_issued_date?: string;
+  passport_expiry_date?: string;
+  passport_photo_front?: string;
+  passport_photo_back?: string;
+  // Haydovchilik
+  driver_license_number?: string;
+  driver_license_expiry?: string;
+  driver_license_photo?: string;
+  // Status
+  document_status: DocumentStatus;
+  rejection_reason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const COURIER_STATUSES = [
   { value: "online", label: "Onlayn", color: "bg-green-100 text-green-700 border-green-200" },
   { value: "offline", label: "Oflayn", color: "bg-gray-100 text-gray-700 border-gray-200" },

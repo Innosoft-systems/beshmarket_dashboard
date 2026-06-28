@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Wallet, Package, Calendar, Trash2, Pencil } from "lucide-react"
+import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Wallet, Package, Calendar, Trash2, Pencil, FileText, Car } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { COURIER_STATUSES, ORDER_STATUSES } from "@/types"
-import { updateCourierAction, blockCourierUserAction, deleteCourierAction, correctionCourierAction } from "@/lib/actions/couriers"
+import { updateCourierAction, blockCourierUserAction, deleteCourierAction, correctionCourierAction, updateDocumentStatusAction, upsertCourierDocumentsAdminAction } from "@/lib/actions/couriers"
+import type { CourierDocuments } from "@/types/courier"
 
 interface Props {
   profile: any
@@ -26,9 +27,10 @@ interface Props {
   monthlyIncome?: number
   monthlyChart?: { label: string; amount: number; date: string }[]
   weeklyIncome?: number
+  documents?: CourierDocuments | null
 }
 
-export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, monthlyChart = [], weeklyIncome = 0 }: Props) {
+export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, monthlyChart = [], weeklyIncome = 0, documents = null }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -42,6 +44,19 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
     vehicle_type: profile.vehicle_type,
     vehicle_number: profile.vehicle_number || "",
     city: profile.city,
+  })
+  const [docsEditOpen, setDocsEditOpen] = useState(false)
+  const [docsEditLoading, setDocsEditLoading] = useState(false)
+  const [docsForm, setDocsForm] = useState({
+    birth_date: documents?.birth_date ? documents.birth_date.substring(0, 10) : "",
+    gender: documents?.gender || "",
+    address: documents?.address || "",
+    passport_series: documents?.passport_series || "",
+    passport_number: documents?.passport_number || "",
+    passport_issued_date: documents?.passport_issued_date ? documents.passport_issued_date.substring(0, 10) : "",
+    passport_expiry_date: documents?.passport_expiry_date ? documents.passport_expiry_date.substring(0, 10) : "",
+    driver_license_number: documents?.driver_license_number || "",
+    driver_license_expiry: documents?.driver_license_expiry ? documents.driver_license_expiry.substring(0, 10) : "",
   })
   const user = profile.user_id
   const statusInfo = COURIER_STATUSES.find((s) => s.value === profile.status)
@@ -182,6 +197,118 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
             <span className="font-medium">{profile.rejections_today || 0}</span>
           </div>
         </div>
+      </div>
+
+      {/* Hujjatlar */}
+      <div className="rounded-xl border border-violet-500 bg-background overflow-hidden">
+        <div className="p-5 border-b flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <FileText className="h-5 w-5 text-violet-500" />
+            Hujjatlar
+          </h3>
+          <div className="flex items-center gap-2">
+            {documents && (
+              <>
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  documents.document_status === 'verified' ? 'bg-green-100 text-green-700' :
+                  documents.document_status === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {documents.document_status === 'verified' ? 'Tasdiqlangan' :
+                   documents.document_status === 'rejected' ? 'Rad etilgan' : 'Kutilmoqda'}
+                </span>
+                {documents.document_status !== 'verified' && (
+                  <Button size="sm" variant="outline" className="text-green-700 border-green-300" onClick={async () => {
+                    const r = await updateDocumentStatusAction(profile._id, 'verified')
+                    if (r.success) { toast.success("Hujjatlar tasdiqlandi"); startTransition(() => router.refresh()) }
+                    else toast.error(r.error)
+                  }}>
+                    <Check className="h-3 w-3 mr-1" /> Tasdiqlash
+                  </Button>
+                )}
+                {documents.document_status !== 'rejected' && (
+                  <Button size="sm" variant="outline" className="text-red-700 border-red-300" onClick={async () => {
+                    const reason = prompt("Rad etish sababi:")
+                    if (reason === null) return
+                    const r = await updateDocumentStatusAction(profile._id, 'rejected', reason)
+                    if (r.success) { toast.success("Rad etildi"); startTransition(() => router.refresh()) }
+                    else toast.error(r.error)
+                  }}>
+                    <X className="h-3 w-3 mr-1" /> Rad etish
+                  </Button>
+                )}
+              </>
+            )}
+            <Button size="sm" variant="outline" onClick={() => setDocsEditOpen(true)}>
+              <Pencil className="h-3 w-3 mr-1" /> {documents ? "Tahrirlash" : "Qo'shish"}
+            </Button>
+          </div>
+        </div>
+        {!documents ? (
+          <div className="p-5 text-sm text-muted-foreground">Hujjatlar kiritilmagan</div>
+        ) : (
+          <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+            {/* Shaxsiy */}
+            <div className="space-y-3">
+              <p className="font-medium text-muted-foreground uppercase text-xs tracking-wide">Shaxsiy</p>
+              {documents.birth_date && (
+                <div><span className="text-muted-foreground">Tug&apos;ilgan sana: </span><span className="font-medium">{new Date(documents.birth_date).toLocaleDateString("uz")}</span></div>
+              )}
+              {documents.gender && (
+                <div><span className="text-muted-foreground">Jins: </span><span className="font-medium">{documents.gender === 'male' ? 'Erkak' : 'Ayol'}</span></div>
+              )}
+              {documents.address && (
+                <div><span className="text-muted-foreground">Manzil: </span><span className="font-medium">{documents.address}</span></div>
+              )}
+            </div>
+
+            {/* Passport */}
+            <div className="space-y-3">
+              <p className="font-medium text-muted-foreground uppercase text-xs tracking-wide">Passport</p>
+              <div><span className="text-muted-foreground">Seriya/raqam: </span><span className="font-medium font-mono">{documents.passport_series} {documents.passport_number}</span></div>
+              {documents.passport_issued_date && (
+                <div><span className="text-muted-foreground">Berilgan: </span><span className="font-medium">{new Date(documents.passport_issued_date).toLocaleDateString("uz")}</span></div>
+              )}
+              {documents.passport_expiry_date && (
+                <div><span className="text-muted-foreground">Muddati: </span><span className="font-medium">{new Date(documents.passport_expiry_date).toLocaleDateString("uz")}</span></div>
+              )}
+              {(documents.passport_photo_front || documents.passport_photo_back) && (
+                <div className="flex gap-2 pt-1">
+                  {documents.passport_photo_front && (
+                    <a href={documents.passport_photo_front} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Old rasm</a>
+                  )}
+                  {documents.passport_photo_back && (
+                    <a href={documents.passport_photo_back} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Orqa rasm</a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Haydovchilik */}
+            <div className="space-y-3">
+              <p className="font-medium text-muted-foreground uppercase text-xs tracking-wide flex items-center gap-1"><Car className="h-3 w-3" /> Haydovchilik</p>
+              {documents.driver_license_number ? (
+                <>
+                  <div><span className="text-muted-foreground">Guvohnoma №: </span><span className="font-medium font-mono">{documents.driver_license_number}</span></div>
+                  {documents.driver_license_expiry && (
+                    <div><span className="text-muted-foreground">Muddati: </span><span className="font-medium">{new Date(documents.driver_license_expiry).toLocaleDateString("uz")}</span></div>
+                  )}
+                  {documents.driver_license_photo && (
+                    <a href={documents.driver_license_photo} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Foto</a>
+                  )}
+                </>
+              ) : (
+                <span className="text-muted-foreground text-xs">Kiritilmagan</span>
+              )}
+            </div>
+
+            {documents.rejection_reason && (
+              <div className="col-span-full text-xs text-red-600 bg-red-50 p-3 rounded-lg">
+                Rad etish sababi: {documents.rejection_reason}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Buyurtmalar tarixi */}
@@ -326,6 +453,114 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
                   startTransition(() => router.refresh())
                 } else toast.error(result.error)
               }}>Saqlash</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hujjatlar tahrirlash modali */}
+      {docsEditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
+          <div className="bg-background rounded-xl p-6 w-full max-w-lg shadow-lg ring-1 ring-foreground/10 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-base font-medium">Hujjatlar</h3>
+
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Shaxsiy</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Tug&apos;ilgan sana</Label>
+                  <Input type="date" value={docsForm.birth_date} onChange={(e) => setDocsForm({ ...docsForm, birth_date: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Jins</Label>
+                  <Select value={docsForm.gender} onValueChange={(v) => setDocsForm({ ...docsForm, gender: v ?? "" })}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue>{docsForm.gender === "male" ? "Erkak" : docsForm.gender === "female" ? "Ayol" : "Tanlang..."}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Erkak</SelectItem>
+                      <SelectItem value="female">Ayol</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Yashash manzili</Label>
+                <Input value={docsForm.address} onChange={(e) => setDocsForm({ ...docsForm, address: e.target.value })} placeholder="Toshkent sh., Yunusobod tumani, ..." />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Passport</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Seriya</Label>
+                  <Input value={docsForm.passport_series} onChange={(e) => setDocsForm({ ...docsForm, passport_series: e.target.value.toUpperCase() })} placeholder="AA" maxLength={2} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Raqam</Label>
+                  <Input value={docsForm.passport_number} onChange={(e) => setDocsForm({ ...docsForm, passport_number: e.target.value })} placeholder="1234567" maxLength={7} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Berilgan sana</Label>
+                  <Input type="date" value={docsForm.passport_issued_date} onChange={(e) => setDocsForm({ ...docsForm, passport_issued_date: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Muddati</Label>
+                  <Input type="date" value={docsForm.passport_expiry_date} onChange={(e) => setDocsForm({ ...docsForm, passport_expiry_date: e.target.value })} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Haydovchilik guvohnomasi</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Guvohnoma №</Label>
+                  <Input value={docsForm.driver_license_number} onChange={(e) => setDocsForm({ ...docsForm, driver_license_number: e.target.value })} placeholder="12AB345678" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Muddati</Label>
+                  <Input type="date" value={docsForm.driver_license_expiry} onChange={(e) => setDocsForm({ ...docsForm, driver_license_expiry: e.target.value })} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setDocsEditOpen(false)} disabled={docsEditLoading}>Bekor qilish</Button>
+              <Button
+                disabled={docsEditLoading || (!docsForm.passport_series.trim() && !docsForm.birth_date && !docsForm.address && !docsForm.gender && !docsForm.driver_license_number)}
+                onClick={async () => {
+                  if (docsForm.passport_series.trim() !== docsForm.passport_number.trim() &&
+                    (!!docsForm.passport_series.trim() !== !!docsForm.passport_number.trim())) {
+                    toast.error("Passport seriya va raqam birga kiritilishi kerak")
+                    return
+                  }
+                  const payload: Record<string, string> = {}
+                  if (docsForm.birth_date) payload.birth_date = docsForm.birth_date
+                  if (docsForm.gender) payload.gender = docsForm.gender
+                  if (docsForm.address.trim()) payload.address = docsForm.address.trim()
+                  if (docsForm.passport_series.trim()) payload.passport_series = docsForm.passport_series.trim()
+                  if (docsForm.passport_number.trim()) payload.passport_number = docsForm.passport_number.trim()
+                  if (docsForm.passport_issued_date) payload.passport_issued_date = docsForm.passport_issued_date
+                  if (docsForm.passport_expiry_date) payload.passport_expiry_date = docsForm.passport_expiry_date
+                  if (docsForm.driver_license_number.trim()) payload.driver_license_number = docsForm.driver_license_number.trim()
+                  if (docsForm.driver_license_expiry) payload.driver_license_expiry = docsForm.driver_license_expiry
+
+                  setDocsEditLoading(true)
+                  const r = await upsertCourierDocumentsAdminAction(profile._id, payload as any)
+                  setDocsEditLoading(false)
+                  if (r.success) {
+                    toast.success("Hujjatlar saqlandi")
+                    setDocsEditOpen(false)
+                    startTransition(() => router.refresh())
+                  } else {
+                    toast.error(r.error)
+                  }
+                }}
+              >{docsEditLoading ? "Saqlanmoqda..." : "Saqlash"}</Button>
             </div>
           </div>
         </div>
