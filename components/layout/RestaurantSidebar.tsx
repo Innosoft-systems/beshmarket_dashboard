@@ -7,7 +7,6 @@ import {
   FolderOpen,
   LayoutDashboard,
   LogOut,
-  Percent,
   Settings,
   Store,
   UtensilsCrossed,
@@ -31,7 +30,6 @@ const items = [
   { title: "Buyurtmalar", url: "/restaurant/orders", icon: ClipboardList },
   { title: "Menyu", url: "/restaurant/menu", icon: UtensilsCrossed },
   { title: "Kategoriya", url: "/restaurant/categories", icon: FolderOpen },
-  { title: "Promo kodlar", url: "/restaurant/promotions", icon: Percent },
   { title: "Profil", url: "/restaurant/profile", icon: Settings },
 ]
 

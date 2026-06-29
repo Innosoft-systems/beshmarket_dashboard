@@ -12,7 +12,10 @@ export default async function RestaurantHomePage() {
   try {
     const [restaurantRes, statsRes] = await Promise.all([
       apiRequest<Record<string, any>>("/restaurants/my", { accessToken: token }),
-      apiRequest<Record<string, any>>("/restaurants/my/stats", { accessToken: token }).catch(() => ({ data: {} })),
+      apiRequest<Record<string, any>>("/restaurants/my/stats", { accessToken: token }).catch((err) => {
+        console.error("[restaurant/page] stats fetch failed:", err)
+        return { data: {} }
+      }),
     ])
     restaurant = restaurantRes.data
     s = statsRes.data || {}
