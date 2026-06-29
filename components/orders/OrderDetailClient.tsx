@@ -282,7 +282,7 @@ export function OrderDetailClient({
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Tayinlanmagan</p>
-              {scope === "admin" && couriers.length > 0 && (
+              {scope === "admin" && (
                 <div className="flex gap-2">
                   <Select
                     value={selectedCourier}
@@ -295,11 +295,14 @@ export function OrderDetailClient({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      {couriers.length === 0 && (
+                        <SelectItem value="" disabled>Aktiv kuryer yo'q</SelectItem>
+                      )}
                       {couriers.map((c) => (
-                          <SelectItem key={c._id} value={c._id}>
-                            {c.full_name || c.phone} · {c.distance_km != null ? `${c.distance_km} km` : c.status}
-                          </SelectItem>
-                        ))}
+                        <SelectItem key={c._id} value={c._id}>
+                          {c.full_name || c.phone} · {c.distance_km != null ? `${c.distance_km} km` : c.status}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button
