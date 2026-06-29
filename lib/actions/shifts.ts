@@ -48,3 +48,13 @@ export async function deleteSlotAction(id: string) {
     return { success: true }
   } catch (e: unknown) { return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" } }
 }
+
+export async function forceStartCourierAction(courierId: string) {
+  const token = await getAccessToken()
+  if (!token) return { success: false, error: "Avtorizatsiya" }
+  try {
+    await apiRequest(`/shifts/admin/couriers/${courierId}/force-start`, { method: "POST", accessToken: token })
+    revalidatePath(`/couriers/${courierId}`)
+    return { success: true }
+  } catch (e: unknown) { return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" } }
+}

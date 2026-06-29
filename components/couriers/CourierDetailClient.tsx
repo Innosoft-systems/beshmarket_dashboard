@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Wallet, Package, Calendar, Trash2, Pencil, FileText, Car } from "lucide-react"
+import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Wallet, Package, Calendar, Trash2, Pencil, FileText, Car, Clock, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,18 @@ import {
 } from "@/components/ui/select"
 import { COURIER_STATUSES, ORDER_STATUSES } from "@/types"
 import { updateCourierAction, blockCourierUserAction, deleteCourierAction, correctionCourierAction, updateDocumentStatusAction, upsertCourierDocumentsAdminAction } from "@/lib/actions/couriers"
+import { forceStartCourierAction } from "@/lib/actions/shifts"
 import type { CourierDocuments } from "@/types/courier"
+
+interface UpcomingSlot {
+  _id: string
+  date: string
+  start_time: string
+  end_time: string
+  zone_name: string
+  payout: number
+  bonus_per_order?: number
+}
 
 interface Props {
   profile: any
@@ -28,9 +39,10 @@ interface Props {
   monthlyChart?: { label: string; amount: number; date: string }[]
   weeklyIncome?: number
   documents?: CourierDocuments | null
+  upcomingSlots?: UpcomingSlot[]
 }
 
-export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, monthlyChart = [], weeklyIncome = 0, documents = null }: Props) {
+export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, monthlyChart = [], weeklyIncome = 0, documents = null, upcomingSlots = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -58,6 +70,20 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
     driver_license_number: documents?.driver_license_number || "",
     driver_license_expiry: documents?.driver_license_expiry ? documents.driver_license_expiry.substring(0, 10) : "",
   })
+  const [forceStartLoading, setForceStartLoading] = useState(false)
+
+  const handleForceStart = async () => {
+    setForceStartLoading(true)
+    const result = await forceStartCourierAction(profile._id)
+    setForceStartLoading(false)
+    if (result.success) {
+      toast.success("Kuryer smena boshlatildi")
+      router.refresh()
+    } else {
+      toast.error(result.error || "Xatolik yuz berdi")
+    }
+  }
+
   const user = profile.user_id
   const statusInfo = COURIER_STATUSES.find((s) => s.value === profile.status)
 
@@ -310,6 +336,53 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
           </div>
         )}
       </div>
+
+      {/* Kelgusi slotlar */}
+      {upcomingSlots.length > 0 && (
+        <div className="rounded-xl border border-slate-300 bg-background overflow-hidden">
+          <div className="p-5 border-b flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Clock className="h-5 w-5 text-indigo-500" /> Kelgusi slotlar ({upcomingSlots.length})
+            </h3>
+            {profile.status !== 'online' && profile.status !== 'busy' && (
+              <Button
+                size="sm"
+                onClick={handleForceStart}
+                disabled={forceStartLoading}
+                className="gap-1.5"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {forceStartLoading ? "..." : "Smenani boshlash"}
+              </Button>
+            )}
+            {(profile.status === 'online' || profile.status === 'busy') && (
+              <Badge className="bg-green-100 text-green-700 border-green-200" variant="outline">
+                Online — smena faol
+              </Badge>
+            )}
+          </div>
+          <div className="divide-y">
+            {upcomingSlots.map((slot) => (
+              <div key={slot._id} className="px-5 py-3 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm">{slot.date} · {slot.start_time}–{slot.end_time}</span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> {slot.zone_name}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-medium">{slot.payout?.toLocaleString()} so'm</span>
+                  {slot.bonus_per_order ? (
+                    <span className="block text-xs text-muted-foreground">+{slot.bonus_per_order?.toLocaleString()} / buyurtma</span>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Buyurtmalar tarixi */}
       {orders.length > 0 && (

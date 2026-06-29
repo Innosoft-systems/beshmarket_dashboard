@@ -17,7 +17,7 @@ export default async function CourierDetailPage({ params }: Props) {
   const token = await getAccessToken()
 
   try {
-    const [profileRes, balanceRes, ordersRes, incomeRes, weeklyRes, allMonthlyRes, documentsRes] = await Promise.all([
+    const [profileRes, balanceRes, ordersRes, incomeRes, weeklyRes, allMonthlyRes, documentsRes, bookingsRes] = await Promise.all([
       apiRequest<any>(`/couriers/${id}`, { accessToken: token }),
       apiRequest<any>(`/couriers/${id}/balance`, { accessToken: token }).catch(() => ({ data: { balance: 0, transactions: [] }, status: 200 })),
       apiRequest<any>(`/orders?courier_id=${id}&limit=20`, { accessToken: token }).catch(() => ({ data: { data: [] }, status: 200 })),
@@ -25,6 +25,7 @@ export default async function CourierDetailPage({ params }: Props) {
       apiRequest<any>(`/couriers/${id}/income?period=week`, { accessToken: token }).catch(() => ({ data: { total: 0 }, status: 200 })),
       apiRequest<any>(`/couriers/${id}/income/all-months`, { accessToken: token }).catch(() => ({ data: { data: [] }, status: 200 })),
       apiRequest<any>(`/couriers/${id}/documents`, { accessToken: token }).catch(() => ({ data: null, status: 200 })),
+      apiRequest<any>(`/shifts/admin/couriers/${id}/bookings`, { accessToken: token }).catch(() => ({ data: [], status: 200 })),
     ])
 
     if (!profileRes.data) notFound()
@@ -38,6 +39,7 @@ export default async function CourierDetailPage({ params }: Props) {
         monthlyChart={allMonthlyRes.data?.data || []}
         weeklyIncome={weeklyRes.data?.total || 0}
         documents={documentsRes.data || null}
+        upcomingSlots={Array.isArray(bookingsRes.data) ? bookingsRes.data : []}
       />
     )
   } catch {
