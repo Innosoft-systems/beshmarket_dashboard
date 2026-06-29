@@ -261,8 +261,8 @@ export function OrderDetailClient({
         </InfoCard>
 
         <InfoCard icon={Truck} title="Kuryer">
-          {order.courier_id ? (
-            <div className="space-y-1">
+          {order.courier_id && (
+            <div className="space-y-1 mb-2">
               <p className="font-medium">
                 {order.courier_id?.user_id?.full_name || "Tayinlangan"}
               </p>
@@ -279,41 +279,40 @@ export function OrderDetailClient({
                 </p>
               )}
             </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Tayinlanmagan</p>
-              {scope === "admin" && (
-                <div className="flex gap-2">
-                  <Select
-                    value={selectedCourier}
-                    onValueChange={(v) => setSelectedCourier(v ?? "")}
-                  >
-                    <SelectTrigger className="flex-1 h-9">
-                      <SelectValue>
-                        {couriers.find((c) => c._id === selectedCourier)
-                          ?.full_name || "Kuryer tanlang..."}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {couriers.length === 0 && (
-                        <SelectItem value="" disabled>Aktiv kuryer yo'q</SelectItem>
-                      )}
-                      {couriers.map((c) => (
-                        <SelectItem key={c._id} value={c._id}>
-                          {c.full_name || c.phone} · {c.distance_km != null ? `${c.distance_km} km` : c.status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    disabled={!selectedCourier || assigningCourier}
-                    onClick={handleAssignCourier}
-                  >
-                    Tayinlash
-                  </Button>
-                </div>
-              )}
+          )}
+          {!order.courier_id && (
+            <p className="text-sm text-muted-foreground mb-2">Tayinlanmagan</p>
+          )}
+          {scope === "admin" && !["delivered", "rejected", "cancelled"].includes(order.status) && (
+            <div className="flex gap-2">
+              <Select
+                value={selectedCourier}
+                onValueChange={(v) => setSelectedCourier(v ?? "")}
+              >
+                <SelectTrigger className="flex-1 h-9">
+                  <SelectValue>
+                    {couriers.find((c) => c._id === selectedCourier)
+                      ?.full_name || (order.courier_id ? "Boshqa kuryer..." : "Kuryer tanlang...")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {couriers.length === 0 && (
+                    <SelectItem value="" disabled>Aktiv kuryer yo'q</SelectItem>
+                  )}
+                  {couriers.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.full_name || c.phone} · {c.distance_km != null ? `${c.distance_km} km` : c.status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                disabled={!selectedCourier || assigningCourier}
+                onClick={handleAssignCourier}
+              >
+                {order.courier_id ? "O'zgartirish" : "Tayinlash"}
+              </Button>
             </div>
           )}
         </InfoCard>
