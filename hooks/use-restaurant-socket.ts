@@ -52,8 +52,17 @@ export function useRestaurantSocket(accessToken: string | null) {
       })
 
       socket.on("order.new", (payload: { orderId: string; orderNumber: string; total: number }) => {
-        if (audioEnabled.current) {
-          audioRef.current?.play().catch(() => {})
+        if (audioEnabled.current && audioRef.current) {
+          audioRef.current.loop = true
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => {})
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.pause()
+              audioRef.current.loop = false
+              audioRef.current.currentTime = 0
+            }
+          }, 5000)
         }
         toast.info(`Yangi buyurtma: ${payload.orderNumber}`, {
           description: `${payload.total.toLocaleString()} so'm`,

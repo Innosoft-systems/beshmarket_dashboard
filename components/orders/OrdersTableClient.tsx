@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
-import { Search, X, MoreHorizontal, Layers } from "lucide-react"
+import { Search, X, MoreHorizontal, Layers, Download } from "lucide-react"
 import { toast } from "sonner"
 import { Order, OrderRow, GroupedOrderRow, ORDER_STATUSES } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
@@ -278,6 +278,99 @@ export function OrdersTableClient({
 
   const refreshData = () => startTransition(() => router.refresh())
 
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const XLSX = await import("xlsx")
+
+      // Fetch all orders with current filters (no pagination limit)
+      const params = new URLSearchParams()
+      params.set("limit", "1000")
+      if (filters.search) params.set("search", filters.search)
+      if (filters.status) params.set("status", filters.status)
+
+      const today = new Date()
+      if (filters.period === "today") {
+        const d = today.toISOString().split("T")[0]
+        params.set("date_from", d); params.set("date_to", d)
+      } else if (filters.period === "yesterday") {
+        const y = new Date(today); y.setDate(y.getDate() - 1)
+        const d = y.toISOString().split("T")[0]
+        params.set("date_from", d); params.set("date_to", d)
+      } else if (filters.period === "week") {
+        const w = new Date(today); w.setDate(w.getDate() - 7)
+        params.set("date_from", w.toISOString().split("T")[0])
+        params.set("date_to", today.toISOString().split("T")[0])
+      } else if (filters.period === "month") {
+        const m = new Date(today); m.setDate(m.getDate() - 30)
+        params.set("date_from", m.toISOString().split("T")[0])
+        params.set("date_to", today.toISOString().split("T")[0])
+      }
+
+      const base = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1`
+      const endpoint = `${base}/orders`
+      const headers: Record<string, string> = accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+
+      params.set("limit", "200")
+      params.set("page", "1")
+
+      const rows: Order[] = []
+      let page = 1
+      let totalPages = 1
+
+      while (page <= totalPages) {
+        params.set("page", String(page))
+        const res = await fetch(`${endpoint}?${params.toString()}`, { headers })
+        if (!res.ok) throw new Error("Ma'lumot yuklanmadi")
+        const json = await res.json()
+        const pageData: Order[] = json?.data?.data ?? []
+        rows.push(...pageData)
+        totalPages = json?.data?.pagination?.totalPages ?? 1
+        page++
+      }
+
+      const STATUS_MAP: Record<string, string> = {
+        pending: "Kutilmoqda", accepted: "Qabul qilindi", preparing: "Tayyorlanmoqda",
+        ready: "Tayyor", on_way: "Yo'lda", delivered: "Yetkazildi",
+        cancelled: "Bekor qilindi", rejected: "Rad etildi",
+      }
+
+      const sheetData = rows.map((o, i) => {
+        const d = new Date(o.createdAt)
+        const dateStr = `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`
+        const restaurant = typeof o.restaurant_id === "object" ? o.restaurant_id?.name : "—"
+        const client = typeof o.client_id === "object" ? (o.client_id as any)?.phone ?? "—" : "—"
+        return {
+          "№": i + 1,
+          "Buyurtma raqami": o.order_number,
+          "Restoran": restaurant,
+          "Mijoz tel": client,
+          "Summa (so'm)": o.total,
+          "Status": STATUS_MAP[o.status] ?? o.status,
+          "Vaqt": dateStr,
+        }
+      })
+
+      const ws = XLSX.utils.json_to_sheet(sheetData)
+      ws["!cols"] = [
+        { wch: 5 }, { wch: 18 }, { wch: 24 }, { wch: 16 },
+        { wch: 14 }, { wch: 16 }, { wch: 18 },
+      ]
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Buyurtmalar")
+
+      const fileName = `buyurtmalar_${today.toISOString().split("T")[0]}.xlsx`
+      XLSX.writeFile(wb, fileName)
+      toast.success(`${rows.length} ta buyurtma eksport qilindi`)
+    } catch (e: any) {
+      toast.error(e?.message || "Eksport xatoligi")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
@@ -481,6 +574,11 @@ export function OrdersTableClient({
             Tozalash
           </Button>
         )}
+
+        <Button variant="outline" size="lg" onClick={handleExport} disabled={exporting} className="ml-auto">
+          <Download className="h-4 w-4 mr-1" />
+          {exporting ? "Yuklanmoqda..." : "Excel"}
+        </Button>
       </div>
 
       <DataTable
