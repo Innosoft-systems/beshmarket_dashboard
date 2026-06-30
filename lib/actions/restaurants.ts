@@ -26,6 +26,7 @@ export async function createRestaurantAction(data: RestaurantFormValues) {
         slug: slugify(data.name),
         owner_phone: data.owner_phone,
         type: data.type || "restaurant",
+        order: data.order ?? 0,
         is_active: true,
       },
       accessToken: token,

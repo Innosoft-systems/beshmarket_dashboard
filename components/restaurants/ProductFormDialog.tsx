@@ -7,6 +7,7 @@ import { X, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createProductAction, updateProductAction } from "@/lib/actions/products"
 import { createMyProductAction, updateMyProductAction } from "@/lib/actions/restaurant-panel"
@@ -33,6 +34,9 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
     name_uz: product?.name_uz || "",
     name_ru: product?.name_ru || "",
     name_en: product?.name_en || "",
+    description_uz: product?.description_uz || "",
+    description_ru: product?.description_ru || "",
+    description_en: product?.description_en || "",
     price: product?.price || "",
     discount_price: product?.discount_price || "",
     weight: product?.weight || "",
@@ -124,6 +128,21 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
                 <Label>Nomi ({lang.toUpperCase()}) *</Label>
                 <Input value={(form as any)[`name_${lang}`]}
                   onChange={e => setForm({ ...form, [`name_${lang}`]: e.target.value })} />
+              </div>
+            ))}
+          </div>
+
+          {/* Descriptions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {["uz", "ru", "en"].map(lang => (
+              <div key={lang} className="space-y-1.5">
+                <Label>Tavsif ({lang.toUpperCase()})</Label>
+                <Textarea
+                  rows={3}
+                  value={(form as any)[`description_${lang}`]}
+                  onChange={e => setForm({ ...form, [`description_${lang}`]: e.target.value })}
+                  placeholder={lang === "uz" ? "Mahsulot haqida..." : lang === "ru" ? "О продукте..." : "About product..."}
+                />
               </div>
             ))}
           </div>

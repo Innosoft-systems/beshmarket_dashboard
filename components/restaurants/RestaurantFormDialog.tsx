@@ -55,6 +55,7 @@ export function RestaurantFormDialog({
       logo: restaurant?.logo || "",
       owner_phone: typeof restaurant?.owner_id === "object" ? restaurant.owner_id.phone : "",
       type: (restaurant?.type as "restaurant" | "market") || "restaurant",
+      order: restaurant?.order ?? 0,
     },
   })
 
@@ -101,7 +102,18 @@ export function RestaurantFormDialog({
             {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
           </div>
 
+          <div className="space-y-2">
+            <Label>Telefon *</Label>
+            <Input {...register("phone")} placeholder="+998901234567" />
+            {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Tartib raqami</Label>
+              <Input type="number" min={0} {...register("order")} placeholder="0" />
+              {errors.order && <p className="text-xs text-red-500">{errors.order.message}</p>}
+            </div>
             <div className="space-y-2">
               <Label>Turi</Label>
               <Select value={watch("type")} onValueChange={(v) => setValue("type", v as "restaurant" | "market")}>
@@ -115,11 +127,6 @@ export function RestaurantFormDialog({
                   <SelectItem value="market">Market</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Telefon *</Label>
-              <Input {...register("phone")} placeholder="+998901234567" />
-              {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
             </div>
           </div>
 

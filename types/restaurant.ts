@@ -25,6 +25,7 @@ export interface Restaurant {
   status?: string;
   avg_rating: number;
   type?: 'restaurant' | 'market';
+  order?: number;
 }
 
 export interface GetRestaurantsParams {
