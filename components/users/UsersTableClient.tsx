@@ -161,7 +161,7 @@ export function UsersTableClient({
   const [isPending, startTransition] = useTransition()
   const [search, setSearch] = useState(filters.search)
   const isFirstRender = useRef(true)
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const hasActiveFilters = filters.search || filters.role || filters.is_blocked
 

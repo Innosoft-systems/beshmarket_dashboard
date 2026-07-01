@@ -203,7 +203,7 @@ export function OrdersTableClient({
   const [orders, setOrders] = useState<Order[]>(initialData)
   const [stats, setStats] = useState(initialStats)
   const isFirstRender = useRef(true)
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevDataRef = useRef(initialData)
   const prevStatsRef = useRef(initialStats)
 

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   const response = await fetch(`${API_BASE}/upload/image`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
-    body: formData,
+    body: formData as unknown as BodyInit,
   })
 
   const json = await response.json()

@@ -159,7 +159,7 @@ export function RestaurantsTableClient({
   const [search, setSearch] = useState(filters.search)
   const [formOpen, setFormOpen] = useState(false)
   const isFirstRender = useRef(true)
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const hasActiveFilters = filters.search || filters.is_active
 

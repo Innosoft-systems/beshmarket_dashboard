@@ -111,7 +111,7 @@ export function RestaurantFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Tartib raqami</Label>
-              <Input type="number" min={0} {...register("order")} placeholder="0" />
+              <Input type="number" min={0} {...register("order", { valueAsNumber: true })} placeholder="0" />
               {errors.order && <p className="text-xs text-red-500">{errors.order.message}</p>}
             </div>
             <div className="space-y-2">
