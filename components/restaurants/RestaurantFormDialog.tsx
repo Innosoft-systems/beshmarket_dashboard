@@ -53,7 +53,7 @@ export function RestaurantFormDialog({
       city: restaurant?.city || "",
       district: restaurant?.district || "",
       logo: restaurant?.logo || "",
-      owner_phone: typeof restaurant?.owner_id === "object" ? restaurant.owner_id.phone : "",
+      owner_phone: restaurant?.owner_id && typeof restaurant.owner_id === "object" ? restaurant.owner_id.phone : "",
       type: (restaurant?.type as "restaurant" | "market") || "restaurant",
       order: restaurant?.order ?? 0,
     },
