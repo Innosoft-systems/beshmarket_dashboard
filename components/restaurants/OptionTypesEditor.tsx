@@ -63,7 +63,10 @@ export function OptionTypesEditor({ optionTypes, onChange }: Props) {
       {optionTypes.map((ot, i) => (
         <div key={i} className="border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Option turi #{i + 1}</span>
+            <div>
+              <span className="text-sm font-medium">{i + 1}-farq turi</span>
+              <p className="text-xs text-muted-foreground">Mahsulot nimasi bilan farqlanadi? (hajmi, ta&apos;mi, rangi...)</p>
+            </div>
             <Button type="button" variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => removeType(i)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -75,7 +78,7 @@ export function OptionTypesEditor({ optionTypes, onChange }: Props) {
                 <Label className="text-xs">Nomi ({lang.toUpperCase()})</Label>
                 <Input
                   className="h-8 text-sm"
-                  placeholder={lang === "uz" ? "Hajm" : lang === "ru" ? "Объём" : "Volume"}
+                  placeholder={lang === "uz" ? "Ta'm" : lang === "ru" ? "Вкус" : "Flavor"}
                   value={(ot as any)[`name_${lang}`]}
                   onChange={e => updateType(i, `name_${lang}` as any, e.target.value)}
                 />
@@ -84,34 +87,41 @@ export function OptionTypesEditor({ optionTypes, onChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Qiymatlar</Label>
-            {ot.values.map((v, vi) => (
-              <div key={v.localId} className="flex items-center gap-2">
-                <div className="grid grid-cols-3 gap-1.5 flex-1">
-                  {(["uz", "ru", "en"] as const).map(lang => (
-                    <Input
-                      key={lang}
-                      className="h-7 text-xs"
-                      placeholder={lang === "uz" ? "1L" : "1L"}
-                      value={(v as any)[`name_${lang}`]}
-                      onChange={e => updateValue(i, vi, `name_${lang}` as any, e.target.value)}
-                    />
-                  ))}
+            <div>
+              <Label className="text-xs font-medium">Tanlovlar</Label>
+              <p className="text-xs text-muted-foreground">Mijoz nima tanlaydi? Har biri alohida qator</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ot.values.map((v, vi) => (
+                <div key={v.localId} className="flex items-center gap-1 border rounded-md px-2 py-1 bg-muted/30">
+                  <Input
+                    className="h-6 text-xs w-20 border-0 bg-transparent p-0 focus-visible:ring-0"
+                    placeholder="0.5L"
+                    value={v.name_uz}
+                    onChange={e => {
+                      const val = e.target.value
+                      const updated = [...optionTypes]
+                      const values = [...updated[i].values]
+                      values[vi] = { ...values[vi], name_uz: val, name_ru: val, name_en: val }
+                      updated[i] = { ...updated[i], values }
+                      onChange(updated)
+                    }}
+                  />
+                  <button type="button" className="text-muted-foreground hover:text-red-500 shrink-0" onClick={() => removeValue(i, vi)}>
+                    <X className="h-3 w-3" />
+                  </button>
                 </div>
-                <button type="button" className="text-muted-foreground hover:text-red-500" onClick={() => removeValue(i, vi)}>
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
             <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => addValue(i)}>
-              <Plus className="h-3 w-3 mr-1" /> Qiymat qo&apos;shish
+              <Plus className="h-3 w-3 mr-1" /> Tanlov qo&apos;shish
             </Button>
           </div>
         </div>
       ))}
 
       <Button type="button" variant="outline" size="sm" onClick={addType}>
-        <Plus className="h-4 w-4 mr-1" /> Option turi qo&apos;shish (Hajm, Ta&apos;m...)
+        <Plus className="h-4 w-4 mr-1" /> Farq turi qo&apos;shish (hajm, ta&apos;m, rang...)
       </Button>
     </div>
   )

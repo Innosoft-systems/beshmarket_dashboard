@@ -117,10 +117,10 @@ export function VariantEditor({ optionTypes, variants, onChange }: Props) {
           onClick={generate}
         >
           <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-          Variantlarni yaratish
+          Narx jadvalini yaratish
         </Button>
         {!canGenerate && (
-          <span className="text-xs text-muted-foreground">Avval option turlari va qiymatlarini to&apos;ldiring</span>
+          <span className="text-xs text-muted-foreground">Avval farq turlarini va tanlovlarini to&apos;ldiring</span>
         )}
       </div>
 
@@ -129,12 +129,12 @@ export function VariantEditor({ optionTypes, variants, onChange }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="h-9 px-3 text-left text-xs font-medium">Variant</th>
+                <th className="h-9 px-3 text-left text-xs font-medium">Nomi</th>
                 <th className="h-9 px-3 text-left text-xs font-medium">Narx *</th>
-                <th className="h-9 px-3 text-left text-xs font-medium">Aksiya</th>
-                <th className="h-9 px-3 text-left text-xs font-medium">Stok</th>
+                <th className="h-9 px-3 text-left text-xs font-medium">Chegirma narxi</th>
+                <th className="h-9 px-3 text-left text-xs font-medium">Qoldiq</th>
                 <th className="h-9 px-3 text-left text-xs font-medium">Rasm</th>
-                <th className="h-9 px-3 text-center text-xs font-medium">Default</th>
+                <th className="h-9 px-3 text-center text-xs font-medium">Asosiy</th>
                 <th className="h-9 px-3 text-center text-xs font-medium">Faol</th>
                 <th className="h-9 px-2" />
               </tr>
