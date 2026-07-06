@@ -167,6 +167,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                 <th className="h-11 px-4 text-left font-medium">Nomi</th>
                 <th className="h-11 px-4 text-left font-medium">Kategoriya</th>
                 <th className="h-11 px-4 text-right font-medium">Narx</th>
+                <th className="h-11 px-4 text-center font-medium">Variantlar</th>
                 <th className="h-11 px-4 text-right font-medium">Buyurtmalar</th>
                 <th className="h-11 px-4 text-center font-medium">Status</th>
                 <th className="h-11 px-4 text-center font-medium">Mavjud</th>
@@ -191,8 +192,28 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                     </td>
                     <td className="px-4 py-2 text-muted-foreground text-xs">{cat?.name_uz || "—"}</td>
                     <td className="px-4 py-2 text-right">
-                      <div className="font-medium">{p.price?.toLocaleString()} so'm</div>
-                      {p.discount_price && <div className="text-xs text-green-600">{p.discount_price?.toLocaleString()} so'm</div>}
+                      {p.variants?.length > 0 ? (() => {
+                        const prices = p.variants.map((v: any) => v.discount_price || v.price).filter(Boolean)
+                        const min = Math.min(...prices)
+                        const max = Math.max(...prices)
+                        return (
+                          <div className="font-medium text-xs">
+                            {min === max ? `${min.toLocaleString()}` : `${min.toLocaleString()} – ${max.toLocaleString()}`}
+                            <span className="text-muted-foreground ml-1">so'm</span>
+                          </div>
+                        )
+                      })() : (
+                        <>
+                          <div className="font-medium">{p.price?.toLocaleString()} so'm</div>
+                          {p.discount_price && <div className="text-xs text-green-600">{p.discount_price?.toLocaleString()} so'm</div>}
+                        </>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {p.variants?.length > 0
+                        ? <span className="text-xs font-medium text-blue-600">{p.variants.length} ta</span>
+                        : <span className="text-xs text-muted-foreground">—</span>
+                      }
                     </td>
                     <td className="px-4 py-2 text-right text-muted-foreground">{p.order_count || 0}</td>
                     <td className="px-4 py-2 text-center">
