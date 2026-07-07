@@ -92,7 +92,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
     socket.on("restaurant.notification", (payload: NotificationPayload) => {
       setUnread(prev => prev + 1)
       setNotifications(prev => [payload, ...prev].slice(0, 20))
-      playSound()
+      if (payload.type === "new_order") playSound()
       const icon = TYPE_ICONS[payload.type] || "🔔"
       toast.info(`${icon} ${payload.title}`, {
         description: payload.body,
