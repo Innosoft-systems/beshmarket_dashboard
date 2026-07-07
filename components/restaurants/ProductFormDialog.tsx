@@ -27,9 +27,6 @@ interface Props {
 function initOptionTypes(product?: any): LocalOptionType[] {
   if (!product?.option_types?.length) return []
   return product.option_types.map((ot: any) => ({
-    name_uz: ot.name_uz || "",
-    name_ru: ot.name_ru || "",
-    name_en: ot.name_en || "",
     values: (ot.values || []).map((v: any) => ({
       localId: v._id || v.localId || `existing_${Math.random()}`,
       name_uz: v.name_uz || "",
@@ -128,9 +125,6 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
 
     if (hasVariants) {
       body.option_types = optionTypes.map(ot => ({
-        name_uz: ot.name_uz,
-        name_ru: ot.name_ru,
-        name_en: ot.name_en,
         values: ot.values.map(v => ({
           _id: v.localId,
           name_uz: v.name_uz,

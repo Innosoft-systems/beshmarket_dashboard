@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export type LocalOptionValue = { localId: string; name_uz: string; name_ru: string; name_en: string }
-export type LocalOptionType = { name_uz: string; name_ru: string; name_en: string; values: LocalOptionValue[] }
+export type LocalOptionType = { values: LocalOptionValue[] }
 
 interface Props {
   optionTypes: LocalOptionType[]
@@ -19,17 +19,11 @@ const tempId = () => `t_${++counter}_${Date.now()}`
 
 export function OptionTypesEditor({ optionTypes, onChange }: Props) {
   const addType = () => {
-    onChange([...optionTypes, { name_uz: "", name_ru: "", name_en: "", values: [] }])
+    onChange([...optionTypes, { values: [] }])
   }
 
   const removeType = (i: number) => {
     onChange(optionTypes.filter((_, idx) => idx !== i))
-  }
-
-  const updateType = (i: number, field: keyof Omit<LocalOptionType, "values">, val: string) => {
-    const updated = [...optionTypes]
-    updated[i] = { ...updated[i], [field]: val }
-    onChange(updated)
   }
 
   const addValue = (typeIdx: number) => {
@@ -70,20 +64,6 @@ export function OptionTypesEditor({ optionTypes, onChange }: Props) {
             <Button type="button" variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => removeType(i)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {(["uz", "ru", "en"] as const).map(lang => (
-              <div key={lang} className="space-y-1">
-                <Label className="text-xs">Nomi ({lang.toUpperCase()})</Label>
-                <Input
-                  className="h-8 text-sm"
-                  placeholder={lang === "uz" ? "Ta'm" : lang === "ru" ? "Вкус" : "Flavor"}
-                  value={(ot as any)[`name_${lang}`]}
-                  onChange={e => updateType(i, `name_${lang}` as any, e.target.value)}
-                />
-              </div>
-            ))}
           </div>
 
           <div className="space-y-2">
