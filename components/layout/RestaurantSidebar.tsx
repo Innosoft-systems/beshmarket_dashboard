@@ -33,17 +33,31 @@ const items = [
   { title: "Profil", url: "/restaurant/profile", icon: Settings },
 ]
 
-export function RestaurantSidebar() {
+interface Props {
+  name?: string | null
+  logo?: string | null
+}
+
+export function RestaurantSidebar({ name, logo }: Props) {
   const pathname = usePathname()
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? ""
 
   return (
     <Sidebar>
       <SidebarHeader className="border-b px-4 py-4 mb-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Store className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-bold">Restaurant</span>
+          {logo ? (
+            <img
+              src={`${apiBase}${logo}`}
+              alt={name ?? ""}
+              className="h-8 w-8 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shrink-0">
+              <Store className="h-5 w-5 text-primary-foreground" />
+            </div>
+          )}
+          <span className="text-base font-bold truncate">{name ?? "Restaurant"}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
