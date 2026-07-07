@@ -57,20 +57,14 @@ export function OptionTypesEditor({ optionTypes, onChange }: Props) {
       {optionTypes.map((ot, i) => (
         <div key={i} className="border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm font-medium">{i + 1}-farq turi</span>
-              <p className="text-xs text-muted-foreground">Mahsulot nimasi bilan farqlanadi? (hajmi, ta&apos;mi, rangi...)</p>
-            </div>
+            <span className="text-sm font-medium">{i + 1}-tur</span>
             <Button type="button" variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => removeType(i)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
 
           <div className="space-y-2">
-            <div>
-              <Label className="text-xs font-medium">Tanlovlar</Label>
-              <p className="text-xs text-muted-foreground">Mijoz nima tanlaydi? Har biri alohida qator</p>
-            </div>
+            <Label className="text-xs font-medium">Tanlovlar</Label>
             <div className="flex flex-wrap gap-2">
               {ot.values.map((v, vi) => (
                 <div key={v.localId} className="flex items-center gap-1 border rounded-md px-2 py-1 bg-muted/30">
@@ -101,7 +95,7 @@ export function OptionTypesEditor({ optionTypes, onChange }: Props) {
       ))}
 
       <Button type="button" variant="outline" size="sm" onClick={addType}>
-        <Plus className="h-4 w-4 mr-1" /> Farq turi qo&apos;shish (hajm, ta&apos;m, rang...)
+        <Plus className="h-4 w-4 mr-1" /> Tur qo&apos;shish
       </Button>
     </div>
   )

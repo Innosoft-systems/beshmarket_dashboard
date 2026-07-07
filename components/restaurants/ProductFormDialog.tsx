@@ -227,10 +227,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
                 }}
                 className="h-4 w-4 rounded"
               />
-              <div>
-                <span className="font-medium text-sm">Bu mahsulotning bir necha xili bor</span>
-                <p className="text-xs text-muted-foreground">Masalan: Pepsi 0.5L / 1L / 2L yoki Bliss suvi 4 xil ta&apos;mda — har xili alohida narxda sotiladi</p>
-              </div>
+              <span className="font-medium text-sm">Bir necha xili bor (0.5L, 1L, 2L...)</span>
             </label>
 
             {!hasVariants && (
@@ -256,13 +253,11 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
             {hasVariants && (
               <div className="space-y-5">
                 <div>
-                  <Label className="mb-1 block">1-qadam: Farq turlarini kiriting</Label>
-                  <p className="text-xs text-muted-foreground mb-2">Mahsulot qanday farqlanadi va mijoz nima tanlaydi?</p>
+                  <Label className="mb-2 block">1. Tanlov turlari</Label>
                   <OptionTypesEditor optionTypes={optionTypes} onChange={setOptionTypes} />
                 </div>
                 <div>
-                  <Label className="mb-1 block">2-qadam: Har bir xilga narx kiriting</Label>
-                  <p className="text-xs text-muted-foreground mb-2">&quot;Narx jadvalini yaratish&quot; tugmasini bosing, keyin narxlarni to&apos;ldiring</p>
+                  <Label className="mb-2 block">2. Narxlar</Label>
                   <VariantEditor optionTypes={optionTypes} variants={variants} onChange={setVariants} />
                 </div>
               </div>
