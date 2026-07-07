@@ -52,8 +52,32 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
   const [loaded, setLoaded] = useState(false)
   const [marking, setMarking] = useState(false)
   const socketRef = useRef<Socket | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useFcmToken(accessToken)
+
+  const stopSound = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current)
+      stopTimerRef.current = null
+    }
+  }, [])
+
+  const playSound = useCallback(() => {
+    stopSound()
+    if (typeof window === "undefined") return
+    if (!audioRef.current) {
+      audioRef.current = new Audio("/sounds/sound.mp3")
+      audioRef.current.loop = true
+    }
+    audioRef.current.play().catch(() => {})
+    stopTimerRef.current = setTimeout(stopSound, 60_000)
+  }, [stopSound])
 
 
   // WebSocket connection for real-time notifications
@@ -68,6 +92,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
     socket.on("restaurant.notification", (payload: NotificationPayload) => {
       setUnread(prev => prev + 1)
       setNotifications(prev => [payload, ...prev].slice(0, 20))
+      playSound()
       const icon = TYPE_ICONS[payload.type] || "🔔"
       toast.info(`${icon} ${payload.title}`, {
         description: payload.body,
@@ -80,7 +105,11 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
 
     socketRef.current = socket
     return () => { socket.disconnect() }
-  }, [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accessToken, playSound]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => { stopSound() }
+  }, [stopSound])
 
   const loadNotifications = async () => {
     if (loaded) return
@@ -119,6 +148,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
   }
 
   const handleToggle = () => {
+    stopSound()
     setOpen(v => !v)
     if (!open) loadNotifications()
   }
