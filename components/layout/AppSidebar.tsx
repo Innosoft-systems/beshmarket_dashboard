@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog, ClipboardList, Bike, AlertTriangle, MessageSquare, CalendarClock, Bell, Tag, MessagesSquare, MapPin, CreditCard } from "lucide-react"
+import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog, ClipboardList, Bike, AlertTriangle, MessageSquare, CalendarClock, Bell, Tag, MessagesSquare, MapPin, CreditCard, Smartphone } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { logoutAction } from "@/app/(auth)/login/actions"
@@ -38,6 +38,7 @@ const settingsItems = [
   { title: "Foydalanuvchilar", url: "/settings/users", icon: UserCog },
   { title: "Kuryerlar", url: "/settings/couriers", icon: Truck },
   { title: "Xizmat zonalari", url: "/settings/zones", icon: MapPin },
+  { title: "Ilova versiyalari", url: "/settings/app-versions", icon: Smartphone },
 ]
 
 export function AppSidebar() {
@@ -90,7 +91,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <div className={`overflow-hidden transition-all duration-200 flex flex-col gap-1 ${settingsOpen ? "max-h-60 opacity-100" : "max-h-0 opacity-0"}`}>
+              <div className={`overflow-hidden transition-all duration-200 flex flex-col gap-1 ${settingsOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"}`}>
                 {settingsItems.map((item) => {
                   const isActive = pathname.startsWith(item.url)
                   return (
