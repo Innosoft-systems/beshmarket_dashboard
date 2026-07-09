@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export type LocalOptionValue = { localId: string; name_uz: string; name_ru: string; name_en: string }
-export type LocalOptionType = { values: LocalOptionValue[] }
+export type LocalOptionType = { name_uz: string; name_ru: string; name_en: string; values: LocalOptionValue[] }
 
 interface Props {
   optionTypes: LocalOptionType[]
@@ -19,7 +19,7 @@ const tempId = () => `t_${++counter}_${Date.now()}`
 
 export function OptionTypesEditor({ optionTypes, onChange }: Props) {
   const addType = () => {
-    onChange([...optionTypes, { values: [] }])
+    onChange([...optionTypes, { name_uz: '', name_ru: '', name_en: '', values: [] }])
   }
 
   const removeType = (i: number) => {
@@ -57,10 +57,52 @@ export function OptionTypesEditor({ optionTypes, onChange }: Props) {
       {optionTypes.map((ot, i) => (
         <div key={i} className="border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{i + 1}-tur</span>
+            <span className="text-sm font-medium">{i + 1}-tur nomi</span>
             <Button type="button" variant="ghost" size="sm" className="text-red-500 h-7 px-2" onClick={() => removeType(i)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-xs">O&apos;zbekcha</Label>
+              <Input
+                className="h-7 text-xs mt-1"
+                placeholder="Hajm"
+                value={ot.name_uz}
+                onChange={e => {
+                  const updated = [...optionTypes]
+                  updated[i] = { ...updated[i], name_uz: e.target.value }
+                  onChange(updated)
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Ruscha</Label>
+              <Input
+                className="h-7 text-xs mt-1"
+                placeholder="Объём"
+                value={ot.name_ru}
+                onChange={e => {
+                  const updated = [...optionTypes]
+                  updated[i] = { ...updated[i], name_ru: e.target.value }
+                  onChange(updated)
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Inglizcha</Label>
+              <Input
+                className="h-7 text-xs mt-1"
+                placeholder="Size"
+                value={ot.name_en}
+                onChange={e => {
+                  const updated = [...optionTypes]
+                  updated[i] = { ...updated[i], name_en: e.target.value }
+                  onChange(updated)
+                }}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
