@@ -65,9 +65,9 @@ function applyTokens(
   response.cookies.set(REFRESH_TOKEN, rt, base)
 }
 
-// ── Middleware ────────────────────────────────────────────────────────────────
+// ── Proxy ─────────────────────────────────────────────────────────────────────
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Pages that don't need an auth guard
