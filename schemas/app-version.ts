@@ -21,4 +21,5 @@ export const appVersionSchema = z.object({
   isActive: z.boolean().default(true),
 })
 
-export type AppVersionFormValues = z.infer<typeof appVersionSchema>
+export type AppVersionFormInput = z.input<typeof appVersionSchema>
+export type AppVersionFormValues = z.output<typeof appVersionSchema>

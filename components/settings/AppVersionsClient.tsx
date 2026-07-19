@@ -7,7 +7,11 @@ import { toast } from "sonner"
 import { Smartphone, Save, Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { appVersionSchema, type AppVersionFormValues } from "@/schemas/app-version"
+import {
+  appVersionSchema,
+  type AppVersionFormInput,
+  type AppVersionFormValues,
+} from "@/schemas/app-version"
 import { upsertAppVersionAction, updateAppVersionAction } from "@/lib/actions/app-versions"
 import type { AppVersion, AppPlatform } from "@/lib/actions/app-versions"
 
@@ -55,7 +59,7 @@ function PlatformForm({
     watch,
     setValue,
     formState: { errors },
-  } = useForm<AppVersionFormValues>({
+  } = useForm<AppVersionFormInput, unknown, AppVersionFormValues>({
     resolver: zodResolver(appVersionSchema),
     defaultValues: {
       latestVersion: existing?.latestVersion ?? "",
