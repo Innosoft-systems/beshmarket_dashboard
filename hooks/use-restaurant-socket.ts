@@ -18,7 +18,6 @@ function useThrottledCallback<T extends (...args: unknown[]) => void>(fn: T, wai
         fn(...args)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [fn, wait],
   ) as T
 }
@@ -26,23 +25,11 @@ function useThrottledCallback<T extends (...args: unknown[]) => void>(fn: T, wai
 export function useRestaurantSocket(accessToken: string | null) {
   const router = useRouter()
   const socketRef = useRef<Socket | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const audioEnabled = useRef(false)
 
   const throttledRefresh = useThrottledCallback(() => router.refresh(), 2000)
 
   useEffect(() => {
-    const enableAudio = () => { audioEnabled.current = true }
-    document.addEventListener("click", enableAudio, { once: true })
-    return () => document.removeEventListener("click", enableAudio)
-  }, [])
-
-  useEffect(() => {
     if (!accessToken) return
-
-    if (typeof window !== "undefined") {
-      audioRef.current = new Audio("/sounds/order_sound.wav")
-    }
 
     function createSocket(token: string): Socket {
       const socket = io(`${API_URL}/orders`, {
@@ -52,18 +39,6 @@ export function useRestaurantSocket(accessToken: string | null) {
       })
 
       socket.on("order.new", (payload: { orderId: string; orderNumber: string; total: number }) => {
-        if (audioEnabled.current && audioRef.current) {
-          audioRef.current.loop = true
-          audioRef.current.currentTime = 0
-          audioRef.current.play().catch(() => {})
-          setTimeout(() => {
-            if (audioRef.current) {
-              audioRef.current.pause()
-              audioRef.current.loop = false
-              audioRef.current.currentTime = 0
-            }
-          }, 5000)
-        }
         toast.info(`Yangi buyurtma: ${payload.orderNumber}`, {
           description: `${payload.total.toLocaleString()} so'm`,
           duration: 15000,

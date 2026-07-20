@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { updateSettingAction, updateLegalPageAction } from "@/lib/actions/settings"
+import { resolveOrderSoundUrl } from "@/lib/order-sound"
 
 const TABS = [
   { id: "orders", label: "Buyurtma" },
@@ -18,8 +19,32 @@ const TABS = [
 ] as const
 
 interface Props {
-  settings: { key: string; value: any }[]
-  legalPages: any[]
+  settings: SettingItem[]
+  legalPages: LegalPage[]
+}
+
+interface SettingItem {
+  key: string
+  value: unknown
+}
+
+interface LegalPage {
+  slug: string
+  title_uz?: string
+  content_uz?: string
+  title_ru?: string
+  content_ru?: string
+  title_en?: string
+  content_en?: string
+}
+
+interface FaqItem {
+  question_uz: string
+  answer_uz: string
+  question_ru: string
+  answer_ru: string
+  question_en: string
+  answer_en: string
 }
 
 export function SettingsUsersClient({ settings, legalPages }: Props) {
@@ -55,7 +80,7 @@ export function SettingsUsersClient({ settings, legalPages }: Props) {
   )
 }
 
-function LegalEditor({ slug, legalPages }: { slug: string; legalPages: any[] }) {
+function LegalEditor({ slug, legalPages }: { slug: string; legalPages: LegalPage[] }) {
   const router = useRouter()
   const page = legalPages.find((p) => p.slug === slug)
   const [form, setForm] = useState({
@@ -115,9 +140,9 @@ function LegalEditor({ slug, legalPages }: { slug: string; legalPages: any[] }) 
   )
 }
 
-function SupportSettings({ settings }: { settings: { key: string; value: any }[] }) {
+function SupportSettings({ settings }: { settings: SettingItem[] }) {
   const router = useRouter()
-  const getSetting = (key: string) => settings.find((s) => s.key === key)?.value || ""
+  const getSetting = (key: string) => String(settings.find((s) => s.key === key)?.value ?? "")
   const [form, setForm] = useState({
     support_phone: getSetting("support_phone"),
     support_email: getSetting("support_email"),
@@ -156,11 +181,10 @@ function SupportSettings({ settings }: { settings: { key: string; value: any }[]
   )
 }
 
-function FaqSettings({ settings }: { settings: { key: string; value: any }[] }) {
-  const router = useRouter()
+function FaqSettings({ settings }: { settings: SettingItem[] }) {
   const existing = settings.find((s) => s.key === "faq_items")?.value || "[]"
-  const [items, setItems] = useState<{ question_uz: string; answer_uz: string; question_ru: string; answer_ru: string; question_en: string; answer_en: string }[]>(
-    typeof existing === "string" ? JSON.parse(existing) : existing
+  const [items, setItems] = useState<FaqItem[]>(
+    typeof existing === "string" ? JSON.parse(existing) : Array.isArray(existing) ? existing as FaqItem[] : []
   )
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -206,7 +230,7 @@ function FaqSettings({ settings }: { settings: { key: string; value: any }[] }) 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Jami: {items.length} ta savol</p>
-        <Button onClick={openNew}>+ Savol qo'shish</Button>
+        <Button onClick={openNew}>{"+ Savol qo'shish"}</Button>
       </div>
 
       {items.length > 0 && (
@@ -230,7 +254,7 @@ function FaqSettings({ settings }: { settings: { key: string; value: any }[] }) 
                   <td className="px-3 py-3 truncate max-w-[200px]">{item.question_en}</td>
                   <td className="px-3 py-3 text-right space-x-1">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(i)}>Tahrirlash</Button>
-                    <Button variant="ghost" size="sm" onClick={() => removeItem(i)} className="text-red-500">O'chirish</Button>
+                    <Button variant="ghost" size="sm" onClick={() => removeItem(i)} className="text-red-500">{"O'chirish"}</Button>
                   </td>
                 </tr>
               ))}
@@ -282,9 +306,9 @@ function FaqSettings({ settings }: { settings: { key: string; value: any }[] }) 
   )
 }
 
-function SocialSettings({ settings }: { settings: { key: string; value: any }[] }) {
+function SocialSettings({ settings }: { settings: SettingItem[] }) {
   const router = useRouter()
-  const getSetting = (key: string) => settings.find((s) => s.key === key)?.value || ""
+  const getSetting = (key: string) => String(settings.find((s) => s.key === key)?.value ?? "")
   const [form, setForm] = useState({
     social_telegram: getSetting("social_telegram"),
     social_instagram: getSetting("social_instagram"),
@@ -329,15 +353,22 @@ function SocialSettings({ settings }: { settings: { key: string; value: any }[] 
 }
 
 
-function OrderSettings({ settings }: { settings: { key: string; value: any }[] }) {
+function OrderSettings({ settings }: { settings: SettingItem[] }) {
   const router = useRouter()
-  const getSetting = (key: string) => settings.find((s) => s.key === key)?.value ?? ""
+  const getSetting = (key: string): string | number => {
+    const value = settings.find((setting) => setting.key === key)?.value
+    return typeof value === "string" || typeof value === "number" ? value : ""
+  }
   const [form, setForm] = useState({
     min_order_amount: getSetting("min_order_amount"),
     delivery_fee: getSetting("delivery_fee"),
     service_fee_rate: getSetting("service_fee_rate"),
   })
   const [loading, setLoading] = useState(false)
+  const initialSoundUrl = getSetting("order_notification_sound_url") || "/sounds/sound.mp3"
+  const [soundUrl, setSoundUrl] = useState(String(initialSoundUrl))
+  const [uploadingSound, setUploadingSound] = useState(false)
+  const [savingSound, setSavingSound] = useState(false)
 
   const handleSave = async () => {
     setLoading(true)
@@ -349,24 +380,100 @@ function OrderSettings({ settings }: { settings: { key: string; value: any }[] }
     router.refresh()
   }
 
+  const handleSoundFile = async (file?: File) => {
+    if (!file) return
+    const allowedTypes = ["audio/mpeg", "audio/wav", "audio/ogg"]
+    const allowedExtensions = [".mp3", ".wav", ".ogg"]
+    const lowerName = file.name.toLowerCase()
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.some((extension) => lowerName.endsWith(extension))) {
+      toast.error("Faqat MP3, WAV yoki OGG fayl tanlang")
+      return
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Audio fayl hajmi 3 MB dan oshmasligi kerak")
+      return
+    }
+
+    setUploadingSound(true)
+    try {
+      const body = new FormData()
+      body.append("file", file)
+      const response = await fetch("/api/upload/audio", { method: "POST", body })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || "Audio faylni yuklashda xatolik")
+      setSoundUrl(data.url)
+      toast.success("Audio yuklandi. Endi sozlamani saqlang")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Audio faylni yuklashda xatolik")
+    } finally {
+      setUploadingSound(false)
+    }
+  }
+
+  const handleSoundSave = async () => {
+    setSavingSound(true)
+    const result = await updateSettingAction("order_notification_sound_url", soundUrl)
+    setSavingSound(false)
+    if (result.success) {
+      toast.success("Buyurtma ovozi saqlandi")
+      router.refresh()
+    } else {
+      toast.error(result.error || "Ovozni saqlashda xatolik")
+    }
+  }
+
   return (
-    <div className="space-y-4 max-w-lg">
-      <div className="space-y-2">
-        <Label>Minimal buyurtma summasi (so'm)</Label>
-        <Input type="number" value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} placeholder="15000" />
-      </div>
-      <div className="space-y-2">
-        <Label>Yetkazib berish narxi (so'm)</Label>
-        <Input type="number" value={form.delivery_fee} onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })} placeholder="5000" />
-      </div>
-      <div className="space-y-2">
-        <Label>Servis haqi foizi (%)</Label>
-        <Input type="number" value={form.service_fee_rate} onChange={(e) => setForm({ ...form, service_fee_rate: e.target.value })} placeholder="2" />
-      </div>
-      <Button onClick={handleSave} disabled={loading}>
-        {loading ? "Saqlanmoqda..." : "Saqlash"}
-      </Button>
+    <div className="space-y-6 max-w-2xl">
+      <section className="space-y-4 rounded-xl border bg-background p-5">
+        <div>
+          <h2 className="font-medium">Buyurtma qiymatlari</h2>
+          <p className="text-sm text-muted-foreground">Minimal summa va xizmat narxlarini boshqarish</p>
+        </div>
+        <div className="space-y-2">
+          <Label>{"Minimal buyurtma summasi (so'm)"}</Label>
+          <Input type="number" value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} placeholder="15000" />
+        </div>
+        <div className="space-y-2">
+          <Label>{"Yetkazib berish narxi (so'm)"}</Label>
+          <Input type="number" value={form.delivery_fee} onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })} placeholder="5000" />
+        </div>
+        <div className="space-y-2">
+          <Label>Servis haqi foizi (%)</Label>
+          <Input type="number" value={form.service_fee_rate} onChange={(e) => setForm({ ...form, service_fee_rate: e.target.value })} placeholder="2" />
+        </div>
+        <Button onClick={handleSave} disabled={loading}>
+          {loading ? "Saqlanmoqda..." : "Qiymatlarni saqlash"}
+        </Button>
+      </section>
+
+      <section className="space-y-4 rounded-xl border bg-background p-5">
+        <div>
+          <h2 className="font-medium">Buyurtma bildirishnomasi ovozi</h2>
+          <p className="text-sm text-muted-foreground">
+            Yangi buyurtma kelganda admin, restoran paneli va kuryer ilovasida shu ovoz ijro etiladi.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="order-sound">Audio fayl</Label>
+          <Input
+            id="order-sound"
+            type="file"
+            accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg"
+            disabled={uploadingSound || savingSound}
+            onChange={(event) => handleSoundFile(event.target.files?.[0])}
+          />
+          <p className="text-xs text-muted-foreground">MP3, WAV yoki OGG. Maksimal hajm: 3 MB.</p>
+        </div>
+
+        <audio key={soundUrl} controls preload="metadata" className="w-full" src={resolveOrderSoundUrl(soundUrl)}>
+          {"Brauzeringiz audio ijrosini qo'llab-quvvatlamaydi."}
+        </audio>
+
+        <Button onClick={handleSoundSave} disabled={uploadingSound || savingSound || !soundUrl}>
+          {uploadingSound ? "Yuklanmoqda..." : savingSound ? "Saqlanmoqda..." : "Ovozni saqlash"}
+        </Button>
+      </section>
     </div>
   )
 }
-

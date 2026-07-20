@@ -1,19 +1,27 @@
 "use client"
 
 import { useEffect } from "react"
-import { initializeApp, getApps } from "firebase/app"
-import { getMessaging, getToken, onMessage } from "firebase/messaging"
+import { initializeApp, getApps, type FirebaseOptions } from "firebase/app"
+import { getMessaging, getToken, isSupported, onMessage, type Unsubscribe } from "firebase/messaging"
 import { toast } from "sonner"
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-}
-
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+
+function getFirebaseConfig(): FirebaseOptions | null {
+  const config = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  }
+
+  const isComplete = Object.values(config).every(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  )
+
+  return isComplete ? config as FirebaseOptions : null
+}
 
 function getOrCreateDeviceId(): string {
   const key = "fcm_device_id"
@@ -40,16 +48,24 @@ export function useFcmToken(accessToken: string | null) {
     if (!accessToken) return
     if (typeof window === "undefined" || !("Notification" in window)) return
 
+    const config = getFirebaseConfig()
+    if (!config || !VAPID_KEY?.trim()) return
+
+    let cancelled = false
+    let unsubscribe: Unsubscribe | undefined
+
     const init = async () => {
       try {
-        const permission = await Notification.requestPermission()
-        if (permission !== "granted") return
+        if (!(await isSupported()) || cancelled) return
 
-        const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
+        const permission = await Notification.requestPermission()
+        if (permission !== "granted" || cancelled) return
+
+        const app = getApps().length ? getApps()[0] : initializeApp(config)
         const messaging = getMessaging(app)
 
         const fcmToken = await getToken(messaging, { vapidKey: VAPID_KEY })
-        if (!fcmToken) return
+        if (!fcmToken || cancelled) return
 
         const deviceId = getOrCreateDeviceId()
         const storedToken = localStorage.getItem("fcm_token")
@@ -66,12 +82,17 @@ export function useFcmToken(accessToken: string | null) {
         }
 
         // Suppress browser's default foreground notification — WS handles toasts
-        onMessage(messaging, () => { /* intentionally empty */ })
+        unsubscribe = onMessage(messaging, () => { /* intentionally empty */ })
       } catch (e) {
-        console.error("FCM init failed", e)
+        if (!cancelled) console.error("FCM init failed", e)
       }
     }
 
     init()
+
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
   }, [accessToken])
 }

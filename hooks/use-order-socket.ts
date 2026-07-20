@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { io, Socket } from "socket.io-client"
 import { toast } from "sonner"
 import { refreshAccessToken } from "@/lib/auth/refresh-client"
+import { DEFAULT_ORDER_SOUND_URL, fetchOrderSoundUrl } from "@/lib/order-sound"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -42,7 +43,11 @@ export function useOrderSocket(
   useEffect(() => {
     if (!accessToken) return
 
-    audioRef.current = new Audio("/sounds/order_sound.wav")
+    let active = true
+    audioRef.current = new Audio(DEFAULT_ORDER_SOUND_URL)
+    fetchOrderSoundUrl().then((url) => {
+      if (active) audioRef.current = new Audio(url)
+    })
 
     function createSocket(token: string): Socket {
       const socket = io(`${API_URL}/orders`, {
@@ -90,8 +95,11 @@ export function useOrderSocket(
     socketRef.current = createSocket(accessToken)
 
     return () => {
+      active = false
       socketRef.current?.disconnect()
       socketRef.current = null
+      audioRef.current?.pause()
+      audioRef.current = null
     }
   }, [accessToken])
 }

@@ -7,6 +7,7 @@ self.addEventListener('install', () => self.skipWaiting());
 async function initFirebase() {
   try {
     const res = await fetch('/api/firebase-config');
+    if (!res.ok) return;
     const config = await res.json();
     firebase.initializeApp(config);
     const messaging = firebase.messaging();

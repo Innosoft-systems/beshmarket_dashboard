@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useFcmToken } from "@/hooks/use-fcm-token"
 import { toast } from "sonner"
+import { DEFAULT_ORDER_SOUND_URL, fetchOrderSoundUrl } from "@/lib/order-sound"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -57,6 +58,25 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
 
   useFcmToken(accessToken)
 
+  useEffect(() => {
+    audioRef.current = new Audio(DEFAULT_ORDER_SOUND_URL)
+    audioRef.current.loop = true
+    let active = true
+    fetchOrderSoundUrl().then((url) => {
+      if (!active) return
+      const wasPlaying = audioRef.current && !audioRef.current.paused
+      audioRef.current?.pause()
+      audioRef.current = new Audio(url)
+      audioRef.current.loop = true
+      if (wasPlaying) audioRef.current.play().catch(() => {})
+    })
+    return () => {
+      active = false
+      audioRef.current?.pause()
+      audioRef.current = null
+    }
+  }, [])
+
   const stopSound = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause()
@@ -71,11 +91,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
   const playSound = useCallback(() => {
     stopSound()
     if (typeof window === "undefined") return
-    if (!audioRef.current) {
-      audioRef.current = new Audio("/sounds/sound.mp3")
-      audioRef.current.loop = true
-    }
-    audioRef.current.play().catch(() => {})
+    audioRef.current?.play().catch(() => {})
     stopTimerRef.current = setTimeout(stopSound, 60_000)
   }, [stopSound])
 
@@ -182,7 +198,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
             {unread > 0 && (
               <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={markAllRead} disabled={marking}>
                 <CheckCheck className="h-3.5 w-3.5" />
-                Hammasini o'qi
+                {"Hammasini o'qi"}
               </Button>
             )}
           </div>
