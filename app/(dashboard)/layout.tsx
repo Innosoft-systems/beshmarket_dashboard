@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { NotificationBell } from "@/components/layout/NotificationBell"
 import { ChatBell } from "@/components/layout/ChatBell"
+import { SectionCleanupButton } from "@/components/layout/SectionCleanupButton"
 
 export const metadata: Metadata = {
   title: 'Dashboard — BeshMarket',
@@ -44,6 +45,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
           <SidebarTrigger />
           <div className="flex items-center gap-1">
+            <SectionCleanupButton />
             <ChatBell
               accessToken={token || ""}
               initialUnread={chatUnreadRes.data?.count ?? 0}
