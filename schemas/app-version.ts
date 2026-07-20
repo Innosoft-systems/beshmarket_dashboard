@@ -14,11 +14,11 @@ export const appVersionSchema = z.object({
     .min(1, "Do'kon havolasi kiritilishi shart")
     .url("To'g'ri URL kiriting"),
   changelog: z.object({
-    uz: z.string().default(""),
-    ru: z.string().default(""),
-    en: z.string().default(""),
+    uz: z.string(),
+    ru: z.string(),
+    en: z.string(),
   }),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 })
 
 export type AppVersionFormValues = z.infer<typeof appVersionSchema>
