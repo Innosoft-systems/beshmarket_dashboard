@@ -96,16 +96,17 @@ export function RestaurantFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Nomi *</Label>
-            <Input {...register("name")} placeholder="Restoran nomi" />
-            {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Telefon *</Label>
-            <Input {...register("phone")} placeholder="+998901234567" />
-            {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <Label>Nomi *</Label>
+              <Input {...register("name")} placeholder="Restoran nomi" />
+              {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Telefon *</Label>
+              <Input {...register("phone")} placeholder="+998901234567" />
+              {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -150,7 +151,7 @@ export function RestaurantFormDialog({
           </div>
 
           {!isEdit && (
-            <div className="border-t pt-4 mt-4">
+            <div>
               <div className="space-y-2">
                 <Label>Egasi telefon raqami *</Label>
                 <Input {...register("owner_phone")} placeholder="+998901234567" />
