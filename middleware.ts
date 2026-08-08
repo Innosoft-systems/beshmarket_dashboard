@@ -129,6 +129,10 @@ export async function middleware(request: NextRequest) {
 
   // ── 5. All good — continue and persist refreshed tokens if any ──────────────
   const requestHeaders = new Headers(request.headers)
+  // getAccessToken() trusts this header over the cookie, so a client-supplied one
+  // would let anybody hand server components/actions a forged role claim.
+  // Only middleware may set it.
+  requestHeaders.delete('x-access-token')
   if (refreshed) {
     // Pass refreshed access token to server components via header
     requestHeaders.set('x-access-token', refreshed.accessToken)

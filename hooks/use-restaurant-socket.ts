@@ -43,8 +43,8 @@ export function useRestaurantSocket(accessToken: string | null) {
 
       socket.on("order.new", (payload: { orderId: string; orderNumber: string; total: number }) => {
         // Also alarmed by the bell's `restaurant.notification` handler; whichever
-        // event lands first rings, the other is a no-op. See lib/order-alarm.ts.
-        playOrderAlarm()
+        // event lands first rings, the other is deduped by orderId. See lib/order-alarm.ts.
+        playOrderAlarm(payload.orderId)
         toast.info(`Yangi buyurtma: ${payload.orderNumber}`, {
           description: `${payload.total.toLocaleString()} so'm`,
           duration: 15000,

@@ -63,7 +63,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
   }, [])
 
   const stopSound = useCallback(() => stopOrderAlarm(), [])
-  const playSound = useCallback(() => playOrderAlarm(), [])
+  const playSound = useCallback((orderId?: string) => playOrderAlarm(orderId), [])
 
   // WebSocket connection for real-time notifications
   useEffect(() => {
@@ -77,7 +77,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
     socket.on("restaurant.notification", (payload: NotificationPayload) => {
       setUnread(prev => prev + 1)
       setNotifications(prev => [payload, ...prev].slice(0, 20))
-      if (payload.type === "new_order") playSound()
+      if (payload.type === "new_order") playSound(payload.data?.orderId)
       const icon = TYPE_ICONS[payload.type] || "🔔"
       toast.info(`${icon} ${payload.title}`, {
         description: payload.body,

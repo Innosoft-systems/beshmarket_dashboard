@@ -4,6 +4,8 @@ import { cookies } from "next/headers"
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1`
 
 const MAX_AUDIO_BYTES = 3 * 1024 * 1024
+/** Slack for multipart boundaries and headers when checking content-length. */
+const MULTIPART_OVERHEAD_BYTES = 8 * 1024
 const ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/ogg"]
 const ALLOWED_AUDIO_EXTENSIONS = [".mp3", ".wav", ".ogg"]
 
@@ -13,6 +15,13 @@ export async function POST(request: NextRequest) {
 
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Reject oversized bodies before formData() buffers them: route handlers have
+  // no default body-size cap, so the file.size check below is far too late.
+  const contentLength = Number(request.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_AUDIO_BYTES + MULTIPART_OVERHEAD_BYTES) {
+    return NextResponse.json({ error: "Audio fayl hajmi 3 MB dan oshmasligi kerak" }, { status: 413 })
   }
 
   const formData = await request.formData()
@@ -25,11 +34,14 @@ export async function POST(request: NextRequest) {
   if (file.size > MAX_AUDIO_BYTES) {
     return NextResponse.json({ error: "Audio fayl hajmi 3 MB dan oshmasligi kerak" }, { status: 413 })
   }
+
+  // The extension is mandatory — it is what the backend stores and what gets
+  // served back. `file.type` is the client-supplied part header, so it can only
+  // narrow the result further, never stand in for the extension on its own.
   const lowerName = file.name.toLowerCase()
-  if (
-    !ALLOWED_AUDIO_TYPES.includes(file.type) &&
-    !ALLOWED_AUDIO_EXTENSIONS.some((extension) => lowerName.endsWith(extension))
-  ) {
+  const hasAllowedExtension = ALLOWED_AUDIO_EXTENSIONS.some((extension) => lowerName.endsWith(extension))
+  const hasAllowedType = !file.type || ALLOWED_AUDIO_TYPES.includes(file.type)
+  if (!hasAllowedExtension || !hasAllowedType) {
     return NextResponse.json({ error: "Faqat MP3, WAV yoki OGG fayl yuklash mumkin" }, { status: 415 })
   }
 
