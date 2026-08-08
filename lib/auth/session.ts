@@ -4,7 +4,6 @@ const ACCESS_TOKEN_KEY = 'bm_access_token';
 const REFRESH_TOKEN_KEY = 'bm_refresh_token';
 
 const ONE_MINUTE = 60;
-const FIFTEEN_MINUTES = 15 * ONE_MINUTE;
 const SEVEN_DAYS = 7 * 24 * 60 * ONE_MINUTE;
 
 export async function getAccessToken(): Promise<string | undefined> {
@@ -51,4 +50,30 @@ export async function clearAuthTokens(): Promise<void> {
 export async function isAuthenticated(): Promise<boolean> {
   const token = await getAccessToken();
   return !!token;
+}
+
+/**
+ * Role claim from the session's access token.
+ *
+ * The signature is not verified here — the backend does that on every request.
+ * This exists so server actions can enforce the same role boundary that
+ * `middleware.ts` applies to page paths, since actions are dispatched by action
+ * id and never pass through the path-based guard.
+ */
+export async function getSessionRole(): Promise<string | undefined> {
+  const token = await getAccessToken();
+  if (!token) return undefined;
+
+  try {
+    const segment = token.split('.')[1];
+    if (!segment) return undefined;
+    const json = Buffer.from(
+      segment.replace(/-/g, '+').replace(/_/g, '/'),
+      'base64',
+    ).toString('utf8');
+    const payload = JSON.parse(json) as { role?: string };
+    return typeof payload.role === 'string' ? payload.role : undefined;
+  } catch {
+    return undefined;
+  }
 }

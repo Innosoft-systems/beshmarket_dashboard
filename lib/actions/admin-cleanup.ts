@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { getAccessToken } from "@/lib/auth/session"
+import { getAccessToken, getSessionRole } from "@/lib/auth/session"
 import { apiRequest, ApiError } from "@/lib/api/client"
 
 export async function cleanupSectionAction(
@@ -11,6 +11,14 @@ export async function cleanupSectionAction(
 ) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiya talab qilinadi" }
+
+  // Server actions are dispatched by action id, so the path-based role guard in
+  // middleware.ts never runs for them: a restaurant session can invoke this from
+  // any page it is allowed to load. Guard the mass-delete explicitly.
+  const role = await getSessionRole()
+  if (role !== "admin") {
+    return { success: false, error: "Bu amal uchun ruxsat yo'q" }
+  }
 
   try {
     const query = new URLSearchParams({ confirm: resource })

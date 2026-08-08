@@ -81,6 +81,10 @@ export function useFcmToken(accessToken: string | null) {
           }
         }
 
+        // registerDeviceToken can take up to 10s; if cleanup ran while it was in
+        // flight, subscribing now would leak a listener nothing can unsubscribe.
+        if (cancelled) return
+
         // Suppress browser's default foreground notification — WS handles toasts
         unsubscribe = onMessage(messaging, () => { /* intentionally empty */ })
       } catch (e) {

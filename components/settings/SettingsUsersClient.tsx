@@ -401,7 +401,11 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
       const response = await fetch("/api/upload/audio", { method: "POST", body })
       const data = await response.json()
       if (!response.ok) throw new Error(data?.error || "Audio faylni yuklashda xatolik")
-      setSoundUrl(data.url)
+
+      const uploadedUrl = typeof data?.url === "string" ? data.url.trim() : ""
+      if (!uploadedUrl) throw new Error("Server audio fayl manzilini qaytarmadi")
+
+      setSoundUrl(uploadedUrl)
       toast.success("Audio yuklandi. Endi sozlamani saqlang")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Audio faylni yuklashda xatolik")
@@ -461,7 +465,12 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
             type="file"
             accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg"
             disabled={uploadingSound || savingSound}
-            onChange={(event) => handleSoundFile(event.target.files?.[0])}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              // Reset so re-picking the same file after a failed upload still fires change
+              event.target.value = ""
+              handleSoundFile(file)
+            }}
           />
           <p className="text-xs text-muted-foreground">MP3, WAV yoki OGG. Maksimal hajm: 3 MB.</p>
         </div>
