@@ -69,6 +69,7 @@ export const ORDER_STATUSES = [
   { value: "accepted",                 label: "Qabul qilindi",        color: "bg-blue-100 text-blue-700 border-blue-200" },
   { value: "assigned",                 label: "Qabul kutilmoqda",     color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
   { value: "on_the_way_to_restaurant", label: "Restoranga ketmoqda",  color: "bg-violet-100 text-violet-700 border-violet-200" },
+  { value: "arrived_at_restaurant",    label: "Restoranda",           color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200" },
   { value: "picked_up",                label: "Olindi",               color: "bg-orange-100 text-orange-700 border-orange-200" },
   { value: "arrived_at_customer",      label: "Manzilga yetdi",       color: "bg-teal-100 text-teal-700 border-teal-200" },
   { value: "ready",                    label: "Tayyor",               color: "bg-purple-100 text-purple-700 border-purple-200" },

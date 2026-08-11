@@ -43,7 +43,13 @@ const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
   assigned: [
     { value: "on_the_way_to_restaurant", label: "Restoranga ketmoqda" },
   ],
-  on_the_way_to_restaurant: [{ value: "picked_up", label: "Olindi" }],
+  // Mirrors STATUS_TRANSITIONS in server/src/modules/orders/orders.service.ts.
+  // `arrived_at_restaurant` is not skippable: the server rejects
+  // on_the_way_to_restaurant → picked_up.
+  on_the_way_to_restaurant: [
+    { value: "arrived_at_restaurant", label: "Restoranga yetib keldi" },
+  ],
+  arrived_at_restaurant: [{ value: "picked_up", label: "Olindi" }],
   picked_up: [{ value: "arrived_at_customer", label: "Manzilga yetdi" }],
   arrived_at_customer: [{ value: "delivered", label: "Yetkazildi" }],
   ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
