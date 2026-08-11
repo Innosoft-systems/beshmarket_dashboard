@@ -15,6 +15,7 @@ import { createMyProductAction, updateMyProductAction } from "@/lib/actions/rest
 import { getFullImgUrl } from "@/lib/utils"
 import { OptionTypesEditor, type LocalOptionType } from "./OptionTypesEditor"
 import { VariantEditor, type LocalVariant } from "./VariantEditor"
+import { ModifierGroupsEditor, type LocalModifierGroup } from "./ModifierGroupsEditor"
 
 interface Props {
   product?: any
@@ -53,6 +54,33 @@ function initVariants(product?: any): LocalVariant[] {
   }))
 }
 
+function initModifierGroups(product?: any): LocalModifierGroup[] {
+  if (!product?.modifier_groups?.length) return []
+  return product.modifier_groups.map((g: any) => ({
+    localId: g._id?.toString() || `g_${Math.random()}`,
+    _id: g._id?.toString(),
+    name_uz: g.name_uz || "",
+    name_ru: g.name_ru || "",
+    name_en: g.name_en || "",
+    is_required: g.is_required ?? false,
+    min_select: (g.min_select ?? 0).toString(),
+    max_select: (g.max_select ?? 0).toString(),
+    options: (g.options || []).map((o: any) => ({
+      localId: o._id?.toString() || `o_${Math.random()}`,
+      _id: o._id?.toString(),
+      name_uz: o.name_uz || "",
+      name_ru: o.name_ru || "",
+      name_en: o.name_en || "",
+      price: (o.price ?? 0).toString(),
+      max_quantity: (o.max_quantity ?? 1).toString(),
+      // null/undefined means "not tracked" — keep the field empty, not "0",
+      // which would mean "out of stock".
+      stock: o.stock === null || o.stock === undefined ? "" : o.stock.toString(),
+      is_active: o.is_active ?? true,
+    })),
+  }))
+}
+
 export function ProductFormDialog({ product, restaurantId, categories, onClose, scope = "admin" }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -65,6 +93,9 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
   )
   const [optionTypes, setOptionTypes] = useState<LocalOptionType[]>(() => initOptionTypes(product))
   const [variants, setVariants] = useState<LocalVariant[]>(() => initVariants(product))
+  const [modifierGroups, setModifierGroups] = useState<LocalModifierGroup[]>(() =>
+    initModifierGroups(product),
+  )
 
   useEffect(() => () => { uploadAbortRef.current?.abort() }, [])
 
@@ -118,6 +149,29 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
       if (!form.price) return toast.error("Narx majburiy")
     }
 
+    for (const group of modifierGroups) {
+      if (!group.name_uz.trim()) {
+        return toast.error("Har bir qo'shimchalar guruhida nom bo'lishi kerak")
+      }
+      const named = group.options.filter(o => o.name_uz.trim())
+      if (!named.length) {
+        return toast.error(`"${group.name_uz}" guruhida kamida 1 ta tanlov kerak`)
+      }
+      if (named.some(o => Number(o.price) < 0)) {
+        return toast.error(`"${group.name_uz}" guruhida narx manfiy bo'lishi mumkin emas`)
+      }
+      const max = Number(group.max_select) || 0
+      const min = Number(group.min_select) || 0
+      if (max > 0 && min > max) {
+        return toast.error(`"${group.name_uz}": "kamida" qiymati "ko'pi bilan"dan katta`)
+      }
+      if (max > named.length) {
+        return toast.error(
+          `"${group.name_uz}": ko'pi bilan ${max} ta, lekin faqat ${named.length} ta tanlov bor`,
+        )
+      }
+    }
+
     const body: Record<string, unknown> = {
       ...form,
       restaurant_id: restaurantId,
@@ -152,6 +206,32 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
       body.option_types = []
       body.variants = []
     }
+
+    // Modifier groups are independent of the variant matrix — a product can have
+    // add-ons with or without sizes.
+    body.modifier_groups = modifierGroups.map((g, gi) => ({
+      ...(g._id ? { _id: g._id } : {}),
+      name_uz: g.name_uz,
+      name_ru: g.name_ru || g.name_uz,
+      name_en: g.name_en || g.name_uz,
+      is_required: g.is_required,
+      min_select: Number(g.min_select) || 0,
+      max_select: Number(g.max_select) || 0,
+      is_active: true,
+      sort_order: gi,
+      options: g.options.map((o, oi) => ({
+        ...(o._id ? { _id: o._id } : {}),
+        name_uz: o.name_uz,
+        name_ru: o.name_ru || o.name_uz,
+        name_en: o.name_en || o.name_uz,
+        price: Number(o.price) || 0,
+        max_quantity: Number(o.max_quantity) || 0,
+        // Empty means "stock not tracked" — send null, not 0.
+        stock: o.stock.trim() === "" ? null : Number(o.stock),
+        is_active: o.is_active,
+        sort_order: oi,
+      })),
+    }))
 
     setLoading(true)
     const result = product
@@ -268,6 +348,11 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
                 </div>
               </div>
             )}
+
+            <div className="space-y-2 border-t pt-5">
+              <Label className="block">Qo&apos;shimchalar</Label>
+              <ModifierGroupsEditor groups={modifierGroups} onChange={setModifierGroups} />
+            </div>
           </div>
 
           {/* Toggles */}
