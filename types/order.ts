@@ -16,6 +16,8 @@ export interface OrderClient {
 export interface OrderRestaurant {
   _id?: string
   name: string
+  /** 'market' swaps cooking wording ("Tayyor") for picking wording ("Yig'ildi"). */
+  type?: "restaurant" | "market"
 }
 
 export interface OrderAddress {
@@ -32,7 +34,12 @@ export interface Order {
   courier_id?: string | OrderClient | null
   address_id?: string | OrderAddress | null
   items: OrderItem[]
+  /** Delivery track. Cooking progress is kitchen_status, which moves separately. */
   status: string
+  kitchen_status?: "pending" | "preparing" | "ready"
+  kitchen_ready_at?: string | null
+  /** While pending: when the order auto-cancels if the restaurant stays silent. */
+  restaurant_accept_deadline?: string | null
   payment_status: string
   subtotal: number
   delivery_fee: number

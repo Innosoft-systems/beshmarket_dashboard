@@ -20,7 +20,10 @@ export interface Restaurant {
   logo?: string;
   cover_image?: string;
   is_active: boolean;
-  is_open: boolean;
+  is_open: boolean
+  /** Closed by the presence sweep rather than by the owner. */
+  auto_closed?: boolean
+  last_seen_at?: string | null;
   is_verified?: boolean;
   status?: string;
   avg_rating: number;

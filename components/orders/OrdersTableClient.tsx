@@ -24,9 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { updateOrderStatusAction, cancelOrderAction } from "@/lib/actions/orders"
+import { updateOrderStatusAction, updateKitchenStatusAction, cancelOrderAction } from "@/lib/actions/orders"
 import { useOrderSocket, NewOrderPayload, StatusUpdatedPayload } from "@/hooks/use-order-socket"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording"
 
 const STATUS_FILTER = [
   { value: "all", label: "Barcha statuslar" },
@@ -47,6 +48,32 @@ function StatusBadge({ status }: { status: string }) {
     <Badge variant="outline" className={s?.color || ""}>
       {s?.label || status}
     </Badge>
+  )
+}
+
+/** Kitchen — or shop-floor — progress, shown while it is still someone's problem. */
+function KitchenHint({
+  status,
+  kitchenStatus,
+  venueType,
+}: {
+  status: string
+  kitchenStatus?: string
+  venueType: VenueType
+}) {
+  const live = !["pending", "delivered", "rejected", "cancelled"].includes(status)
+  if (!live) return null
+
+  const words = kitchenWording(venueType)
+  const ready = kitchenStatus === "ready"
+  return (
+    <span
+      className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
+        ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+      }`}
+    >
+      {ready ? words.readyBadge : words.preparingBadge}
+    </span>
   )
 }
 
@@ -82,20 +109,39 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
 
   if (order.status === "delivered" || order.status === "rejected") return null
 
+  // "Tayyor" is not in here — marking food ready is the kitchen track and is
+  // offered separately below, for the whole life of the order.
   const nextStatuses = scope === "restaurant"
     ? {
         pending: [
+          // Dispatching a courier waits on this; see OrderDetailClient.
+          { value: "accepted", label: "Qabul qilish" },
           { value: "rejected", label: "Rad etish" },
         ],
-        accepted: [{ value: "ready", label: "Tayyor" }],
       }
     : {
-        accepted: [{ value: "ready", label: "Tayyor" }],
+        accepted: [{ value: "assigned", label: "Kuryer tayinlash" }],
         ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
         on_way: [{ value: "delivered", label: "Yetkazildi" }],
       } as Record<string, { value: string; label: string }[]>
 
   const available = nextStatuses[order.status] || []
+
+  const orderLive = !["pending", "delivered", "rejected", "cancelled"].includes(order.status)
+  const canMarkReady = orderLive && (order.kitchen_status ?? "pending") !== "ready"
+  const words = kitchenWording(venueTypeOf(order.restaurant_id))
+
+  const markReady = async () => {
+    setLoading(true)
+    const result = await updateKitchenStatusAction(order._id, "ready")
+    setLoading(false)
+    if (result.success) {
+      toast.success(words.readyToast)
+      onAction()
+    } else {
+      toast.error(result.error || "Xatolik")
+    }
+  }
 
   return (
     <>
@@ -113,6 +159,9 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
           <MoreHorizontal className="h-4 w-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {canMarkReady && (
+            <DropdownMenuItem onClick={markReady}>{words.readyAction}</DropdownMenuItem>
+          )}
           {available.map((s) => (
             <DropdownMenuItem key={s.value} onClick={() => changeStatus(s.value)}>
               {s.label}
@@ -455,7 +504,19 @@ export function OrdersTableClient({
             </div>
           )
         }
-        return <StatusBadge status={r.status} />
+        // Two independent tracks: the delivery status, and whether the kitchen
+        // still owes food. A restaurant scanning this list needs the second one
+        // to know which rows are waiting on them.
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <StatusBadge status={r.status} />
+            <KitchenHint
+              status={r.status}
+              kitchenStatus={r.kitchen_status}
+              venueType={venueTypeOf(r.restaurant_id)}
+            />
+          </div>
+        )
       },
     },
     {

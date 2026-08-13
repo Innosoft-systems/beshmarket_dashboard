@@ -4,6 +4,7 @@ import { getAccessToken } from "@/lib/auth/session"
 import { RestaurantSidebar } from "@/components/layout/RestaurantSidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { RestaurantSocketProvider } from "@/components/restaurant-panel/RestaurantSocketProvider"
+import { PresenceHeartbeat } from "@/components/restaurant-panel/PresenceHeartbeat"
 import { RestaurantNotificationBell } from "@/components/layout/RestaurantNotificationBell"
 import { MarketVisibilityToggle } from "@/components/restaurant-panel/MarketVisibilityToggle"
 import { apiRequest } from "@/lib/api/client"
@@ -32,6 +33,7 @@ export default async function RestaurantLayout({ children }: { children: React.R
   return (
     <SidebarProvider>
       <RestaurantSocketProvider accessToken={token} />
+      <PresenceHeartbeat />
       <RestaurantSidebar name={restaurant?.name} logo={restaurant?.logo} />
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-muted/30">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">

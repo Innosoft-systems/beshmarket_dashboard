@@ -37,6 +37,13 @@ export function RestaurantOverviewClient({ restaurant }: { restaurant: any }) {
         <span className={`mr-1.5 h-1.5 w-1.5 rounded-full inline-block ${isOpen ? "bg-green-500" : "bg-gray-400"}`} />
         {isOpen ? "Ochiq" : "Yopiq"}
       </Badge>
+      {/* Say why it closed — otherwise the owner reads it as the panel losing
+          their setting rather than the system reacting to them being offline. */}
+      {!isOpen && restaurant.auto_closed && (
+        <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
+          Panel aloqasi uzilgani uchun avtomatik yopildi
+        </span>
+      )}
       <Button onClick={toggleOpen} disabled={isPending} size="sm" variant={isOpen ? "destructive" : "default"}>
         <Power className="mr-2 h-4 w-4" />
         {isPending ? "..." : isOpen ? "Yopish" : "Ochish"}

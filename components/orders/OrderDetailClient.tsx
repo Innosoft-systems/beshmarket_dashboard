@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   ArrowLeft,
   MapPin,
@@ -26,20 +26,21 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ORDER_STATUSES } from "@/types";
 import {
   updateOrderStatusAction,
+  updateKitchenStatusAction,
   cancelOrderAction,
   assignCourierAction,
 } from "@/lib/actions/orders";
 import { OrderTimer } from "@/components/orders/OrderTimer";
+import { kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording";
 
 // Admin uchun ruxsat etilgan status o'tishlari
 const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
   pending: [
     { value: "rejected", label: "Rad etish" },
   ],
-  accepted: [
-    { value: "ready", label: "Tayyor" },
-    { value: "assigned", label: "Kuryer tayinlash" },
-  ],
+  // "Tayyor" is deliberately absent — that is the kitchen track now, and it has
+  // its own button that stays live for the whole delivery.
+  accepted: [{ value: "assigned", label: "Kuryer tayinlash" }],
   assigned: [
     { value: "on_the_way_to_restaurant", label: "Restoranga ketmoqda" },
   ],
@@ -65,6 +66,74 @@ function StatusBadge({ status }: { status: string }) {
     <Badge variant="outline" className={s?.color || ""}>
       {s?.label || status}
     </Badge>
+  );
+}
+
+/** Where the order is in the kitchen — or on the shop floor. */
+function KitchenBadge({ status, venueType }: { status: string; venueType: VenueType }) {
+  const words = kitchenWording(venueType);
+  const map: Record<string, { label: string; className: string }> = {
+    pending: { label: words.idleBadge, className: "bg-muted text-muted-foreground" },
+    preparing: { label: words.preparingBadge, className: "bg-amber-100 text-amber-800" },
+    ready: { label: words.readyBadge, className: "bg-emerald-100 text-emerald-800" },
+  };
+  const s = map[status] ?? map.pending;
+  return (
+    <span className={`rounded-md px-2 py-1 text-xs font-medium mr-1 ${s.className}`}>
+      {s.label}
+    </span>
+  );
+}
+
+/**
+ * Time the restaurant has left to confirm. The server is the authority — this
+ * only mirrors its deadline, and refreshes once it lapses so the page picks up
+ * the automatic cancellation.
+ */
+function AcceptCountdown({
+  deadline,
+  onExpire,
+}: {
+  deadline: string;
+  onExpire: () => void;
+}) {
+  const target = new Date(deadline).getTime();
+  const [msLeft, setMsLeft] = useState(() => target - Date.now());
+
+  useEffect(() => {
+    const tick = setInterval(() => setMsLeft(target - Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, [target]);
+
+  const expired = msLeft <= 0;
+
+  useEffect(() => {
+    if (!expired) return;
+    // Give the server's sweep a moment to land before re-reading the order.
+    const t = setTimeout(onExpire, 3000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expired]);
+
+  if (expired) {
+    return (
+      <span className="text-sm font-medium text-destructive">
+        Vaqt tugadi — bekor qilinmoqda…
+      </span>
+    );
+  }
+
+  const total = Math.ceil(msLeft / 1000);
+  const label = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+
+  return (
+    <span
+      className={`text-sm font-medium tabular-nums mr-1 ${
+        total <= 30 ? "text-destructive" : "text-muted-foreground"
+      }`}
+    >
+      Qabul qilish uchun: {label}
+    </span>
   );
 }
 
@@ -110,15 +179,18 @@ export function OrderDetailClient({
   const [statusLoading, setStatusLoading] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState("");
   const [assigningCourier, setAssigningCourier] = useState(false);
+  const [kitchenLoading, setKitchenLoading] = useState(false);
 
   const restaurantTransitions: Record<
     string,
     { value: string; label: string }[]
   > = {
     pending: [
+      // No courier is dispatched until this is pressed. The server cancels the
+      // order automatically if the window in restaurant_accept_deadline lapses.
+      { value: "accepted", label: "Qabul qilish" },
       { value: "rejected", label: "Rad etish" },
     ],
-    accepted: [{ value: "ready", label: "Tayyor" }],
   };
   const available =
     scope === "restaurant"
@@ -128,7 +200,18 @@ export function OrderDetailClient({
     order.status,
   );
 
-  const CONFIRM_STATUSES = ["rejected", "ready", "delivered"];
+  // The kitchen track is independent of the courier: "Tayyor" stays available
+  // from the moment the order is accepted until the food is marked ready, no
+  // matter how far along the delivery is.
+  const orderLive = !["pending", "delivered", "rejected", "cancelled"].includes(
+    order.status,
+  );
+  const kitchenStatus: string = order.kitchen_status ?? "pending";
+  const canMarkReady = orderLive && kitchenStatus !== "ready";
+  const venueType = venueTypeOf(order.restaurant_id);
+  const words = kitchenWording(venueType);
+
+  const CONFIRM_STATUSES = ["rejected", "delivered"];
 
   const handleStatusClick = (s: { value: string; label: string }) => {
     if (CONFIRM_STATUSES.includes(s.value)) {
@@ -152,6 +235,16 @@ export function OrderDetailClient({
     await changeStatus(confirmStatus.value);
     setStatusLoading(false);
     setConfirmStatus(null);
+  };
+
+  const markReady = async () => {
+    setKitchenLoading(true);
+    const result = await updateKitchenStatusAction(order._id, "ready");
+    setKitchenLoading(false);
+    if (result.success) {
+      toast.success(words.readyToast);
+      startTransition(() => router.refresh());
+    } else toast.error(result.error || "Xatolik");
   };
 
   const handleAssignCourier = async () => {
@@ -200,8 +293,20 @@ export function OrderDetailClient({
       </div>
 
       {/* Actions */}
-      {(available.length > 0 || canCancel) && (
-        <div className="flex flex-wrap gap-2 p-4 rounded-xl border bg-muted/30">
+      {(available.length > 0 || canCancel || canMarkReady) && (
+        <div className="flex flex-wrap items-center gap-2 p-4 rounded-xl border bg-muted/30">
+          {order.status === "pending" && order.restaurant_accept_deadline && (
+            <AcceptCountdown
+              deadline={order.restaurant_accept_deadline}
+              onExpire={() => router.refresh()}
+            />
+          )}
+          {orderLive && <KitchenBadge status={kitchenStatus} venueType={venueType} />}
+          {canMarkReady && (
+            <Button size="sm" onClick={markReady} disabled={kitchenLoading || isPending}>
+              {words.readyAction}
+            </Button>
+          )}
           {available.map((s) => (
             <Button
               key={s.value}

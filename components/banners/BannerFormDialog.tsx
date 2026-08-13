@@ -138,7 +138,12 @@ export function BannerFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Havola (link)</Label>
-              <Input {...register("link")} placeholder="https://..." />
+              <Input {...register("link")} placeholder="restaurant://oshxona-toshkent" />
+              <p className="text-xs text-muted-foreground">
+                <code>restaurant://slug</code> — ilovada restoran sahifasi ·{" "}
+                <code>promo://KOD</code> — promokod ·{" "}
+                <code>https://…</code> — brauzerda ochiladi
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Tartib raqami</Label>

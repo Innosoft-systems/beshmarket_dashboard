@@ -17,6 +17,27 @@ export async function updateOrderStatusAction(id: string, status: string) {
   }
 }
 
+/**
+ * Move the kitchen track. Separate from the delivery status on purpose: the
+ * restaurant marks food ready whether or not a courier has been found yet.
+ */
+export async function updateKitchenStatusAction(id: string, kitchen_status: "preparing" | "ready") {
+  const token = await getAccessToken()
+  if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
+
+  try {
+    await apiRequest(`/orders/${id}/kitchen-status`, {
+      method: "PATCH",
+      body: { kitchen_status },
+      accessToken: token,
+    })
+    revalidatePath("/orders")
+    return { success: true }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
+  }
+}
+
 export async function cancelOrderAction(id: string, reason: string) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
