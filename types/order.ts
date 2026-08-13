@@ -4,6 +4,17 @@ export interface OrderItem {
   product_image?: string
   quantity: number
   unit_price: number
+  variant_label?: string
+  selected_modifiers?: {
+    group_id: string
+    option_id: string
+    group_name_uz?: string
+    name_uz: string
+    price: number
+    quantity: number
+    total: number
+  }[]
+  special_instructions?: string
   line_total: number
 }
 
@@ -24,6 +35,14 @@ export interface OrderAddress {
   _id: string
   label?: string
   address?: string
+  full_address?: string
+  city?: string
+  district?: string
+  street?: string
+  entrance?: string
+  floor?: string
+  apartment?: string
+  comment?: string
 }
 
 export interface Order {
@@ -41,6 +60,9 @@ export interface Order {
   /** While pending: when the order auto-cancels if the restaurant stays silent. */
   restaurant_accept_deadline?: string | null
   payment_status: string
+  payment_method?: "cash" | "payme" | "click" | string
+  delivery_type?: string
+  estimated_prep_time?: number
   subtotal: number
   delivery_fee: number
   service_fee: number

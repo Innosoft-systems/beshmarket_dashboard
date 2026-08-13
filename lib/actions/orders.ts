@@ -11,6 +11,8 @@ export async function updateOrderStatusAction(id: string, status: string) {
   try {
     await apiRequest(`/orders/${id}/status`, { method: "PATCH", body: { status }, accessToken: token })
     revalidatePath("/orders")
+    revalidatePath("/restaurant/orders")
+    revalidatePath("/restaurant/planshet-orders")
     return { success: true }
   } catch (error: unknown) {
     return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
@@ -32,6 +34,8 @@ export async function updateKitchenStatusAction(id: string, kitchen_status: "pre
       accessToken: token,
     })
     revalidatePath("/orders")
+    revalidatePath("/restaurant/orders")
+    revalidatePath("/restaurant/planshet-orders")
     return { success: true }
   } catch (error: unknown) {
     return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
@@ -45,6 +49,8 @@ export async function cancelOrderAction(id: string, reason: string) {
   try {
     await apiRequest(`/orders/${id}/cancel`, { method: "POST", body: { cancel_reason: reason }, accessToken: token })
     revalidatePath("/orders")
+    revalidatePath("/restaurant/orders")
+    revalidatePath("/restaurant/planshet-orders")
     return { success: true }
   } catch (error: unknown) {
     return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }

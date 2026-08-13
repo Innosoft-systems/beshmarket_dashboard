@@ -10,6 +10,7 @@ import {
   Settings,
   Store,
   UtensilsCrossed,
+  TabletSmartphone,
 } from "lucide-react"
 import {
   Sidebar,
@@ -28,6 +29,7 @@ import { logoutAction } from "@/lib/actions/auth"
 const items = [
   { title: "Bosh sahifa", url: "/restaurant", icon: LayoutDashboard },
   { title: "Buyurtmalar", url: "/restaurant/orders", icon: ClipboardList },
+  { title: "Planshet orders", url: "/restaurant/planshet-orders", icon: TabletSmartphone },
   { title: "Menyu", url: "/restaurant/menu", icon: UtensilsCrossed },
   { title: "Kategoriya", url: "/restaurant/categories", icon: FolderOpen },
   { title: "Profil", url: "/restaurant/profile", icon: Settings },
