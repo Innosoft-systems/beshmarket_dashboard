@@ -196,9 +196,9 @@ export function OrderDetailClient({
     scope === "restaurant"
       ? restaurantTransitions[order.status] || []
       : ADMIN_TRANSITIONS[order.status] || [];
-  const canCancel = !["delivered", "rejected", "cancelled"].includes(
-    order.status,
-  );
+  const canCancel =
+    !["delivered", "rejected", "cancelled"].includes(order.status) &&
+    !(scope === "restaurant" && order.status === "pending");
 
   // The kitchen track is independent of the courier: "Tayyor" stays available
   // from the moment the order is accepted until the food is marked ready, no

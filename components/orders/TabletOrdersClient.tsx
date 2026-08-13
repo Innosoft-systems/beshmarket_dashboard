@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
   Banknote,
+  Ban,
   Check,
   ChefHat,
   CircleCheckBig,
@@ -44,6 +45,25 @@ const tabs: { id: QueueTab; label: string; icon: typeof Clock3 }[] = [
   { id: "ready", label: "Tayyor", icon: CircleCheckBig },
   { id: "completed", label: "Yakunlangan", icon: History },
 ]
+
+const emptyQueueCopy: Record<QueueTab, { title: string; description: string }> = {
+  new: {
+    title: "Yangi buyurtmalar yo‘q",
+    description: "Yangi buyurtma kelishi bilan shu yerda ko‘rinadi.",
+  },
+  preparing: {
+    title: "Jarayondagi buyurtmalar yo‘q",
+    description: "Qabul qilingan buyurtmalar shu yerda ko‘rinadi.",
+  },
+  ready: {
+    title: "Tayyor buyurtmalar yo‘q",
+    description: "Tayyor deb belgilangan buyurtmalar shu yerda ko‘rinadi.",
+  },
+  completed: {
+    title: "Yakunlangan buyurtmalar yo‘q",
+    description: "Yetkazilgan, rad etilgan va bekor qilingan buyurtmalar shu yerda ko‘rinadi.",
+  },
+}
 
 function tabFor(order: Order): QueueTab {
   if (FINAL_STATUSES.has(order.status)) return "completed"
@@ -102,7 +122,8 @@ function statusText(order: Order, venueType: VenueType) {
 }
 
 function progressFor(order: Order) {
-  if (FINAL_STATUSES.has(order.status)) return 3
+  if (order.status === "delivered") return 3
+  if (order.status === "rejected" || order.status === "cancelled") return 0
   if (order.kitchen_status === "ready") return 3
   if (order.status !== "pending") return 2
   return 1
@@ -125,6 +146,30 @@ function QueueCard({
   const countdown = order.status === "pending"
     ? acceptCountdown(order.restaurant_accept_deadline, now)
     : null
+  const wasStopped = order.status === "rejected" || order.status === "cancelled"
+
+  if (wasStopped) {
+    return (
+      <div className="flex min-h-18 items-center justify-between gap-4 bg-[#fff4f2] px-5 py-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#d94b43] text-white">
+            <Ban className="h-4.5 w-4.5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#9f302b]">
+              {order.status === "rejected" ? "Buyurtma rad etilgan" : "Buyurtma bekor qilingan"}
+            </p>
+            <p className="mt-0.5 truncate text-[11px] text-[#a76b67]">
+              {order.cancel_reason || "Bu buyurtma bo‘yicha jarayon to‘xtatilgan"}
+            </p>
+          </div>
+        </div>
+        <p className="shrink-0 text-[11px] tabular-nums text-[#a76b67]">
+          {formatTime(order.createdAt)} da tushdi
+        </p>
+      </div>
+    )
+  }
   return (
     <button
       type="button"
@@ -222,16 +267,19 @@ function ProgressHeader({ order, venueType, now }: { order: Order; venueType: Ve
   )
 }
 
-function EmptyQueue({ search }: { search: string }) {
+function EmptyQueue({ search, tab }: { search: string; tab: QueueTab }) {
+  const copy = emptyQueueCopy[tab]
+  const TabIcon = tabs.find((item) => item.id === tab)?.icon ?? PackageOpen
+
   return (
     <div className="grid flex-1 place-items-center px-6 py-14 text-center">
       <div>
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#e8eee5] text-primary">
-          <PackageOpen className="h-7 w-7" />
+          <TabIcon className="h-7 w-7" />
         </div>
-        <p className="mt-4 font-semibold">{search ? "Buyurtma topilmadi" : "Bu bo‘lim hozircha bo‘sh"}</p>
+        <p className="mt-4 font-semibold">{search ? "Buyurtma topilmadi" : copy.title}</p>
         <p className="mt-1 max-w-56 text-xs leading-5 text-[#838980]">
-          {search ? "Qidiruvni o‘zgartirib ko‘ring." : "Yangi buyurtmalar kelishi bilan shu yerda ko‘rinadi."}
+          {search ? "Qidiruvni o‘zgartirib ko‘ring." : copy.description}
         </p>
       </div>
     </div>
@@ -421,7 +469,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
               ))}
             </div>
           ) : (
-            <EmptyQueue search={search} />
+            <EmptyQueue search={search} tab={activeTab} />
           )}
         </div>
       </aside>
@@ -469,9 +517,9 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
                             <p className="min-w-0 flex-1 text-sm font-medium leading-5">{item.product_name}</p>
                             <span className="rounded-md bg-[#ebf4e8] px-2 py-0.5 text-xs font-semibold text-primary">×{item.quantity}</span>
                           </div>
-                          {(item.variant_label || item.selected_modifiers?.length) && (
+                          {((item.variant_label && item.variant_label !== "0") || item.selected_modifiers?.length) && (
                             <p className="mt-1 text-[11px] leading-4 text-[#80877d]">
-                              {[item.variant_label, ...(item.selected_modifiers?.map((modifier) => modifier.quantity > 1 ? `${modifier.name_uz} ×${modifier.quantity}` : modifier.name_uz) ?? [])].filter(Boolean).join(" · ")}
+                              {[item.variant_label !== "0" ? item.variant_label : null, ...(item.selected_modifiers?.map((modifier) => modifier.quantity > 1 ? `${modifier.name_uz} ×${modifier.quantity}` : modifier.name_uz) ?? [])].filter(Boolean).join(" · ")}
                             </p>
                           )}
                           {item.special_instructions && (

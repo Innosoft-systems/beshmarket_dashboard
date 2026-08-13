@@ -107,7 +107,7 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
     }
   }
 
-  if (order.status === "delivered" || order.status === "rejected") return null
+  if (["delivered", "rejected", "cancelled"].includes(order.status)) return null
 
   // "Tayyor" is not in here — marking food ready is the kitchen track and is
   // offered separately below, for the whole life of the order.
@@ -167,9 +167,11 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
               {s.label}
             </DropdownMenuItem>
           ))}
-          <DropdownMenuItem onClick={() => setConfirmOpen(true)} className="text-red-600">
-            Bekor qilish
-          </DropdownMenuItem>
+          {!(scope === "restaurant" && order.status === "pending") && (
+            <DropdownMenuItem onClick={() => setConfirmOpen(true)} className="text-red-600">
+              Bekor qilish
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>
