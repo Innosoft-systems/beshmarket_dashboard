@@ -20,13 +20,13 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthToke
 export async function sendOtp(phone: string): Promise<{ message: string; phone: string }> {
   const { data } = await apiRequest<{ message: string; phone: string }>('/auth/send-otp', {
     method: 'POST',
-    body: { phone },
+    body: { phone, app_type: 'restaurant' },
   });
   return data;
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<OtpLoginResponse> {
-  const { data } = await apiRequest<OtpLoginResponse>('/auth/verify-otp', {
+  const { data } = await apiRequest<OtpLoginResponse>('/auth/restaurant/verify-otp', {
     method: 'POST',
     body: { phone, code },
   });

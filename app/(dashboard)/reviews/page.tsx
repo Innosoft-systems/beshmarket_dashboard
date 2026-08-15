@@ -23,7 +23,7 @@ export default async function ReviewsPage({ searchParams }: Props) {
   if (search) qs.set("search", search)
 
   const [res, statsRes] = await Promise.all([
-    apiRequest<any>(`/reviews?${qs}`, { accessToken: token }).catch(
+    apiRequest<any>(`/reviews/admin?${qs}`, { accessToken: token }).catch(
       () => ({ data: { data: [], total: 0, pages: 1 } }),
     ),
     apiRequest<any>(`/reviews/stats`, { accessToken: token }).catch(

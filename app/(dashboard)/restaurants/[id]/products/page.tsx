@@ -18,8 +18,8 @@ export default async function RestaurantProductsPage({ params }: Props) {
 
   try {
     const [restRes, productsRes, categoriesRes] = await Promise.all([
-      apiRequest<any>(`/restaurants/${id}`, { accessToken: token }),
-      apiRequest<any>(`/products?restaurant_id=${id}&limit=100`, { accessToken: token }),
+      apiRequest<any>(`/restaurants/admin/${id}`, { accessToken: token }),
+      apiRequest<any>(`/products/admin?restaurant_id=${id}&limit=100`, { accessToken: token }),
       apiRequest<any>(`/menu-categories/menu/${id}`, { accessToken: token }),
     ])
 

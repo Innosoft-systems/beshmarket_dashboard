@@ -12,7 +12,7 @@ export async function getRestaurants(params: GetRestaurantsParams = {}, accessTo
   if (params.is_active !== undefined) searchParams.append("is_active", params.is_active.toString());
 
   const queryString = searchParams.toString();
-  const endpoint = `/restaurants${queryString ? `?${queryString}` : ""}`;
+  const endpoint = `/restaurants/admin${queryString ? `?${queryString}` : ""}`;
 
   return apiRequest<PaginatedResponse<Restaurant>>(endpoint, {
     method: "GET",

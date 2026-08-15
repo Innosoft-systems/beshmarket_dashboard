@@ -104,8 +104,14 @@ export async function middleware(request: NextRequest) {
   // ── 3. Already logged in → redirect away from login pages ──────────────────
   if (authenticated && isAuthPage) {
     let dest: string
-    if (isRestaurantLogin) dest = role === 'admin' ? '/dashboard' : '/restaurant'
-    else                   dest = role === 'restaurant' ? '/restaurant' : '/dashboard'
+    if (role === 'admin') dest = '/dashboard'
+    else if (role === 'restaurant') dest = '/restaurant'
+    else {
+      const res = NextResponse.next()
+      res.cookies.delete(ACCESS_TOKEN)
+      res.cookies.delete(REFRESH_TOKEN)
+      return res
+    }
 
     const res = NextResponse.redirect(new URL(dest, request.url))
     if (refreshed) applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
@@ -116,14 +122,24 @@ export async function middleware(request: NextRequest) {
   const isRestaurantPanel = pathname === '/restaurant' || pathname.startsWith('/restaurant/')
   const isAdminPanel = !isRestaurantPanel && !isAuthPage
 
-  if (authenticated && isRestaurantPanel && role === 'admin') {
-    const res = NextResponse.redirect(new URL('/dashboard', request.url))
-    if (refreshed) applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
+  if (authenticated && isRestaurantPanel && role !== 'restaurant') {
+    const destination = role === 'admin' ? '/dashboard' : '/restaurant/login'
+    const res = NextResponse.redirect(new URL(destination, request.url))
+    if (role !== 'admin') {
+      res.cookies.delete(ACCESS_TOKEN)
+      res.cookies.delete(REFRESH_TOKEN)
+    }
+    if (refreshed && role === 'admin') applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
     return res
   }
-  if (authenticated && isAdminPanel && role === 'restaurant') {
-    const res = NextResponse.redirect(new URL('/restaurant', request.url))
-    if (refreshed) applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
+  if (authenticated && isAdminPanel && role !== 'admin') {
+    const destination = role === 'restaurant' ? '/restaurant' : '/login'
+    const res = NextResponse.redirect(new URL(destination, request.url))
+    if (role !== 'restaurant') {
+      res.cookies.delete(ACCESS_TOKEN)
+      res.cookies.delete(REFRESH_TOKEN)
+    }
+    if (refreshed && role === 'restaurant') applyTokens(res, refreshed.accessToken, refreshed.refreshToken)
     return res
   }
 

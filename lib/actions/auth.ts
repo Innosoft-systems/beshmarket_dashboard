@@ -31,7 +31,7 @@ export async function loginAction(
     await setAuthTokens(accessToken, refreshToken)
   } catch (err) {
     if (err instanceof ApiError) {
-      if (err.statusCode === 401) return { error: "Login yoki parol noto'g'ri" }
+      if (err.statusCode === 400 || err.statusCode === 401) return { error: "Login yoki parol noto'g'ri" }
       return { error: `Server xatosi: ${err.message}` }
     }
     return { error: "Ulanishda xatolik yuz berdi. Keyinroq urinib ko'ring." }
