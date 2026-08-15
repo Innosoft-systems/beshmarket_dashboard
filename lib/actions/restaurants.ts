@@ -25,6 +25,8 @@ export async function createRestaurantAction(data: RestaurantFormValues) {
         logo: data.logo || undefined,
         slug: slugify(data.name),
         owner_phone: data.owner_phone,
+        owner_username: data.owner_username,
+        owner_password: data.owner_password,
         type: data.type || "restaurant",
         order: data.order ?? 0,
         commission_rate: data.commission_rate,
@@ -44,9 +46,10 @@ export async function updateRestaurantAction(id: string, data: RestaurantFormVal
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
   try {
+    const { owner_password, ...rest } = data
     await apiRequest(`/restaurants/${id}`, { method: "PATCH", body: {
-      ...data,
-      owner_phone: data.owner_phone || undefined,
+      ...rest,
+      owner_password: owner_password || undefined,
     }, accessToken: token })
     revalidatePath("/restaurants")
     return { success: true }

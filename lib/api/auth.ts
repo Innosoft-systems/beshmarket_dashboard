@@ -1,5 +1,5 @@
 import { apiRequest, ApiError } from './client';
-import type { AdminLoginPayload, AdminLoginResponse, AuthTokens, CurrentUser, OtpLoginResponse } from '@/types/auth';
+import type { AdminLoginPayload, AdminLoginResponse, AuthTokens, CurrentUser, RestaurantLoginPayload, RestaurantLoginResponse } from '@/types/auth';
 
 export async function adminLogin(payload: AdminLoginPayload): Promise<AdminLoginResponse> {
   const { data } = await apiRequest<AdminLoginResponse>('/auth/admin/login', {
@@ -17,18 +17,10 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthToke
   return data;
 }
 
-export async function sendOtp(phone: string): Promise<{ message: string; phone: string }> {
-  const { data } = await apiRequest<{ message: string; phone: string }>('/auth/send-otp', {
+export async function restaurantLogin(payload: RestaurantLoginPayload): Promise<RestaurantLoginResponse> {
+  const { data } = await apiRequest<RestaurantLoginResponse>('/auth/restaurant/login', {
     method: 'POST',
-    body: { phone, app_type: 'restaurant' },
-  });
-  return data;
-}
-
-export async function verifyOtp(phone: string, code: string): Promise<OtpLoginResponse> {
-  const { data } = await apiRequest<OtpLoginResponse>('/auth/restaurant/verify-otp', {
-    method: 'POST',
-    body: { phone, code },
+    body: payload,
   });
   return data;
 }

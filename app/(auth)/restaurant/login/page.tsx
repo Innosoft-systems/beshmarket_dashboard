@@ -17,7 +17,7 @@ export default function RestaurantLoginPage() {
               <Store className="h-7 w-7 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Restoran paneli</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Telefon raqam orqali kirish</p>
+            <p className="mt-1 text-sm text-muted-foreground">Username va parol orqali kirish</p>
           </div>
           <div className="px-8 py-7">
             <RestaurantLoginForm />

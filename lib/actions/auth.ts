@@ -1,7 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { adminLogin, sendOtp, verifyOtp } from "@/lib/api/auth"
+import { adminLogin, restaurantLogin } from "@/lib/api/auth"
 import { setAuthTokens, clearAuthTokens } from "@/lib/auth/session"
 import { ApiError } from "@/lib/api/client"
 
@@ -11,8 +11,6 @@ export interface LoginFormState {
 
 export interface RestaurantLoginFormState {
   error?: string;
-  sent?: boolean;
-  phone?: string;
 }
 
 export async function loginAction(
@@ -45,47 +43,28 @@ export async function logoutAction(): Promise<void> {
   redirect("/login")
 }
 
-function normalizeUzPhone(phone: string) {
-  const cleaned = phone.replace(/[^\d+]/g, "")
-  if (cleaned.startsWith("+998") && cleaned.length === 13) return cleaned
-  if (cleaned.startsWith("998") && cleaned.length === 12) return `+${cleaned}`
-  if (cleaned.length === 9) return `+998${cleaned}`
-  return cleaned
-}
-
 export async function restaurantLoginAction(
-  prevState: RestaurantLoginFormState,
+  _prevState: RestaurantLoginFormState,
   formData: FormData,
 ): Promise<RestaurantLoginFormState> {
-  const intent = formData.get("intent") as string
-  const phone = normalizeUzPhone((formData.get("phone") as string) || prevState.phone || "")
-  const code = (formData.get("code") as string) || ""
+  const username = ((formData.get("username") as string) || "").trim().toLowerCase()
+  const password = (formData.get("password") as string) || ""
 
-  if (!/^\+998\d{9}$/.test(phone)) {
-    return { error: "Telefon raqam +998XXXXXXXXX formatida bo'lishi kerak", phone }
-  }
-
-  if (intent === "send") {
-    try {
-      await sendOtp(phone)
-      return { sent: true, phone }
-    } catch (err) {
-      return { error: err instanceof ApiError ? err.message : "Tasdiqlash kodini yuborishda xatolik", phone }
-    }
-  }
-
-  if (!/^\d{6}$/.test(code)) {
-    return { error: "6 xonali tasdiqlash kodini kiriting", sent: true, phone }
+  if (!username || !password) {
+    return { error: "Username va parol kiritish shart" }
   }
 
   try {
-    const { accessToken, refreshToken, user } = await verifyOtp(phone, code)
+    const { accessToken, refreshToken, user } = await restaurantLogin({ username, password })
     if (user.role !== "restaurant") {
-      return { error: "Bu panelga faqat restoran akkaunti kira oladi", sent: true, phone }
+      return { error: "Bu panelga faqat restoran akkaunti kira oladi" }
     }
     await setAuthTokens(accessToken, refreshToken)
   } catch (err) {
-    return { error: err instanceof ApiError ? err.message : "Kirishda xatolik yuz berdi", sent: true, phone }
+    if (err instanceof ApiError && (err.statusCode === 400 || err.statusCode === 401)) {
+      return { error: "Login yoki parol noto'g'ri" }
+    }
+    return { error: err instanceof ApiError ? err.message : "Kirishda xatolik yuz berdi" }
   }
 
   redirect("/restaurant")

@@ -24,6 +24,11 @@ export interface AdminLoginResponse extends AuthTokens {
   user: AdminUser;
 }
 
+export interface RestaurantLoginResponse extends AuthTokens {
+  user: CurrentUser;
+  isNewUser: false;
+}
+
 export interface OtpLoginResponse extends AuthTokens {
   user: CurrentUser;
   isNewUser?: boolean;
@@ -33,6 +38,8 @@ export interface AdminLoginPayload {
   username: string;
   password: string;
 }
+
+export type RestaurantLoginPayload = AdminLoginPayload;
 
 export type AuthError = {
   message: string;
