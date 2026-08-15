@@ -363,6 +363,7 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
     min_order_amount: getSetting("min_order_amount"),
     delivery_fee: getSetting("delivery_fee"),
     service_fee_rate: getSetting("service_fee_rate"),
+    free_delivery_after_orders: getSetting("free_delivery_after_orders"),
   })
   const [loading, setLoading] = useState(false)
   const initialSoundUrl = getSetting("order_notification_sound_url") || "/sounds/sound.mp3"
@@ -444,6 +445,11 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
         <div className="space-y-2">
           <Label>Servis haqi foizi (%)</Label>
           <Input type="number" value={form.service_fee_rate} onChange={(e) => setForm({ ...form, service_fee_rate: e.target.value })} placeholder="2" />
+        </div>
+        <div className="rounded-xl bg-emerald-50 p-4">
+          <Label className="text-emerald-950">Har nechta buyurtmadan keyin bepul yetkazish</Label>
+          <p className="mb-3 mt-1 text-xs text-emerald-700">Masalan, 5 kiritsangiz: 5 ta yakunlangan buyurtmadan keyingi buyurtma bepul. O‘chirish uchun 0 kiriting.</p>
+          <Input min={0} max={1000} type="number" value={form.free_delivery_after_orders} onChange={(e) => setForm({ ...form, free_delivery_after_orders: e.target.value })} placeholder="0" />
         </div>
         <Button onClick={handleSave} disabled={loading}>
           {loading ? "Saqlanmoqda..." : "Qiymatlarni saqlash"}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -32,6 +32,7 @@ import {
 } from "@/lib/actions/orders"
 import { getFullImgUrl } from "@/lib/utils"
 import { kitchenWording, type VenueType } from "@/lib/order-wording"
+import { stopOrderAlarm } from "@/lib/order-alarm"
 import type { Order } from "@/types"
 
 type QueueTab = "new" | "preparing" | "ready" | "completed"
@@ -309,6 +310,15 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState<"accept" | "ready" | "cancel" | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const previousOrderTabsRef = useRef(
+    new Map(initialOrders.map((order) => [order._id, tabFor(order)])),
+  )
+  const [unreadByTab, setUnreadByTab] = useState<Record<QueueTab, number>>({
+    new: 0,
+    preparing: 0,
+    ready: 0,
+    completed: 0,
+  })
   const words = kitchenWording(venueType)
 
   useEffect(() => {
@@ -327,6 +337,46 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
       ) as Record<QueueTab, number>,
     [orders],
   )
+
+  useEffect(() => {
+    const previous = previousOrderTabsRef.current
+    const next = new Map<string, QueueTab>()
+    const additions: Record<QueueTab, number> = {
+      new: 0,
+      preparing: 0,
+      ready: 0,
+      completed: 0,
+    }
+
+    orders.forEach((order) => {
+      const nextTab = tabFor(order)
+      const previousTab = previous.get(order._id)
+      next.set(order._id, nextTab)
+
+      if ((!previousTab || previousTab !== nextTab) && nextTab !== activeTab) {
+        additions[nextTab] += 1
+      }
+    })
+
+    previousOrderTabsRef.current = next
+
+    if (Object.values(additions).some(Boolean)) {
+      setUnreadByTab((current) => ({
+        new: current.new + additions.new,
+        preparing: current.preparing + additions.preparing,
+        ready: current.ready + additions.ready,
+        completed: current.completed + additions.completed,
+      }))
+    }
+  }, [activeTab, orders])
+
+  const openTab = (tab: QueueTab) => {
+    stopOrderAlarm()
+    setActiveTab(tab)
+    setUnreadByTab((current) =>
+      current[tab] === 0 ? current : { ...current, [tab]: 0 },
+    )
+  }
 
   const visibleOrders = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("uz")
@@ -350,12 +400,13 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
       ...current,
       [id]: { ...current[id], ...patch },
     }))
-    setActiveTab(nextTab)
+    openTab(nextTab)
     setSelectedId(id)
   }
 
   const acceptOrder = async () => {
     if (!selectedOrder) return
+    stopOrderAlarm()
     setActionLoading("accept")
     const result = await updateOrderStatusAction(selectedOrder._id, "accepted")
     setActionLoading(null)
@@ -367,6 +418,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
 
   const markReady = async () => {
     if (!selectedOrder) return
+    stopOrderAlarm()
     setActionLoading("ready")
     const result = await updateKitchenStatusAction(selectedOrder._id, "ready")
     setActionLoading(null)
@@ -378,6 +430,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
 
   const cancelOrder = async () => {
     if (!selectedOrder) return
+    stopOrderAlarm()
     setActionLoading("cancel")
     const isPending = selectedOrder.status === "pending"
     const result = isPending
@@ -434,16 +487,25 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
         <div className="scrollbar-none flex gap-1 overflow-x-auto px-4 pb-3 sm:px-5">
           {tabs.map((tab) => {
             const active = activeTab === tab.id
+            const unread = unreadByTab[tab.id]
+            const needsAttention = unread > 0 && !active
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-medium transition-colors duration-200 active:scale-[0.98] ${active ? "bg-[#283326] text-white" : "text-[#737a70] hover:bg-white/70"}`}
+                onClick={() => openTab(tab.id)}
+                className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-medium transition-[background-color,color,box-shadow,transform,opacity] duration-300 active:scale-[0.98] ${
+                  active
+                    ? "bg-[#283326] text-white"
+                    : needsAttention
+                      ? "bg-primary text-white shadow-[0_0_0_4px_rgba(57,153,24,0.14)] motion-safe:animate-pulse"
+                      : "text-[#737a70] hover:bg-white/70"
+                }`}
+                aria-label={`${tab.label}${unread ? `, ${unread} ta o‘qilmagan buyurtma` : ""}`}
               >
                 <tab.icon className="h-4 w-4" />
                 {tab.label}
-                <span className={`grid min-w-5 place-items-center rounded-md px-1.5 py-0.5 text-[10px] ${active ? "bg-white/14 text-white" : "bg-white text-[#6f766c]"}`}>
+                <span className={`grid min-w-5 place-items-center rounded-md px-1.5 py-0.5 text-[10px] transition-colors duration-300 ${active || needsAttention ? "bg-white/16 text-white" : "bg-white text-[#6f766c]"}`}>
                   {counts[tab.id]}
                 </span>
               </button>
@@ -462,6 +524,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
                   now={now}
                   venueType={venueType}
                   onClick={() => {
+                    stopOrderAlarm()
                     setSelectedId(order._id)
                     setMobileDetailOpen(true)
                   }}

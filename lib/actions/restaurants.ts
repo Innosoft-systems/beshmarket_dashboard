@@ -27,6 +27,7 @@ export async function createRestaurantAction(data: RestaurantFormValues) {
         owner_phone: data.owner_phone,
         type: data.type || "restaurant",
         order: data.order ?? 0,
+        commission_rate: data.commission_rate,
         is_active: true,
       },
       accessToken: token,

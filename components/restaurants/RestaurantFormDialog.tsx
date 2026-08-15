@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -44,7 +44,7 @@ export function RestaurantFormDialog({
   const [loading, setLoading] = useState(false)
   const isEdit = !!restaurant
 
-  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, control, formState: { errors }, reset } = useForm<FormValues>({
     resolver: zodResolver(restaurantFormSchema),
     defaultValues: {
       name: restaurant?.name || "",
@@ -56,10 +56,12 @@ export function RestaurantFormDialog({
       owner_phone: restaurant?.owner_id && typeof restaurant.owner_id === "object" ? restaurant.owner_id.phone : "",
       type: (restaurant?.type as "restaurant" | "market") || "restaurant",
       order: restaurant?.order ?? 0,
+      commission_rate: restaurant?.commission_rate ?? 15,
     },
   })
 
-  const logoValue = watch("logo")
+  const logoValue = useWatch({ control, name: "logo" })
+  const typeValue = useWatch({ control, name: "type" })
 
   const onSubmit = async (data: FormValues) => {
     setLoading(true)
@@ -117,10 +119,10 @@ export function RestaurantFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Turi</Label>
-              <Select value={watch("type")} onValueChange={(v) => setValue("type", v as "restaurant" | "market")}>
+              <Select value={typeValue} onValueChange={(v) => setValue("type", v as "restaurant" | "market")}>
                 <SelectTrigger>
                   <SelectValue>
-                    {watch("type") === "market" ? "Market" : "Restoran"}
+                    {typeValue === "market" ? "Market" : "Restoran"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -129,6 +131,22 @@ export function RestaurantFormDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Platforma komissiyasi (%)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              {...register("commission_rate", { valueAsNumber: true })}
+              placeholder="15"
+            />
+            {errors.commission_rate && <p className="text-xs text-red-500">{errors.commission_rate.message}</p>}
+            <p className="text-xs text-muted-foreground">
+              Faqat mahsulotlar summasidan olinadi; yetkazish va xizmat haqi kirmaydi.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -167,7 +185,7 @@ export function RestaurantFormDialog({
                 <Label>Egasi telefon raqami</Label>
                 <Input {...register("owner_phone")} placeholder="+998901234567" />
                 {errors.owner_phone && <p className="text-xs text-red-500">{errors.owner_phone.message}</p>}
-                <p className="text-xs text-muted-foreground">Bo'sh qoldirsangiz o'zgartirilmaydi</p>
+                <p className="text-xs text-muted-foreground">Bo‘sh qoldirsangiz o‘zgartirilmaydi</p>
               </div>
             </div>
           )}

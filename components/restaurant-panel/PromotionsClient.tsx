@@ -24,6 +24,7 @@ const emptyForm = {
   starts_at: "",
   expires_at: "",
   is_active: true,
+  free_delivery: false,
 }
 
 export function PromotionsClient({ promotions }: { promotions: any[] }) {
@@ -70,8 +71,8 @@ export function PromotionsClient({ promotions }: { promotions: any[] }) {
       return
     }
     const discountValue = Number(form.discount_value)
-    if (discountValue <= 0) {
-      toast.error("Chegirma miqdori 0 dan katta bo'lishi kerak")
+    if (discountValue <= 0 && !form.free_delivery) {
+      toast.error("Chegirma kiriting yoki bepul yetkazishni yoqing")
       return
     }
     if (form.discount_type === "percentage" && discountValue > 100) {
@@ -93,6 +94,7 @@ export function PromotionsClient({ promotions }: { promotions: any[] }) {
       starts_at: startsAt.toISOString(),
       expires_at: expiresAt.toISOString(),
       is_active: form.is_active,
+      free_delivery: Boolean(form.free_delivery),
     }
     const result = editing
       ? await updateMyPromotionAction(editing._id, body)
@@ -191,6 +193,14 @@ export function PromotionsClient({ promotions }: { promotions: any[] }) {
             </div>
           </div>
 
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-emerald-50 px-3.5 py-3 text-emerald-950">
+            <input type="checkbox" checked={form.free_delivery} onChange={(e) => setForm({ ...form, free_delivery: e.target.checked })} className="mt-0.5 h-4 w-4 accent-emerald-600" />
+            <span>
+              <span className="block text-sm font-medium">Bepul yetkazish</span>
+              <span className="block text-xs text-emerald-700">Chegirma bilan birga yoki alohida ishlaydi.</span>
+            </span>
+          </label>
+
           <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
             Faol
@@ -219,7 +229,10 @@ export function PromotionsClient({ promotions }: { promotions: any[] }) {
               {promotions.map((promo) => (
                 <tr key={promo._id} className="border-b last:border-0">
                   <td className="px-4 py-3 font-medium">{promo.code}</td>
-                  <td className="px-4 py-3">{promo.title_uz}</td>
+                  <td className="px-4 py-3">
+                    <div>{promo.title_uz}</div>
+                    {promo.free_delivery && <span className="text-xs font-medium text-emerald-700">Bepul yetkazish</span>}
+                  </td>
                   <td className="px-4 py-3 text-right">{promo.used_count || 0}/{promo.max_uses}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge variant="outline" className={promo.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}>

@@ -5,7 +5,7 @@ import { io, Socket } from "socket.io-client"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { refreshAccessToken } from "@/lib/auth/refresh-client"
-import { playOrderAlarm, prewarmOrderAlarm } from "@/lib/order-alarm"
+import { playOrderAlarm, prewarmOrderAlarm, stopOrderAlarm } from "@/lib/order-alarm"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -44,7 +44,9 @@ export function useRestaurantSocket(accessToken: string | null) {
       socket.on("order.new", (payload: { orderId: string; orderNumber: string; total: number }) => {
         // Also alarmed by the bell's `restaurant.notification` handler; whichever
         // event lands first rings, the other is deduped by orderId. See lib/order-alarm.ts.
-        playOrderAlarm(payload.orderId)
+        // A notification must finish naturally; it must not ring forever while
+        // the restaurant is already looking at the order panel.
+        playOrderAlarm(payload.orderId, { loop: false })
         toast.info(`Yangi buyurtma: ${payload.orderNumber}`, {
           description: `${payload.total.toLocaleString()} so'm`,
           duration: 15000,
@@ -82,6 +84,7 @@ export function useRestaurantSocket(accessToken: string | null) {
     socketRef.current = createSocket(accessToken)
 
     return () => {
+      stopOrderAlarm()
       socketRef.current?.disconnect()
       socketRef.current = null
     }

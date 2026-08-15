@@ -63,7 +63,10 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
   }, [])
 
   const stopSound = useCallback(() => stopOrderAlarm(), [])
-  const playSound = useCallback((orderId?: string) => playOrderAlarm(orderId), [])
+  const playSound = useCallback(
+    (orderId?: string) => playOrderAlarm(orderId, { loop: false }),
+    [],
+  )
 
   // WebSocket connection for real-time notifications
   useEffect(() => {

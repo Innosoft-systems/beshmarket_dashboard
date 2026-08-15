@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { updateSettingAction, updateLegalPageAction, getCourierFaqAction, updateCourierFaqAction } from "@/lib/actions/settings"
+import { Bike, CarFront, CircleDollarSign, Gauge, Save } from "lucide-react"
 
 const TABS = [
   { id: "general", label: "Umumiy" },
@@ -15,9 +16,62 @@ const TABS = [
   { id: "faq", label: "FAQ" },
 ] as const
 
+interface SettingItem {
+  key: string
+  value: unknown
+}
+
+interface LegalPage {
+  slug: string
+  title_uz?: string
+  content_uz?: string
+  title_ru?: string
+  content_ru?: string
+  title_en?: string
+  content_en?: string
+}
+
 interface Props {
-  settings: { key: string; value: any }[]
-  legalPages: any[]
+  settings: SettingItem[]
+  legalPages: LegalPage[]
+}
+
+const PAYOUT_FIELDS = [
+  {
+    key: "courier_base_payout_bike",
+    label: "Velosiped",
+    description: "Har bir buyurtma uchun boshlang‘ich haq",
+    icon: Bike,
+  },
+  {
+    key: "courier_base_payout_moped",
+    label: "Moped",
+    description: "Har bir buyurtma uchun boshlang‘ich haq",
+    icon: Gauge,
+  },
+  {
+    key: "courier_base_payout_motorcycle",
+    label: "Mototsikl",
+    description: "Har bir buyurtma uchun boshlang‘ich haq",
+    icon: Gauge,
+  },
+  {
+    key: "courier_base_payout_car",
+    label: "Mashina",
+    description: "Har bir buyurtma uchun boshlang‘ich haq",
+    icon: CarFront,
+  },
+] as const
+
+type CourierSettingForm = {
+  shift_cancellation_hours: string | number
+  shift_penalty_per_hour: string | number
+  courier_order_reject_penalty: string | number
+  courier_per_km_rate: string | number
+  courier_base_payout_bike: string | number
+  courier_base_payout_moped: string | number
+  courier_base_payout_motorcycle: string | number
+  courier_base_payout_car: string | number
 }
 
 export function SettingsCouriersClient({ settings, legalPages }: Props) {
@@ -46,87 +100,194 @@ export function SettingsCouriersClient({ settings, legalPages }: Props) {
       {tab === "general" && <CourierGeneralSettings settings={settings} />}
       {tab === "terms" && <LegalEditor slug="courier-terms" legalPages={legalPages} />}
       {tab === "privacy" && <LegalEditor slug="courier-privacy" legalPages={legalPages} />}
-      {tab === "faq" && <CourierFaqSettings settings={settings} />}
+      {tab === "faq" && <CourierFaqSettings />}
     </div>
   )
 }
 
-function CourierGeneralSettings({ settings }: { settings: { key: string; value: any }[] }) {
+function CourierGeneralSettings({ settings }: { settings: SettingItem[] }) {
   const router = useRouter()
-  const getSetting = (key: string) => settings.find((s) => s.key === key)?.value ?? ""
-  const [form, setForm] = useState({
-    shift_cancellation_hours: getSetting("shift_cancellation_hours"),
-    shift_penalty_per_hour: getSetting("shift_penalty_per_hour"),
-    courier_order_reject_penalty: getSetting("courier_order_reject_penalty"),
-    courier_per_km_rate: getSetting("courier_per_km_rate"),
-    courier_base_payout_bike: getSetting("courier_base_payout_bike"),
-    courier_base_payout_moped: getSetting("courier_base_payout_moped"),
-    courier_base_payout_motorcycle: getSetting("courier_base_payout_motorcycle"),
-    courier_base_payout_car: getSetting("courier_base_payout_car"),
+  const getSetting = (key: string, fallback: number) => {
+    const value = settings.find((setting) => setting.key === key)?.value
+    return typeof value === "number" || typeof value === "string" ? value : fallback
+  }
+  const [form, setForm] = useState<CourierSettingForm>({
+    shift_cancellation_hours: getSetting("shift_cancellation_hours", 12),
+    shift_penalty_per_hour: getSetting("shift_penalty_per_hour", 10000),
+    courier_order_reject_penalty: getSetting("courier_order_reject_penalty", 10000),
+    courier_per_km_rate: getSetting("courier_per_km_rate", 1700),
+    courier_base_payout_bike: getSetting("courier_base_payout_bike", 6000),
+    courier_base_payout_moped: getSetting("courier_base_payout_moped", 6500),
+    courier_base_payout_motorcycle: getSetting("courier_base_payout_motorcycle", 7000),
+    courier_base_payout_car: getSetting("courier_base_payout_car", 8000),
   })
   const [loading, setLoading] = useState(false)
 
   const handleSave = async () => {
-    setLoading(true)
-    for (const [key, value] of Object.entries(form)) {
-      await updateSettingAction(key, Number(value))
+    const invalidField = Object.entries(form).find(([, value]) => {
+      const number = Number(value)
+      return value === "" || !Number.isFinite(number) || number < 0 || !Number.isInteger(number)
+    })
+
+    if (invalidField) {
+      toast.error("Barcha qiymatlar 0 yoki undan katta butun son bo‘lishi kerak")
+      return
     }
-    setLoading(false)
-    toast.success("Saqlandi")
-    router.refresh()
+
+    setLoading(true)
+    try {
+      const results = await Promise.all(
+        Object.entries(form).map(([key, value]) => updateSettingAction(key, Number(value)))
+      )
+      const failed = results.find((result) => !result.success)
+      if (failed) {
+        toast.error(failed.error || "Sozlamalarni saqlashda xatolik yuz berdi")
+        return
+      }
+
+      toast.success("Kuryer to‘lov sozlamalari saqlandi")
+      router.refresh()
+    } catch {
+      toast.error("Sozlamalarni saqlashda xatolik yuz berdi")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  return (
-    <div className="space-y-4 max-w-lg">
-      <div className="space-y-2">
-        <Label>Smena bekor qilish (soat)</Label>
-        <Input type="number" value={form.shift_cancellation_hours} onChange={(e) => setForm({ ...form, shift_cancellation_hours: e.target.value })} />
-      </div>
-      <div className="space-y-2">
-        <Label>Soatlik jarima (so'm)</Label>
-        <Input type="number" value={form.shift_penalty_per_hour} onChange={(e) => setForm({ ...form, shift_penalty_per_hour: e.target.value })} />
-      </div>
-      <div className="space-y-2">
-        <Label>Buyurtma rad etish jarimasi (so'm)</Label>
-        <Input type="number" value={form.courier_order_reject_penalty} onChange={(e) => setForm({ ...form, courier_order_reject_penalty: e.target.value })} />
-      </div>
+  const setField = (key: keyof CourierSettingForm, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }))
+  }
 
-      <div className="pt-2 border-t">
-        <p className="text-sm font-medium mb-3">Kuryer payout sozlamalari</p>
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label>Har km uchun stavka (so'm)</Label>
-            <Input type="number" value={form.courier_per_km_rate} onChange={(e) => setForm({ ...form, courier_per_km_rate: e.target.value })} />
+  const perKmRate = Number(form.courier_per_km_rate) || 0
+
+  return (
+    <div className="space-y-6 max-w-5xl">
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.05] sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CircleDollarSign className="size-5" />
+            </div>
+            <h2 className="text-lg font-semibold">Yetkazib berish haqi</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Kuryer daromadi bazaviy haq va bosib o‘tilgan masofa stavkasidan hisoblanadi.
+              Smena bonusi bo‘lsa, u alohida qo‘shiladi.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Velosiped — asosiy to'lov (so'm)</Label>
-              <Input type="number" value={form.courier_base_payout_bike} onChange={(e) => setForm({ ...form, courier_base_payout_bike: e.target.value })} />
+
+          <div className="w-full rounded-xl bg-primary/[0.06] p-4 lg:w-72">
+            <Label htmlFor="courier-per-km-rate" className="text-xs font-medium text-muted-foreground">
+              1 km uchun haq
+            </Label>
+            <div className="relative mt-2">
+              <Input
+                id="courier-per-km-rate"
+                type="number"
+                min={0}
+                step={100}
+                inputMode="numeric"
+                value={form.courier_per_km_rate}
+                onChange={(event) => setField("courier_per_km_rate", event.target.value)}
+                className="h-12 bg-white pr-16 text-base font-semibold"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                so‘m
+              </span>
             </div>
-            <div className="space-y-2">
-              <Label>Moped — asosiy to'lov (so'm)</Label>
-              <Input type="number" value={form.courier_base_payout_moped} onChange={(e) => setForm({ ...form, courier_base_payout_moped: e.target.value })} />
+            <p className="mt-2 text-xs text-muted-foreground">Barcha transport turlari uchun umumiy stavka</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {PAYOUT_FIELDS.map((field) => {
+            const Icon = field.icon
+            const basePayout = Number(form[field.key]) || 0
+            const threeKmPayout = basePayout + perKmRate * 3
+
+            return (
+              <div key={field.key} className="rounded-xl bg-muted/45 p-4 transition-colors focus-within:bg-muted/70">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-foreground shadow-sm">
+                    <Icon className="size-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <Label htmlFor={field.key} className="font-semibold">{field.label}</Label>
+                    <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{field.description}</p>
+                  </div>
+                </div>
+
+                <div className="relative mt-4">
+                  <Input
+                    id={field.key}
+                    type="number"
+                    min={0}
+                    step={100}
+                    inputMode="numeric"
+                    value={form[field.key]}
+                    onChange={(event) => setField(field.key, event.target.value)}
+                    className="bg-white pr-16 font-medium"
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                    so‘m
+                  </span>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">3 km misol</span>
+                  <span className="font-semibold tabular-nums">{threeKmPayout.toLocaleString("uz-UZ")} so‘m</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="size-1.5 rounded-full bg-primary" />
+          Formula: transport bazaviy haqi + masofa × 1 km stavkasi + smena bonusi
+        </p>
+      </section>
+
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.05] sm:p-6">
+        <div className="mb-5">
+          <h2 className="text-base font-semibold">Smena va jarimalar</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Kuryer intizomi bilan bog‘liq umumiy qiymatlar.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="shift-cancellation-hours">Bepul bekor qilish muddati</Label>
+            <div className="relative">
+              <Input id="shift-cancellation-hours" type="number" min={0} step={1} value={form.shift_cancellation_hours} onChange={(event) => setField("shift_cancellation_hours", event.target.value)} className="pr-16" />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">soat</span>
             </div>
-            <div className="space-y-2">
-              <Label>Mototsiкl — asosiy to'lov (so'm)</Label>
-              <Input type="number" value={form.courier_base_payout_motorcycle} onChange={(e) => setForm({ ...form, courier_base_payout_motorcycle: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="shift-penalty">Soatlik jarima</Label>
+            <div className="relative">
+              <Input id="shift-penalty" type="number" min={0} step={100} value={form.shift_penalty_per_hour} onChange={(event) => setField("shift_penalty_per_hour", event.target.value)} className="pr-16" />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">so‘m</span>
             </div>
-            <div className="space-y-2">
-              <Label>Mashina — asosiy to'lov (so'm)</Label>
-              <Input type="number" value={form.courier_base_payout_car} onChange={(e) => setForm({ ...form, courier_base_payout_car: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="reject-penalty">Buyurtmani rad etish jarimasi</Label>
+            <div className="relative">
+              <Input id="reject-penalty" type="number" min={0} step={100} value={form.courier_order_reject_penalty} onChange={(event) => setField("courier_order_reject_penalty", event.target.value)} className="pr-16" />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">so‘m</span>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <Button onClick={handleSave} disabled={loading}>
-        {loading ? "Saqlanmoqda..." : "Saqlash"}
-      </Button>
+      <div className="flex items-center justify-end">
+        <Button onClick={handleSave} disabled={loading} size="lg" className="min-w-36">
+          <Save className="size-4" />
+          {loading ? "Saqlanmoqda..." : "Saqlash"}
+        </Button>
+      </div>
     </div>
   )
 }
 
-function LegalEditor({ slug, legalPages }: { slug: string; legalPages: any[] }) {
+function LegalEditor({ slug, legalPages }: { slug: string; legalPages: LegalPage[] }) {
   const router = useRouter()
   const page = legalPages.find((p) => p.slug === slug)
   const [form, setForm] = useState({
@@ -186,18 +347,15 @@ function LegalEditor({ slug, legalPages }: { slug: string; legalPages: any[] }) 
   )
 }
 
-function CourierFaqSettings({ settings }: { settings: { key: string; value: any }[] }) {
-  const router = useRouter()
+function CourierFaqSettings() {
   const [items, setItems] = useState<{ question_uz: string; answer_uz: string; question_ru: string; answer_ru: string; question_en: string; answer_en: string; is_active?: boolean }[]>([])
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState({ question_uz: "", answer_uz: "", question_ru: "", answer_ru: "", question_en: "", answer_en: "" })
-  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     getCourierFaqAction().then((res) => {
       if (res.data?.faqs) setItems(res.data.faqs)
-      setLoaded(true)
     })
   }, [])
 
@@ -234,14 +392,14 @@ function CourierFaqSettings({ settings }: { settings: { key: string; value: any 
     const updated = items.filter((_, idx) => idx !== i)
     setItems(updated)
     await saveToBackend(updated)
-    toast.success("O'chirildi")
+    toast.success("O‘chirildi")
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Jami: {items.length} ta savol</p>
-        <Button onClick={openNew}>+ Savol qo'shish</Button>
+        <Button onClick={openNew}>+ Savol qo‘shish</Button>
       </div>
 
       {items.length > 0 && (
@@ -265,7 +423,7 @@ function CourierFaqSettings({ settings }: { settings: { key: string; value: any 
                   <td className="px-3 py-3 truncate max-w-[200px]">{item.question_en}</td>
                   <td className="px-3 py-3 text-right space-x-1">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(i)}>Tahrirlash</Button>
-                    <Button variant="ghost" size="sm" onClick={() => removeItem(i)} className="text-red-500">O'chirish</Button>
+                    <Button variant="ghost" size="sm" onClick={() => removeItem(i)} className="text-red-500">O‘chirish</Button>
                   </td>
                 </tr>
               ))}
@@ -316,5 +474,3 @@ function CourierFaqSettings({ settings }: { settings: { key: string; value: any 
     </div>
   )
 }
-
-

@@ -77,6 +77,16 @@ export async function toggleMyRestaurantActiveAction() {
   })
 }
 
+export async function createRestaurantTopupAction(amount: number, method: "payme" | "click") {
+  return withToken(async (token) => {
+    const res = await apiRequest<{ url: string; payment_id: string }>(
+      "/payments/restaurant-topup/paylink",
+      { method: "POST", body: { amount, method }, accessToken: token },
+    )
+    return res.data
+  })
+}
+
 export async function createMyProductAction(data: Record<string, unknown>) {
   return withToken(async (token) => {
     await apiRequest("/products/my", { method: "POST", body: data, accessToken: token })

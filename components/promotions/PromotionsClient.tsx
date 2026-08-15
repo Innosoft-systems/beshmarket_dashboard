@@ -24,7 +24,7 @@ const EMPTY_FORM = {
   discount_type: "percentage", discount_value: "",
   min_order_amount: "", max_discount_amount: "",
   max_uses: "", max_uses_per_user: "1",
-  starts_at: "", expires_at: "", is_active: true,
+  starts_at: "", expires_at: "", is_active: true, free_delivery: false,
 }
 
 export function PromotionsClient({ promotions, currentUserId }: Props) {
@@ -47,15 +47,24 @@ export function PromotionsClient({ promotions, currentUserId }: Props) {
       min_order_amount: String(p.min_order_amount || ""), max_discount_amount: String(p.max_discount_amount || ""),
       max_uses: String(p.max_uses), max_uses_per_user: String(p.max_uses_per_user || 1),
       starts_at: p.starts_at?.split("T")[0] || "", expires_at: p.expires_at?.split("T")[0] || "",
-      is_active: p.is_active,
+      is_active: p.is_active, free_delivery: Boolean(p.free_delivery),
     })
     setFormOpen(true)
   }
 
   const handleSubmit = async () => {
+    const discountValue = Number(form.discount_value || 0)
+    if (discountValue <= 0 && !form.free_delivery) {
+      toast.error("Chegirma miqdorini kiriting yoki bepul yetkazishni yoqing")
+      return
+    }
+    if (form.discount_type === "percentage" && discountValue > 100) {
+      toast.error("Foiz chegirma 100 dan oshmasligi kerak")
+      return
+    }
     const body = {
       ...form,
-      discount_value: +form.discount_value,
+      discount_value: discountValue,
       min_order_amount: form.min_order_amount ? +form.min_order_amount : 0,
       max_discount_amount: form.max_discount_amount ? +form.max_discount_amount : undefined,
       max_uses: +form.max_uses,
@@ -142,9 +151,12 @@ export function PromotionsClient({ promotions, currentUserId }: Props) {
                     }
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="outline" className="gap-1">
-                      {p.discount_type === "percentage" ? `${p.discount_value}%` : `${p.discount_value.toLocaleString()} so'm`}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.discount_value > 0 && <Badge variant="outline" className="gap-1">
+                        {p.discount_type === "percentage" ? `${p.discount_value}%` : `${p.discount_value.toLocaleString()} so'm`}
+                      </Badge>}
+                      {p.free_delivery && <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">Bepul yetkazish</Badge>}
+                    </div>
                     {p.min_order_amount > 0 && <div className="text-xs text-muted-foreground mt-0.5">Min: {p.min_order_amount.toLocaleString()} so'm</div>}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -225,6 +237,13 @@ export function PromotionsClient({ promotions, currentUserId }: Props) {
                     <Input type="number" value={form.max_discount_amount} onChange={e => setForm({ ...form, max_discount_amount: e.target.value })} />
                   </div>
                 </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-emerald-950">
+                  <input type="checkbox" checked={form.free_delivery} onChange={e => setForm({ ...form, free_delivery: e.target.checked })} className="mt-0.5 h-4 w-4 accent-emerald-600" />
+                  <span>
+                    <span className="block text-sm font-medium">Bepul yetkazish</span>
+                    <span className="block text-xs text-emerald-700">Chegirma bilan birga yoki alohida ishlaydi. Faqat bepul yetkazish bo‘lsa miqdorni 0 qoldiring.</span>
+                  </span>
+                </label>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Jami foydalanish soni *</Label>
