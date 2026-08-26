@@ -7,6 +7,12 @@ export const restaurantFormSchema = z.object({
   city: z.string().min(2, "Shahar kiritish shart"),
   district: z.string().min(2, "Tuman kiritish shart"),
   logo: z.string().optional(),
+  // Ilova ro'yxati foydalanuvchi joylashuvi ma'lum bo'lganda lat/lng bo'yicha
+  // filtrlaydi — koordinatasiz restoran ro'yxatga umuman tushmaydi. Sxemada
+  // ixtiyoriy: eski, koordinatasi yo'q restoranlarni tahrirlash bloklanmasin.
+  // Yangi restoran uchun majburiyligini forma o'zi tekshiradi.
+  lat: z.union([z.nan(), z.number().min(-90).max(90)]).optional(),
+  lng: z.union([z.nan(), z.number().min(-180).max(180)]).optional(),
   owner_phone: z.string().regex(/^\+998\d{9}$/, "Telefon +998XXXXXXXXX formatida bo'lishi kerak"),
   owner_username: z.string()
     .trim()

@@ -55,6 +55,8 @@ export function RestaurantFormDialog({
       city: restaurant?.city || "",
       district: restaurant?.district || "",
       logo: restaurant?.logo || "",
+      lat: typeof restaurant?.lat === "number" ? restaurant.lat : undefined,
+      lng: typeof restaurant?.lng === "number" ? restaurant.lng : undefined,
       owner_phone: restaurant?.owner_id && typeof restaurant.owner_id === "object" ? restaurant.owner_id.phone : "",
       owner_username: restaurant?.owner_id && typeof restaurant.owner_id === "object" ? restaurant.owner_id.username || "" : "",
       owner_password: "",
@@ -66,10 +68,23 @@ export function RestaurantFormDialog({
 
   const logoValue = useWatch({ control, name: "logo" })
   const typeValue = useWatch({ control, name: "type" })
+  const latValue = useWatch({ control, name: "lat" })
+  const lngValue = useWatch({ control, name: "lng" })
+  const coordsMissing = !Number.isFinite(latValue as number) || !Number.isFinite(lngValue as number)
 
   const onSubmit = async (data: FormValues) => {
     if (!isEdit && !data.owner_password) {
       setError("owner_password", { message: "Yangi restoran uchun parol kiritish shart" })
+      return
+    }
+    // Koordinatasiz restoran joylashuvi yoqilgan foydalanuvchilarga ko'rinmaydi,
+    // shuning uchun yangi restoranda ular majburiy.
+    if (!isEdit && !Number.isFinite(data.lat as number)) {
+      setError("lat", { message: "Kenglik (latitude) kiritish shart" })
+      return
+    }
+    if (!isEdit && !Number.isFinite(data.lng as number)) {
+      setError("lng", { message: "Uzunlik (longitude) kiritish shart" })
       return
     }
     setLoading(true)
@@ -174,6 +189,42 @@ export function RestaurantFormDialog({
             <Label>Manzil *</Label>
             <Input {...register("address")} placeholder="To'liq manzil" />
             {errors.address && <p className="text-xs text-red-500">{errors.address.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Kenglik (lat) {isEdit ? "" : "*"}</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  {...register("lat", { setValueAs: (v) => (v === "" ? undefined : Number(v)) })}
+                  placeholder="41.311081"
+                />
+                {errors.lat && <p className="text-xs text-red-500">{errors.lat.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Uzunlik (lng) {isEdit ? "" : "*"}</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  {...register("lng", { setValueAs: (v) => (v === "" ? undefined : Number(v)) })}
+                  placeholder="69.240562"
+                />
+                {errors.lng && <p className="text-xs text-red-500">{errors.lng.message}</p>}
+              </div>
+            </div>
+            {coordsMissing ? (
+              <p className="text-xs text-amber-600">
+                Koordinata kiritilmagan: bu restoran joylashuvi yoqilgan foydalanuvchilarga
+                ilovada ko'rinmaydi. Yandex/Google xaritadan nuqtani oching va koordinatani
+                shu yerga qo'ying.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Xaritadan olingan nuqta. Masalan Toshkent markazi: 41.311081, 69.240562
+              </p>
+            )}
           </div>
 
           <section className="rounded-xl bg-muted/55 p-4">

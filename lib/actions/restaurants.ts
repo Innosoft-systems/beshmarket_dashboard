@@ -23,6 +23,8 @@ export async function createRestaurantAction(data: RestaurantFormValues) {
         city: data.city,
         district: data.district,
         logo: data.logo || undefined,
+        lat: Number.isFinite(data.lat as number) ? data.lat : undefined,
+        lng: Number.isFinite(data.lng as number) ? data.lng : undefined,
         slug: slugify(data.name),
         owner_phone: data.owner_phone,
         owner_username: data.owner_username,
@@ -46,9 +48,12 @@ export async function updateRestaurantAction(id: string, data: RestaurantFormVal
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
   try {
-    const { owner_password, ...rest } = data
+    const { owner_password, lat, lng, ...rest } = data
     await apiRequest(`/restaurants/${id}`, { method: "PATCH", body: {
       ...rest,
+      // Bo'sh maydon NaN bo'lib ketmasin — aks holda server 400 qaytaradi.
+      lat: Number.isFinite(lat as number) ? lat : undefined,
+      lng: Number.isFinite(lng as number) ? lng : undefined,
       owner_password: owner_password || undefined,
     }, accessToken: token })
     revalidatePath("/restaurants")
