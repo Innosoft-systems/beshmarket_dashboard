@@ -5,6 +5,7 @@ import { Upload, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { getUploadToken } from "@/lib/actions/upload"
+import { IMAGE_ACCEPT, uploadErrorMessage, validateImageFile } from "@/lib/upload"
 
 interface ImageUploaderProps {
   value?: string
@@ -24,13 +25,9 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
   useEffect(() => () => { abortRef.current?.abort() }, [])
 
   const handleFile = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Rasm hajmi 5MB dan oshmasligi kerak")
-      return
-    }
-
-    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
-      toast.error("Faqat JPEG, PNG, WebP yoki GIF formatlar")
+    const invalid = validateImageFile(file)
+    if (invalid) {
+      toast.error(invalid)
       return
     }
 
@@ -59,10 +56,7 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
         signal: abortRef.current.signal,
       })
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error(err?.error || err?.data?.error || `Yuklashda xatolik (${res.status})`)
-      }
+      if (!res.ok) throw new Error(await uploadErrorMessage(res))
 
       const json = await res.json()
       const url = json?.data?.url ?? json?.url
@@ -92,7 +86,7 @@ export function ImageUploader({ value, onChange, className }: ImageUploaderProps
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={IMAGE_ACCEPT}
         className="hidden"
         onClick={(e) => { (e.target as HTMLInputElement).value = "" }}
         onChange={(e) => {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { getFullImgUrl } from "@/lib/utils"
+import { IMAGE_ACCEPT, uploadErrorMessage, validateImageFile } from "@/lib/upload"
 import { toast } from "sonner"
 import type { LocalOptionType } from "./OptionTypesEditor"
 
@@ -89,17 +90,25 @@ export function VariantEditor({ optionTypes, variants, onChange }: Props) {
   }
 
   const uploadImage = async (i: number, file: File) => {
+    const invalid = validateImageFile(file)
+    if (invalid) {
+      toast.error(invalid)
+      return
+    }
+
     setUploading(i)
     try {
       const fd = new FormData()
       fd.append("file", file)
       const res = await fetch("/api/upload", { method: "POST", body: fd })
+      // Read the status before the body: a size rejection comes back as HTML,
+      // so parsing first turns a clear "too large" into a generic failure.
+      if (!res.ok) throw new Error(await uploadErrorMessage(res))
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || "Xatolik")
       const url: string = json.data?.url || json.url || ""
       if (url) update(i, "image", url)
-    } catch {
-      toast.error("Rasm yuklanmadi")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Rasm yuklanmadi")
     }
     setUploading(null)
   }
@@ -190,7 +199,7 @@ export function VariantEditor({ optionTypes, variants, onChange }: Props) {
                       <label className="h-8 w-8 rounded border-2 border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept={IMAGE_ACCEPT}
                           className="hidden"
                           disabled={uploading === i}
                           onChange={e => e.target.files?.[0] && uploadImage(i, e.target.files[0])}
