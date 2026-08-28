@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog, ClipboardList, Bike, AlertTriangle, MessageSquare, CalendarClock, Bell, Tag, MessagesSquare, MapPin, CreditCard, Smartphone, Wallet } from "lucide-react"
+import { Users, UtensilsCrossed, LayoutDashboard, Settings, LogOut, ShoppingBag, Image, ChevronDown, Truck, UserCog, ClipboardList, Bike, AlertTriangle, MessageSquare, CalendarClock, Bell, Tag, MessagesSquare, MapPin, CreditCard, Smartphone, Wallet, BarChart3 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { logoutAction } from "@/app/(auth)/login/actions"
@@ -28,6 +28,7 @@ const mainItems = [
   { title: "Jarimalar", url: "/penalties", icon: AlertTriangle },
   { title: "To'lovlar", url: "/payments", icon: CreditCard },
   { title: "Balanslar", url: "/balances", icon: Wallet },
+  { title: "Statistika", url: "/statistics", icon: BarChart3 },
   { title: "Izohlar", url: "/reviews", icon: MessageSquare },
   { title: "Promo kodlar", url: "/promotions", icon: Tag },
   { title: "Chat", url: "/chat", icon: MessagesSquare },
