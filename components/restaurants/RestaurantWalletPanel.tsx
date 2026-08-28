@@ -168,56 +168,71 @@ export function RestaurantWalletPanel({ wallet }: { wallet: WalletData }) {
             Bu bo&apos;limda yozuv yo&apos;q
           </p>
         ) : (
-          <ul className="divide-y">
-            {ledger.items.map(transaction => {
-              const credit = transaction.amount >= 0
-              return (
-                <li key={transaction._id} className="flex items-start gap-4 px-5 py-4">
-                  <span
-                    className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
-                      credit ? "bg-blue-50 text-blue-700" : "bg-orange-50 text-orange-700"
-                    }`}
-                  >
-                    {credit ? (
-                      <ArrowDownLeft className="h-4 w-4" />
-                    ) : (
-                      <ArrowUpRight className="h-4 w-4" />
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">
-                      {transaction.title || TYPE_LABELS[transaction.type]}
-                    </p>
-                    {transaction.description && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {transaction.description}
-                      </p>
-                    )}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDate(transaction.createdAt)}
-                      {transaction.created_by && (
-                        <>
-                          {" · "}
-                          {transaction.created_by.full_name ||
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="px-5 py-2.5 font-medium">Sana</th>
+                  <th className="px-5 py-2.5 font-medium">Turi</th>
+                  <th className="px-5 py-2.5 font-medium">Izoh</th>
+                  <th className="px-5 py-2.5 font-medium">Kim</th>
+                  <th className="px-5 py-2.5 text-right font-medium">Summa</th>
+                  <th className="px-5 py-2.5 text-right font-medium">Keyingi balans</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.items.map(transaction => {
+                  const credit = transaction.amount >= 0
+                  return (
+                    <tr key={transaction._id} className="border-b last:border-0 align-top">
+                      <td className="whitespace-nowrap px-5 py-3 text-muted-foreground">
+                        {formatDate(transaction.createdAt)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="flex items-center gap-2">
+                          {/* The arrow carries direction alongside the sign, so
+                              it never rests on colour alone. */}
+                          <span
+                            className={`grid h-5 w-5 shrink-0 place-items-center rounded ${
+                              credit
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-orange-50 text-orange-700"
+                            }`}
+                          >
+                            {credit ? (
+                              <ArrowDownLeft className="h-3 w-3" />
+                            ) : (
+                              <ArrowUpRight className="h-3 w-3" />
+                            )}
+                          </span>
+                          <span className="font-medium">
+                            {transaction.title || TYPE_LABELS[transaction.type]}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="max-w-xs px-5 py-3 text-muted-foreground">
+                        {transaction.description || "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-muted-foreground">
+                        {transaction.created_by
+                          ? transaction.created_by.full_name ||
                             transaction.created_by.username ||
-                            "admin"}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold tabular-nums">
-                      {credit ? "+" : "−"}
-                      {som(Math.abs(transaction.amount))}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                      {som(transaction.balance_after)}
-                    </p>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+                            "admin"
+                          : "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-right font-semibold tabular-nums">
+                        {credit ? "+" : "−"}
+                        {som(Math.abs(transaction.amount))}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-muted-foreground">
+                        {som(transaction.balance_after)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <div ref={ledger.sentinelRef} />
