@@ -12,6 +12,8 @@ import {
   UtensilsCrossed,
   TabletSmartphone,
   Wallet,
+  Tag,
+  Star,
 } from "lucide-react"
 import {
   Sidebar,
@@ -34,6 +36,8 @@ const items = [
   { title: "Menyu", url: "/restaurant/menu", icon: UtensilsCrossed },
   { title: "Kategoriya", url: "/restaurant/categories", icon: FolderOpen },
   { title: "Balans", url: "/restaurant/settlements", icon: Wallet },
+  { title: "Aksiyalar", url: "/restaurant/promotions", icon: Tag },
+  { title: "Sharhlar", url: "/restaurant/reviews", icon: Star },
   { title: "Profil", url: "/restaurant/profile", icon: Settings },
 ]
 

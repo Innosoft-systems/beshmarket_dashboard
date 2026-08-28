@@ -81,7 +81,7 @@ export default async function BalancesPage() {
         <div className="border-b px-5 py-4">
           <h2 className="text-sm font-semibold">Joylar bo&apos;yicha</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Tranzaksiyalarni ko&apos;rish uchun nomni bosing
+            Tranzaksiyalar va boshqaruv uchun nomni bosing
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -101,7 +101,7 @@ export default async function BalancesPage() {
                 <tr key={item._id} className="border-b last:border-0">
                   <td className="px-5 py-3">
                     <Link
-                      href={`/balances/${item._id}`}
+                      href={`/restaurants/${item._id}`}
                       className="font-medium text-foreground hover:underline"
                     >
                       {item.name}
