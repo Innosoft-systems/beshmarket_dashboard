@@ -11,6 +11,7 @@ import {
   Store,
   UtensilsCrossed,
   TabletSmartphone,
+  Wallet,
 } from "lucide-react"
 import {
   Sidebar,
@@ -32,6 +33,7 @@ const items = [
   { title: "Planshet orders", url: "/restaurant/planshet-orders", icon: TabletSmartphone },
   { title: "Menyu", url: "/restaurant/menu", icon: UtensilsCrossed },
   { title: "Kategoriya", url: "/restaurant/categories", icon: FolderOpen },
+  { title: "Balans", url: "/restaurant/settlements", icon: Wallet },
   { title: "Profil", url: "/restaurant/profile", icon: Settings },
 ]
 

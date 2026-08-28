@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { createRestaurantTopupAction } from "@/lib/actions/restaurant-panel"
+import { WalletMovementChart, type WalletChartPoint } from "@/components/charts/WalletCharts"
 
 interface WalletTransaction {
   _id: string
@@ -42,6 +43,7 @@ export interface WalletData {
   available_balance: number
   commission_rate: number
   restaurant: { name: string; type?: string }
+  chart?: WalletChartPoint[]
   transactions: WalletTransaction[]
   pagination: { page: number; totalPages: number; total: number }
 }
@@ -175,6 +177,11 @@ export function RestaurantSettlementsClient({ wallet, legacySettlements }: Props
           </div>
         </div>
       </section>
+
+      <WalletMovementChart
+        data={wallet.chart ?? []}
+        description={`Oxirgi 6 oy — ${venueWord} balansiga kirim va undan chiqim`}
+      />
 
       <section className="overflow-hidden rounded-2xl bg-background shadow-[0_1px_0_rgba(0,0,0,0.06),0_10px_30px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between px-5 py-4">
