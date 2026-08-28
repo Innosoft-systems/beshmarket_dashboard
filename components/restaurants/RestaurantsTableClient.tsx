@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
-import { Search, X, MoreHorizontal, Plus, Pencil, Trash2, Power, ShoppingBag } from "lucide-react"
+import { Search, X, MoreHorizontal, Plus, Pencil, Trash2, Power, ShoppingBag, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { Restaurant } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
@@ -83,6 +83,10 @@ function ActionsCell({
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Tahrirlash
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href={`/restaurants/${restaurant._id}`} />}>
+            <Eye className="h-4 w-4 mr-2" />
+            Batafsil
           </DropdownMenuItem>
           <DropdownMenuItem render={<Link href={`/restaurants/${restaurant._id}/products`} />}>
             <ShoppingBag className="h-4 w-4 mr-2" />
@@ -196,7 +200,14 @@ export function RestaurantsTableClient({
     {
       accessorKey: "name",
       header: "Nomi",
-      cell: ({ row }) => <span className="font-medium">{row.getValue("name")}</span>,
+      cell: ({ row }) => (
+        <Link
+          href={`/restaurants/${row.original._id}`}
+          className="font-medium hover:underline"
+        >
+          {row.getValue("name") as string}
+        </Link>
+      ),
     },
     {
       accessorKey: "phone",
