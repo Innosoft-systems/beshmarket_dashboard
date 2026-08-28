@@ -363,6 +363,8 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
     min_order_amount: getSetting("min_order_amount"),
     delivery_fee: getSetting("delivery_fee"),
     service_fee_rate: getSetting("service_fee_rate"),
+    service_fee_min: getSetting("service_fee_min"),
+    service_fee_max: getSetting("service_fee_max"),
     free_delivery_after_orders: getSetting("free_delivery_after_orders"),
   })
   const [loading, setLoading] = useState(false)
@@ -442,9 +444,33 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
           <Label>{"Yetkazib berish narxi (so'm)"}</Label>
           <Input type="number" value={form.delivery_fee} onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })} placeholder="5000" />
         </div>
-        <div className="space-y-2">
-          <Label>Servis haqi foizi (%)</Label>
-          <Input type="number" value={form.service_fee_rate} onChange={(e) => setForm({ ...form, service_fee_rate: e.target.value })} placeholder="2" />
+        <div className="space-y-3 rounded-xl border p-4">
+          <div>
+            <Label>Servis haqi</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Mijozdan olinadi va mahsulotlar summasidan hisoblanadi (yetkazish narxi kirmaydi).
+              Restoran komissiyasidan alohida.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-normal text-muted-foreground">Foizi (%)</Label>
+            <Input type="number" min={0} max={100} step="0.1" value={form.service_fee_rate} onChange={(e) => setForm({ ...form, service_fee_rate: e.target.value })} placeholder="2" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-normal text-muted-foreground">{"Eng kami (so'm)"}</Label>
+              <Input type="number" min={0} value={form.service_fee_min} onChange={(e) => setForm({ ...form, service_fee_min: e.target.value })} placeholder="0" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-normal text-muted-foreground">{"Eng ko'pi (so'm)"}</Label>
+              <Input type="number" min={0} value={form.service_fee_max} onChange={(e) => setForm({ ...form, service_fee_max: e.target.value })} placeholder="0" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            0 — chegara yo&apos;q. Masalan 5% + eng kami 1 000 + eng ko&apos;pi 10 000:
+            3 000 so&apos;mlik buyurtmaga 1 000, 100 000 so&apos;mlikka 5 000,
+            300 000 so&apos;mlikka 10 000 so&apos;m.
+          </p>
         </div>
         <div className="rounded-xl bg-emerald-50 p-4">
           <Label className="text-emerald-950">Har nechta buyurtmadan keyin bepul yetkazish</Label>
