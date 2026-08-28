@@ -10,13 +10,12 @@ import {
   StatTile,
   StatusChart,
   TopVenuesChart,
-  som,
-  monthLabel,
   type NamedRow,
   type PaymentRow,
   type PeriodRow,
   type StatusRow,
 } from "@/components/charts/FinanceCharts"
+import { monthLabel, som } from "@/lib/format"
 
 export const metadata: Metadata = { title: "Statistika | BeshMarket" }
 

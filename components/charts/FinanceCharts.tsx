@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { compactSom, dayLabel, monthLabel, som } from "@/lib/format"
 
 /**
  * Categorical slots 1–4 of the validated palette. Adjacent pairs clear CVD
@@ -31,27 +32,6 @@ export const SERIES = {
 const GRID = "#e7e6e3"
 const AXIS_TEXT = "#6b6a66"
 
-const MONTHS = ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"]
-
-export const som = (value: number) => `${Math.round(value || 0).toLocaleString("uz-UZ")} so'm`
-
-export function compactSom(value: number) {
-  const n = Math.abs(value)
-  const sign = value < 0 ? "−" : ""
-  if (n >= 1_000_000) return `${sign}${(n / 1_000_000).toLocaleString("uz-UZ", { maximumFractionDigits: 1 })} mln`
-  if (n >= 1_000) return `${sign}${Math.round(n / 1_000).toLocaleString("uz-UZ")} ming`
-  return `${sign}${Math.round(n)}`
-}
-
-export function monthLabel(key: string) {
-  const [year, month] = key.split("-")
-  return `${MONTHS[Number(month) - 1] ?? month} ${String(year).slice(2)}`
-}
-
-export function dayLabel(key: string) {
-  const [, month, day] = key.split("-")
-  return `${day}.${month}`
-}
 
 function ChartTooltip({
   active,

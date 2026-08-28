@@ -52,6 +52,9 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
     revenue_30d: stats.revenue_30d ?? 0,
     revenue_today: stats.revenue_today ?? 0,
     revenue_total: stats.revenue_total ?? 0,
+    gmv_30d: stats.gmv_30d ?? 0,
+    gmv_today: stats.gmv_today ?? 0,
+    take_rate_30d: stats.take_rate_30d ?? 0,
     daily_trend: stats.daily_trend ?? [],
     top_restaurants: stats.top_restaurants ?? [],
     top_clients: stats.top_clients ?? [],
@@ -124,18 +127,18 @@ export function DashboardCharts({ stats, courierStats, usersCount }: Props) {
         />
         <KpiCard
           icon={DollarSign}
-          label="Jami daromad"
-          value={formatSum(safeStats.revenue_total)}
-          sub={`Bugun: ${formatSum(safeStats.revenue_today)}`}
+          label="Aylanma (30 kun)"
+          value={formatSum(safeStats.gmv_30d)}
+          sub={`Bugun: ${formatSum(safeStats.gmv_today)} · mijozlar to'lagan`}
           color="border-emerald-500"
         />
         <KpiCard
           icon={DollarSign}
-          label="30 kunlik daromad"
+          label="Platforma daromadi (30 kun)"
           value={formatSum(safeStats.revenue_30d)}
           sub={safeStats.revenue_change_pct != null
-            ? `${safeStats.revenue_change_pct > 0 ? "+" : ""}${safeStats.revenue_change_pct}% o'tgan oyga nisbatan`
-            : `Bugun: ${formatSum(safeStats.revenue_today)}`}
+            ? `${safeStats.revenue_change_pct > 0 ? "+" : ""}${safeStats.revenue_change_pct}% o'tgan oyga nisbatan · aylanmaning ${safeStats.take_rate_30d}%`
+            : `Bugun: ${formatSum(safeStats.revenue_today)} · aylanmaning ${safeStats.take_rate_30d}%`}
           color="border-green-500"
         />
         <KpiCard
