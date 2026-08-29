@@ -265,6 +265,12 @@ export function OrderGroupDetailClient({ orders, couriers = [], groupId }: Props
           <span>Yetkazish:</span>
           <span>{orders.reduce((s: number, o: any) => s + (o.delivery_fee || 0), 0).toLocaleString()} so'm</span>
         </div>
+        {orders.some((o) => (o as any).service_fee > 0) && (
+          <div className="flex justify-between text-muted-foreground">
+            <span>Servis haqi:</span>
+            <span>{orders.reduce((s: number, o: any) => s + (o.service_fee || 0), 0).toLocaleString()} so'm</span>
+          </div>
+        )}
         {orders.some((o) => o.discount > 0) && (
           <div className="flex justify-between text-green-600">
             <span>Chegirma:</span>
