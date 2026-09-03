@@ -433,8 +433,8 @@ function CourierFaqSettings() {
       )}
 
       {formOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-          <div className="bg-background rounded-xl p-6 w-full max-w-2xl shadow-lg ring-1 ring-foreground/10 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/10 p-4">
+          <div className="bg-background rounded-xl p-6 w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain shadow-lg ring-1 ring-foreground/10 space-y-4">
             <h3 className="text-base font-medium">{editIndex !== null ? "Savolni tahrirlash" : "Yangi savol"}</h3>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">

@@ -158,14 +158,14 @@ export function SlotFormDialog({ slot, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent showCloseButton={false} className="!max-w-2xl w-full p-0 overflow-hidden">
+      <DialogContent showCloseButton={false} className="!max-w-2xl w-full grid-rows-[auto_minmax(0,1fr)_auto] gap-0 p-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h2 className="font-semibold">{isEdit ? "Slotni tahrirlash" : "Yangi slot yaratish"}</h2>
           <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
 
-        <ScrollArea className="max-h-[calc(90vh-130px)]">
+        <ScrollArea className="h-full min-h-0">
           <div className="px-6 py-5 space-y-5">
           {/* Mode tabs — only for create */}
           {!isEdit && (

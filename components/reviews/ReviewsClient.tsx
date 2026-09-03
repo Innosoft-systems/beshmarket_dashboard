@@ -213,8 +213,8 @@ export function ReviewsClient({ initialData, initialFilters }: Props) {
 
       {/* Reply Dialog */}
       {replyId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-          <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-lg ring-1 ring-foreground/10 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/10 p-4">
+          <div className="bg-background rounded-xl p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain shadow-lg ring-1 ring-foreground/10 space-y-4">
             <h3 className="font-medium">Izohga javob berish</h3>
             <Input
               placeholder="Javobingizni yozing..."

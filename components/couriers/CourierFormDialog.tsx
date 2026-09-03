@@ -111,7 +111,7 @@ export function CourierFormDialog({ open, onOpenChange, onSuccess }: CourierForm
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { profileForm.reset(); docsForm.reset() }; onOpenChange(v) }}>
-      <DialogContent className="!max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="!max-w-lg">
         <DialogHeader>
           <DialogTitle>Yangi kuryer qo&apos;shish</DialogTitle>
         </DialogHeader>

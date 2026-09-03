@@ -108,7 +108,7 @@ export function RestaurantFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setShowOwnerPassword(false) }; onOpenChange(v) }}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Restoranni tahrirlash" : "Yangi restoran"}</DialogTitle>
         </DialogHeader>

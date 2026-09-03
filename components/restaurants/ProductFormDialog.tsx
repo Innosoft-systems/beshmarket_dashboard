@@ -259,7 +259,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
-      <div className="bg-background rounded-xl shadow-lg ring-1 ring-foreground/10 w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+      <div className="bg-background rounded-xl shadow-lg ring-1 ring-foreground/10 w-full max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
         <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-background z-10">
           <h2 className="font-semibold">{product ? "Mahsulotni tahrirlash" : "Yangi mahsulot"}</h2>
           <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>

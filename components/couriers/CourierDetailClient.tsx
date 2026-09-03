@@ -442,8 +442,8 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
 
       {/* Correction Dialog */}
       {correctionOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-          <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-lg ring-1 ring-foreground/10 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/10 p-4">
+          <div className="bg-background rounded-xl p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain shadow-lg ring-1 ring-foreground/10 space-y-4">
             <h3 className="text-base font-medium">Balans korreksiyasi</h3>
             <p className="text-sm text-muted-foreground">Musbat son — balans oshiradi. Manfiy son — kamaytiradi.</p>
             <div className="space-y-2">
@@ -489,8 +489,8 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
 
       {/* Edit Dialog */}
       {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-          <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-lg ring-1 ring-foreground/10 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/10 p-4">
+          <div className="bg-background rounded-xl p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain shadow-lg ring-1 ring-foreground/10 space-y-4">
             <h3 className="text-base font-medium">Profil ma'lumotlarini tahrirlash</h3>
             <div className="space-y-2">
               <Label>Transport turi</Label>
@@ -533,8 +533,8 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
 
       {/* Hujjatlar tahrirlash modali */}
       {docsEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-          <div className="bg-background rounded-xl p-6 w-full max-w-lg shadow-lg ring-1 ring-foreground/10 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/10 p-4">
+          <div className="bg-background rounded-xl p-6 w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain shadow-lg ring-1 ring-foreground/10 space-y-4">
             <h3 className="text-base font-medium">Hujjatlar</h3>
 
             <div className="space-y-3">

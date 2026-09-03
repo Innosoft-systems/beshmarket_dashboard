@@ -195,12 +195,12 @@ export function PromotionsClient({ promotions, currentUserId }: Props) {
       {/* Form Dialog */}
       {formOpen && (
         <Dialog open onOpenChange={open => { if (!open) setFormOpen(false) }}>
-          <DialogContent showCloseButton={false} className="!max-w-2xl p-0 overflow-hidden">
+          <DialogContent showCloseButton={false} className="!max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 p-0 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h2 className="font-semibold">{editItem ? "Promo kodni tahrirlash" : "Yangi promo kod"}</h2>
               <Button variant="ghost" size="sm" onClick={() => setFormOpen(false)}><X className="h-4 w-4" /></Button>
             </div>
-            <ScrollArea className="max-h-[70vh]">
+            <ScrollArea className="h-full min-h-0">
               <div className="px-6 py-5 space-y-4">
                 <div className="space-y-1.5">
                   <Label>Kod *</Label>
