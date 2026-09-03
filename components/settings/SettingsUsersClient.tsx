@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { updateSettingAction, updateLegalPageAction } from "@/lib/actions/settings"
 import { resolveOrderSoundUrl } from "@/lib/order-sound"
 
@@ -368,6 +369,37 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
     free_delivery_after_orders: getSetting("free_delivery_after_orders"),
   })
   const [loading, setLoading] = useState(false)
+
+  // Alohida holat va alohida saqlash: yuqoridagi forma har bir qiymatni
+  // Number() ga o'tkazadi, mantiqiy qiymat esa 1/0 bo'lib ketardi va server
+  // uni rad etadi.
+  const onlinePaymentsSetting = settings.find(
+    setting => setting.key === "online_payments_enabled",
+  )?.value
+  const [onlinePayments, setOnlinePayments] = useState(
+    onlinePaymentsSetting !== false,
+  )
+  const [savingPayments, setSavingPayments] = useState(false)
+
+  const handleOnlinePaymentsChange = async (next: boolean) => {
+    const previous = onlinePayments
+    setOnlinePayments(next)
+    setSavingPayments(true)
+    const result = await updateSettingAction("online_payments_enabled", next)
+    setSavingPayments(false)
+    if (result.success) {
+      toast.success(
+        next
+          ? "Onlayn to'lov yoqildi"
+          : "Onlayn to'lov o'chirildi — ilovada faqat naqd qoladi",
+      )
+      router.refresh()
+    } else {
+      setOnlinePayments(previous)
+      toast.error(result.error)
+    }
+  }
+
   const initialSoundUrl = getSetting("order_notification_sound_url") || "/sounds/sound.mp3"
   const [soundUrl, setSoundUrl] = useState(String(initialSoundUrl))
   const [uploadingSound, setUploadingSound] = useState(false)
@@ -476,6 +508,26 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
           <Label className="text-emerald-950">Har nechta buyurtmadan keyin bepul yetkazish</Label>
           <p className="mb-3 mt-1 text-xs text-emerald-700">Masalan, 5 kiritsangiz: 5 ta yakunlangan buyurtmadan keyingi buyurtma bepul. O‘chirish uchun 0 kiriting.</p>
           <Input min={0} max={1000} type="number" value={form.free_delivery_after_orders} onChange={(e) => setForm({ ...form, free_delivery_after_orders: e.target.value })} placeholder="0" />
+        </div>
+
+        <div className="flex items-start justify-between gap-4 rounded-xl border p-4">
+          <div className="min-w-0">
+            <Label>Onlayn to&apos;lov</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              O&apos;chirilsa Payme va Click ilovada ko&apos;rinmaydi, mijozga
+              faqat naqd qoladi. Server ham onlayn to&apos;lovni rad etadi, ya&apos;ni
+              ilovasini yangilamagan mijoz ham boshlay olmaydi.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Boshlangan to&apos;lovlarga tegmaydi — o&apos;chirishdan oldin ochilgan
+              sessiyalar odatdagidek yakunlanadi.
+            </p>
+          </div>
+          <Switch
+            checked={onlinePayments}
+            disabled={savingPayments}
+            onCheckedChange={handleOnlinePaymentsChange}
+          />
         </div>
         <Button onClick={handleSave} disabled={loading}>
           {loading ? "Saqlanmoqda..." : "Qiymatlarni saqlash"}
