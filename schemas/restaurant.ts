@@ -24,6 +24,9 @@ export const restaurantFormSchema = z.object({
   type: z.enum(["restaurant", "market"]).optional(),
   order: z.number().int().min(0).optional(),
   commission_rate: z.number().min(0, "Komissiya 0% dan kam bo'lmaydi").max(100, "Komissiya 100% dan oshmaydi"),
+  // Ilova kartochkadagi taxminiy vaqtni shu qiymat + mijozgacha bo'lgan yo'l
+  // vaqtidan yasaydi, shuning uchun chegarasi bor.
+  avg_prep_time: z.number().int().min(1, "Kamida 1 daqiqa").max(240, "240 daqiqadan oshmasin"),
 });
 
 export type RestaurantFormValues = z.infer<typeof restaurantFormSchema>;

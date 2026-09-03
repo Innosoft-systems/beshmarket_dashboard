@@ -63,6 +63,7 @@ export function RestaurantFormDialog({
       type: (restaurant?.type as "restaurant" | "market") || "restaurant",
       order: restaurant?.order ?? 0,
       commission_rate: restaurant?.commission_rate ?? 15,
+      avg_prep_time: restaurant?.avg_prep_time ?? 30,
     },
   })
 
@@ -169,6 +170,24 @@ export function RestaurantFormDialog({
             {errors.commission_rate && <p className="text-xs text-red-500">{errors.commission_rate.message}</p>}
             <p className="text-xs text-muted-foreground">
               Faqat mahsulotlar summasidan olinadi; yetkazish va xizmat haqi kirmaydi.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tayyorlash vaqti (daqiqa)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={240}
+              step={1}
+              {...register("avg_prep_time", { valueAsNumber: true })}
+              placeholder="30"
+            />
+            {errors.avg_prep_time && <p className="text-xs text-red-500">{errors.avg_prep_time.message}</p>}
+            <p className="text-xs text-muted-foreground">
+              Ilovadagi kartochkada shu vaqt ustiga mijozgacha bo'lgan yo'l vaqti
+              qo'shilib, taxminiy yetkazish oralig'i chiqadi. Restoran buni o'z
+              panelidan ham o'zgartira oladi.
             </p>
           </div>
 

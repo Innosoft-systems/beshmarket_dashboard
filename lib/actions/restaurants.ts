@@ -32,6 +32,7 @@ export async function createRestaurantAction(data: RestaurantFormValues) {
         type: data.type || "restaurant",
         order: data.order ?? 0,
         commission_rate: data.commission_rate,
+        avg_prep_time: data.avg_prep_time,
         is_active: true,
       },
       accessToken: token,
