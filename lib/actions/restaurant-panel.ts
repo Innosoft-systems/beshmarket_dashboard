@@ -63,9 +63,18 @@ export async function sendPresenceHeartbeatAction(): Promise<
   }
 }
 
-export async function toggleMyRestaurantOpenAction() {
+/**
+ * Sets the state the owner asked for rather than flipping whatever the server
+ * holds. A heartbeat can reopen a venue the presence sweep closed, so a flip
+ * sent from a stale badge did the opposite of what the button said.
+ */
+export async function setMyRestaurantOpenAction(isOpen: boolean) {
   return withToken(async (token) => {
-    await apiRequest("/restaurants/my/toggle-open", { method: "PATCH", accessToken: token })
+    await apiRequest("/restaurants/my/open", {
+      method: "PATCH",
+      body: { is_open: isOpen },
+      accessToken: token,
+    })
     revalidatePath("/restaurant")
   })
 }

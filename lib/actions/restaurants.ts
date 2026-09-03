@@ -76,12 +76,26 @@ export async function deleteRestaurantAction(id: string) {
   }
 }
 
-export async function toggleRestaurantActiveAction(id: string) {
+/**
+ * Opens or closes a venue. Named for what it does: it was called
+ * `toggleRestaurantActive` while calling the open/close endpoint, and the menu
+ * item above it read "Faol/Nofaol qilish" off `is_active` — so the admin
+ * pressed one thing and changed another.
+ *
+ * Takes the wanted state rather than flipping, for the same reason the panel
+ * does: a flip is decided by whatever the server holds, not by what the row
+ * was showing when it was clicked.
+ */
+export async function setRestaurantOpenAction(id: string, isOpen: boolean) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
 
   try {
-    await apiRequest(`/restaurants/${id}/toggle-open`, { method: "PATCH", accessToken: token })
+    await apiRequest(`/restaurants/${id}/open`, {
+      method: "PATCH",
+      body: { is_open: isOpen },
+      accessToken: token,
+    })
     revalidatePath("/restaurants")
     return { success: true }
   } catch (error: unknown) {

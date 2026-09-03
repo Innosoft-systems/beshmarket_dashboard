@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { RestaurantFormDialog } from "@/components/restaurants/RestaurantFormDialog"
-import { deleteRestaurantAction, toggleRestaurantActiveAction, toggleRestaurantVisibilityAction } from "@/app/(dashboard)/restaurants/actions"
+import { deleteRestaurantAction, setRestaurantOpenAction, toggleRestaurantVisibilityAction } from "@/app/(dashboard)/restaurants/actions"
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Barcha holatlar" },
@@ -55,7 +55,7 @@ function ActionsCell({
     } else if (actionType === "visibility") {
       result = await toggleRestaurantVisibilityAction(restaurant._id)
     } else {
-      result = await toggleRestaurantActiveAction(restaurant._id)
+      result = await setRestaurantOpenAction(restaurant._id, !restaurant.is_open)
     }
 
     setLoading(false)
@@ -100,7 +100,7 @@ function ActionsCell({
           ) : (
             <DropdownMenuItem onClick={() => { setActionType("toggle"); setConfirmOpen(true) }}>
               <Power className="h-4 w-4 mr-2 text-amber-600" />
-              {restaurant.is_active ? "Nofaol qilish" : "Faol qilish"}
+              {restaurant.is_open ? "Yopish" : "Ochish"}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={() => { setActionType("delete"); setConfirmOpen(true) }} className="text-red-600">
@@ -131,7 +131,7 @@ function ActionsCell({
               ? `"${restaurant.name}" ni o'chirishni xohlaysizmi?`
               : actionType === "visibility"
               ? `"${restaurant.name}" ni mijozlarga ${restaurant.is_active ? "yashirish" : "ko'rsatish"}ni xohlaysizmi?`
-              : `"${restaurant.name}" ni ${restaurant.is_active ? "nofaol" : "faol"} qilishni xohlaysizmi?`
+              : `"${restaurant.name}" ni ${restaurant.is_open ? "yopish" : "ochish"}ni xohlaysizmi?`
           }
           confirmLabel={actionType === "delete" ? "O'chirish" : "Tasdiqlash"}
           variant={actionType === "delete" ? "destructive" : "default"}

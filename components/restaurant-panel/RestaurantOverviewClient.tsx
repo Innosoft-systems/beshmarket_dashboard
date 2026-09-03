@@ -1,27 +1,41 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Power } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { toggleMyRestaurantOpenAction } from "@/lib/actions/restaurant-panel"
+import { setMyRestaurantOpenAction } from "@/lib/actions/restaurant-panel"
 
 export function RestaurantOverviewClient({ restaurant }: { restaurant: any }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState<boolean>(restaurant.is_open)
+  const [saving, setSaving] = useState(false)
+
+  // The server prop is the truth; a heartbeat or the presence sweep can change
+  // it underneath us, and the badge has to follow or the next press will be
+  // aimed at a state that no longer exists.
+  useEffect(() => {
+    setIsOpen(restaurant.is_open)
+  }, [restaurant.is_open])
 
   const toggleOpen = async () => {
+    if (saving) return
+
     const nextValue = !isOpen
+    setSaving(true)
     setIsOpen(nextValue)
-    const result = await toggleMyRestaurantOpenAction()
+
+    const result = await setMyRestaurantOpenAction(nextValue)
+    setSaving(false)
+
     if (result.success) {
       toast.success(nextValue ? "Restoran ochildi" : "Restoran yopildi")
       startTransition(() => router.refresh())
     } else {
-      setIsOpen((prev) => !prev) // rollback
+      setIsOpen(restaurant.is_open)
       toast.error(result.error)
     }
   }
@@ -44,9 +58,9 @@ export function RestaurantOverviewClient({ restaurant }: { restaurant: any }) {
           Panel aloqasi uzilgani uchun avtomatik yopildi
         </span>
       )}
-      <Button onClick={toggleOpen} disabled={isPending} size="sm" variant={isOpen ? "destructive" : "default"}>
+      <Button onClick={toggleOpen} disabled={saving || isPending} size="sm" variant={isOpen ? "destructive" : "default"}>
         <Power className="mr-2 h-4 w-4" />
-        {isPending ? "..." : isOpen ? "Yopish" : "Ochish"}
+        {saving || isPending ? "..." : isOpen ? "Yopish" : "Ochish"}
       </Button>
     </div>
   )
