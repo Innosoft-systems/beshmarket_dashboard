@@ -40,30 +40,6 @@ export async function saveMyWorkingHoursAction(hours: WorkingHours[]) {
 }
 
 /**
- * Report that the panel is on screen. The server closes a venue that stops
- * reporting, so this is what keeps it open.
- *
- * Deliberately does not revalidate: it runs every 30s, and refetching the whole
- * page each time would be wasteful. The caller refreshes only when the returned
- * open state actually flips.
- */
-export async function sendPresenceHeartbeatAction(): Promise<
-  { success: true; isOpen: boolean } | { success: false; error: string }
-> {
-  const token = await getAccessToken()
-  if (!token) return { success: false, error: "Avtorizatsiya" }
-  try {
-    const res = await apiRequest<{ is_open: boolean }>("/restaurants/my/heartbeat", {
-      method: "POST",
-      accessToken: token,
-    })
-    return { success: true, isOpen: res.data?.is_open ?? false }
-  } catch (e: unknown) {
-    return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
-  }
-}
-
-/**
  * Sets the state the owner asked for rather than flipping whatever the server
  * holds. A heartbeat can reopen a venue the presence sweep closed, so a flip
  * sent from a stale badge did the opposite of what the button said.
