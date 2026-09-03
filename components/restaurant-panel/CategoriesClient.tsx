@@ -118,8 +118,11 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
       {categories.length === 0 ? (
         <div className="rounded-xl border py-16 text-center text-muted-foreground">Kategoriyalar yo'q</div>
       ) : (
-        <div className="rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
+        // overflow-x-auto, not hidden: hidden simply cut the columns that did
+        // not fit with no way to reach them. The min width stops the rest from
+        // squeezing into three-line cells before the scrollbar appears.
+        <div className="rounded-xl border overflow-x-auto">
+          <table className="w-full text-sm min-w-[880px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="h-11 w-8 px-2" />

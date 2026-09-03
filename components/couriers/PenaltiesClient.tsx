@@ -140,8 +140,11 @@ export function PenaltiesClient({ initialData, initialFilters }: Props) {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+      // overflow-x-auto, not hidden: hidden simply cut the columns that did
+      // not fit with no way to reach them. The min width stops the rest from
+      // squeezing into three-line cells before the scrollbar appears.
+      <div className="rounded-xl border overflow-x-auto">
+        <table className="w-full text-sm min-w-[880px]">
           <thead>
             <tr className="border-b bg-muted/30">
               <th className="h-11 px-4 text-left font-medium">Kuryer</th>

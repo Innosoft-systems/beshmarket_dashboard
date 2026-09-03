@@ -134,8 +134,11 @@ export function VariantEditor({ optionTypes, variants, onChange }: Props) {
       </div>
 
       {variants.length > 0 && (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
+        // overflow-x-auto, not hidden: hidden simply cut the columns that did
+        // not fit with no way to reach them. The min width stops the rest from
+        // squeezing into three-line cells before the scrollbar appears.
+        <div className="border rounded-lg overflow-x-auto">
+          <table className="w-full text-sm min-w-[680px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="h-9 px-3 text-left text-xs font-medium">Nomi</th>
