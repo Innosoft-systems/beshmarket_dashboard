@@ -22,6 +22,12 @@ interface Props {
   restaurantId: string
   categories: any[]
   onClose: () => void
+  /**
+   * Saqlangandan keyin chaqiriladi. Ro'yxat endi mijoz tomonida turadi va
+   * sahifalab yuklanadi, shuning uchun `router.refresh()` o'zi yetmaydi —
+   * u eski jadval atrofidagi sarlavhani yangilaydi, xolos.
+   */
+  onSaved?: () => void
   scope?: "admin" | "restaurant"
 }
 
@@ -81,7 +87,7 @@ function initModifierGroups(product?: any): LocalModifierGroup[] {
   }))
 }
 
-export function ProductFormDialog({ product, restaurantId, categories, onClose, scope = "admin" }: Props) {
+export function ProductFormDialog({ product, restaurantId, categories, onClose, onSaved, scope = "admin" }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
@@ -246,6 +252,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
     if (result.success) {
       toast.success(product ? "Saqlandi" : "Mahsulot qo'shildi")
       startTransition(() => router.refresh())
+      onSaved?.()
       onClose()
     } else toast.error(result.error)
   }

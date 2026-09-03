@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Power, FolderPlus, PackageX } from "lucide-react"
+import { Plus, Pencil, Trash2, Power, FolderPlus, PackageX, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getFullImgUrl } from "@/lib/utils"
@@ -17,7 +17,16 @@ import {
 } from "@/components/ui/select"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ProductFormDialog } from "./ProductFormDialog"
-import { deleteProductAction, updateProductAction, createMenuCategoryAction, deleteMenuCategoryAction } from "@/lib/actions/products"
+import { useInfiniteList } from "@/hooks/use-infinite-list"
+import {
+  deleteProductAction,
+  updateProductAction,
+  createMenuCategoryAction,
+  deleteMenuCategoryAction,
+  loadProductsPageAction,
+  loadProductCountsAction,
+} from "@/lib/actions/products"
+import type { ProductCategoryCounts, ProductsPage } from "@/lib/products-list"
 import {
   createMyMenuCategoryAction,
   deleteMyMenuCategoryAction,
@@ -27,12 +36,15 @@ import {
 
 interface Props {
   restaurant: any
-  products: any[]
+  initial: ProductsPage
+  counts: ProductCategoryCounts
   categories: any[]
   scope?: "admin" | "restaurant"
 }
 
-export function ProductsClient({ restaurant, products, categories, scope = "admin" }: Props) {
+const SEARCH_DEBOUNCE_MS = 350
+
+export function ProductsClient({ restaurant, initial, counts: initialCounts, categories, scope = "admin" }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [formOpen, setFormOpen] = useState(false)
@@ -45,18 +57,142 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
   const [deleteCatId, setDeleteCatId] = useState("")
   const [deleteCatLoading, setDeleteCatLoading] = useState(false)
 
-  const filtered = selectedCategory === "all"
-    ? products
-    : products.filter(p => {
-        const catId = p.menu_category_id?._id || p.menu_category_id
-        return catId === selectedCategory
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
+  const [counts, setCounts] = useState(initialCounts)
+  const [total, setTotal] = useState(initial.pagination.total)
+  /**
+   * A filter change is in flight.
+   *
+   * While it is, the scroll sentinel is taken off the page: the list is still
+   * holding the previous filter's rows and page number, and an observer firing
+   * in that window would append page two of the new filter to them.
+   */
+  const [filtering, setFiltering] = useState(false)
+
+  const restaurantId = scope === "admin" ? restaurant?._id : undefined
+
+  // Which filter the newest request belongs to. Typing fires one request per
+  // pause and they do not come back in order; without this a slow early
+  // response can overwrite the results of a later, narrower search.
+  const requestIdRef = useRef(0)
+
+  // The filter goes straight into loadPage rather than through a ref, so the
+  // observer cannot ask for the next page of a filter that is no longer on
+  // screen. Its identity changing simply re-subscribes the observer.
+  const loadPage = useCallback(
+    async (page: number) => {
+      const result = await loadProductsPageAction(scope, restaurantId, {
+        page,
+        search,
+        menuCategoryId: selectedCategory,
       })
+      if (!result.success) return null
+      return {
+        items: result.data.data,
+        totalPages: result.data.pagination.totalPages,
+        total: result.data.pagination.total,
+      }
+    },
+    [restaurantId, scope, search, selectedCategory],
+  )
+
+  const {
+    items,
+    hasMore,
+    loading,
+    error,
+    sentinelRef,
+    loadMore,
+    reset,
+  } = useInfiniteList<any>({
+    initial: {
+      items: initial.data,
+      totalPages: initial.pagination.totalPages,
+      total: initial.pagination.total,
+    },
+    loadPage,
+    getKey: (product: any) => product._id,
+  })
+
+  /**
+   * Read the first page and the counts for a filter, and put them on screen.
+   *
+   * Driven by the events that change the filter rather than by an effect
+   * watching it, so the request happens once per actual change. It is also how
+   * an edit shows up: the table is client-side state now, and
+   * `router.refresh()` alone re-renders the header around a stale list.
+   */
+  const reload = useCallback(
+    async (nextSearch: string, nextCategory: string) => {
+      const requestId = ++requestIdRef.current
+      setFiltering(true)
+
+      const [page, nextCounts] = await Promise.all([
+        loadProductsPageAction(scope, restaurantId, {
+          page: 1,
+          search: nextSearch,
+          menuCategoryId: nextCategory,
+        }),
+        loadProductCountsAction(scope, restaurantId, { search: nextSearch }),
+      ])
+
+      // A newer filter is already in flight — its answer is the right one.
+      if (requestId !== requestIdRef.current) return
+
+      if (page.success) {
+        reset({
+          items: page.data.data,
+          totalPages: page.data.pagination.totalPages,
+          total: page.data.pagination.total,
+        })
+        setTotal(page.data.pagination.total)
+      } else {
+        toast.error(page.error)
+      }
+      if (nextCounts.success) setCounts(nextCounts.data)
+
+      // Cleared either way: a failed attempt is still finished, and leaving it
+      // pending would strand the list with no way to page on.
+      setFiltering(false)
+    },
+    [reset, restaurantId, scope],
+  )
+
+  // Debounce the box: one request per pause, not one per keystroke. The work
+  // happens in the timer, so nothing here runs synchronously with the effect.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = searchInput.trim()
+      setSearch(current => {
+        if (current !== next) void reload(next, selectedCategory)
+        return next
+      })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [reload, searchInput, selectedCategory])
+
+  const changeCategory = useCallback(
+    (value: string | null) => {
+      const next = value ?? "all"
+      if (next === selectedCategory) return
+      setSelectedCategory(next)
+      void reload(search, next)
+    },
+    [reload, search, selectedCategory],
+  )
+
+  const afterMutation = useCallback(() => {
+    void reload(search, selectedCategory)
+    // Keeps the page header's own total in step with the table.
+    startTransition(() => router.refresh())
+  }, [reload, router, search, selectedCategory])
 
   const categoryOptions = [
-    { value: "all", label: `Hammasi (${products.length})` },
+    { value: "all", label: `Hammasi (${counts.total})` },
     ...categories.map(cat => ({
       value: cat._id,
-      label: `${cat.name_uz} (${products.filter(p => (p.menu_category_id?._id || p.menu_category_id) === cat._id).length})`,
+      label: `${cat.name_uz} (${counts.by_category[cat._id] ?? 0})`,
     })),
   ]
 
@@ -66,14 +202,14 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
     const r = scope === "restaurant"
       ? await updateMyProductAction(p._id, { is_active: !p.is_active })
       : await updateProductAction(p._id, { is_active: !p.is_active })
-    r.success ? startTransition(() => router.refresh()) : toast.error(r.error)
+    r.success ? afterMutation() : toast.error(r.error)
   }
 
   const toggleAvailable = async (p: any) => {
     const r = scope === "restaurant"
       ? await updateMyProductAction(p._id, { is_available: !p.is_available })
       : await updateProductAction(p._id, { is_available: !p.is_available })
-    r.success ? startTransition(() => router.refresh()) : toast.error(r.error)
+    r.success ? afterMutation() : toast.error(r.error)
   }
 
   const addCategory = async () => {
@@ -87,7 +223,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
       name_en: newCatName,
     })
     setAddingCat(false)
-    if (r.success) { toast.success("Kategoriya qo'shildi"); setNewCatName(""); startTransition(() => router.refresh()) }
+    if (r.success) { toast.success("Kategoriya qo'shildi"); setNewCatName(""); afterMutation() }
     else toast.error(r.error)
   }
 
@@ -102,6 +238,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
     if (r.success) {
       toast.success("Kategoriya o'chirildi")
       setSelectedCategory("all")
+      void reload(search, "all")
       startTransition(() => router.refresh())
     } else {
       toast.error(r.error)
@@ -112,7 +249,29 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
     <div className="space-y-5">
       {/* Filters and actions */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-        <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value ?? "all")}>
+        {/* Qidiruv serverda ishlaydi: yuklangan sahifa emas, butun menyu
+            bo'yicha — aks holda 100-chi mahsulotdan keyingisi topilmasdi. */}
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            placeholder="Mahsulot qidirish..."
+            className="pl-9 pr-9"
+          />
+          {!!searchInput && (
+            <button
+              type="button"
+              aria-label="Qidiruvni tozalash"
+              onClick={() => setSearchInput("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        <Select value={selectedCategory} onValueChange={changeCategory}>
           <SelectTrigger className="w-full sm:w-55">
             <SelectValue>{selectedLabel}</SelectValue>
           </SelectTrigger>
@@ -155,9 +314,16 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
         </Button>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        Jami {total} ta · {items.length} tasi ko&apos;rsatilmoqda
+        {filtering && " · yangilanmoqda..."}
+      </p>
+
       {/* Products grid */}
-      {filtered.length === 0 ? (
-        <div className="rounded-xl border py-16 text-center text-muted-foreground">Mahsulotlar yo'q</div>
+      {items.length === 0 ? (
+        <div className="rounded-xl border py-16 text-center text-muted-foreground">
+          {search ? `"${search}" bo'yicha hech narsa topilmadi` : "Mahsulotlar yo'q"}
+        </div>
       ) : (
         // overflow-x-auto, not hidden: hidden simply cut the columns that did
         // not fit with no way to reach them. The min width stops the rest from
@@ -178,7 +344,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p: any) => {
+              {items.map((p: any) => {
                 const catId = p.menu_category_id?._id || p.menu_category_id
                 const cat = categories.find(c => c._id === catId)
                 return (
@@ -264,12 +430,38 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
         </div>
       )}
 
+      {/* Kuzatiladigan nuqta: ekranga yaqinlashganda keyingi sahifa yuklanadi.
+          Filtr almashayotganda olib qo'yiladi — ro'yxat hali eski sahifa
+          raqamida turadi va kuzatuvchi yangi filtrning ikkinchi sahifasini
+          eskisining ustiga qo'shib yuborardi. */}
+      {!filtering && <div ref={sentinelRef} className="h-px" />}
+
+      {loading && (
+        <p className="py-3 text-center text-sm text-muted-foreground">Yuklanmoqda...</p>
+      )}
+
+      {error && (
+        <div className="py-3 text-center text-sm text-red-500">
+          {error}
+          <Button variant="outline" size="sm" className="ml-2" onClick={loadMore}>
+            Qayta urinish
+          </Button>
+        </div>
+      )}
+
+      {!hasMore && !loading && items.length > 0 && (
+        <p className="py-3 text-center text-xs text-muted-foreground">
+          Hammasi ko&apos;rsatildi
+        </p>
+      )}
+
       {formOpen && (
         <ProductFormDialog
           product={editProduct}
           restaurantId={restaurant._id}
           categories={categories}
           scope={scope}
+          onSaved={afterMutation}
           onClose={() => { setFormOpen(false); setEditProduct(null) }}
         />
       )}
@@ -289,7 +481,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
             : await deleteProductAction(deleteId)
           setDeleteLoading(false)
           setDeleteId("")
-          r.success ? (toast.success("O'chirildi"), startTransition(() => router.refresh()))
+          r.success ? (toast.success("O'chirildi"), afterMutation())
             : toast.error(r.error)
         }}
       />
