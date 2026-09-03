@@ -153,7 +153,7 @@ export function PromotionsClient({ promotions, currentUserId }: Props) {
                       : <span className="text-xs text-muted-foreground">Global</span>
                     }
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex flex-wrap gap-1.5">
                       {p.discount_value > 0 && <Badge variant="outline" className="gap-1">
                         {p.discount_type === "percentage" ? `${p.discount_value}%` : `${p.discount_value.toLocaleString()} so'm`}

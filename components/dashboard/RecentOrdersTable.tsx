@@ -56,7 +56,7 @@ export function RecentOrdersTable({ orders, accessToken }: Props) {
                   <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-[120px] truncate">
                     {order.restaurant_id?.name || "—"}
                   </td>
-                  <td className="px-4 py-2.5 text-right text-xs font-medium">
+                  <td className="px-4 py-2.5 text-right text-xs font-medium whitespace-nowrap">
                     {order.total?.toLocaleString()} so'm
                   </td>
                   <td className="px-4 py-2.5">

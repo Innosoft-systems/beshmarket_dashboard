@@ -50,7 +50,7 @@ export function RecentPenaltiesTable({ penalties }: Props) {
                     {REASON_LABELS[p.reason] || p.reason}
                   </Badge>
                 </td>
-                <td className="px-4 py-2.5 text-right text-xs font-semibold text-red-600">
+                <td className="px-4 py-2.5 text-right text-xs font-semibold text-red-600 whitespace-nowrap">
                   {p.amount?.toLocaleString()} so'm
                 </td>
                 <td className="px-4 py-2.5">

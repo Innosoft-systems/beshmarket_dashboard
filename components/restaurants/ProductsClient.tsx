@@ -194,7 +194,7 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                       <div className="text-xs text-muted-foreground">{p.name_ru}</div>
                     </td>
                     <td className="px-4 py-2 text-muted-foreground text-xs">{cat?.name_uz || "—"}</td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
                       {p.variants?.length > 0 ? (() => {
                         const prices = p.variants.map((v: any) => v.discount_price || v.price).filter(Boolean)
                         const min = Math.min(...prices)
@@ -208,7 +208,12 @@ export function ProductsClient({ restaurant, products, categories, scope = "admi
                       })() : (
                         <>
                           <div className="font-medium">{p.price?.toLocaleString()} so'm</div>
-                          {p.discount_price && <div className="text-xs text-green-600">{p.discount_price?.toLocaleString()} so'm</div>}
+                          {/* Only a real discount. A discount_price equal to the price
+                              rendered as the same number twice, one of them green,
+                              which reads as a saving that is not there. */}
+                          {p.discount_price > 0 && p.discount_price < p.price && (
+                            <div className="text-xs text-green-600">{p.discount_price?.toLocaleString()} so'm</div>
+                          )}
                         </>
                       )}
                     </td>
