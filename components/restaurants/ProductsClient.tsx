@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Power, FolderPlus, PackageX, Search, X } from "lucide-react"
@@ -309,7 +310,20 @@ export function ProductsClient({ restaurant, initial, counts: initialCounts, cat
           </Button>
         </div>
 
-        <Button className="sm:ml-auto" onClick={() => { setEditProduct(null); setFormOpen(true) }}>
+        {scope === "admin" && restaurant?._id && (
+          <Button
+            variant="outline"
+            className="sm:ml-auto"
+            render={<Link href={`/restaurants/${restaurant._id}/categories`} />}
+          >
+            <FolderPlus className="h-4 w-4 mr-1" /> Kategoriyalar
+          </Button>
+        )}
+
+        <Button
+          className={scope === "admin" ? undefined : "sm:ml-auto"}
+          onClick={() => { setEditProduct(null); setFormOpen(true) }}
+        >
           <Plus className="h-4 w-4 mr-1" /> Mahsulot qo'shish
         </Button>
       </div>

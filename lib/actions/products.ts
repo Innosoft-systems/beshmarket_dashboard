@@ -50,6 +50,34 @@ export async function createMenuCategoryAction(data: Record<string, unknown>) {
   } catch (e: unknown) { return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" } }
 }
 
+export async function updateMenuCategoryAction(id: string, data: Record<string, unknown>) {
+  const token = await getAccessToken()
+  if (!token) return { success: false, error: "Avtorizatsiya" }
+  try {
+    await apiRequest(`/menu-categories/menu/${id}`, { method: "PATCH", body: data, accessToken: token })
+    revalidatePath("/restaurants")
+    return { success: true }
+  } catch (e: unknown) { return { success: false, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" } }
+}
+
+/**
+ * Bitta restoranning menyu kategoriyalari.
+ *
+ * Kategoriyalar ro'yxati mijoz tomonida turadi (rasm yuklangandan keyin
+ * qayta o'qiladi), shuning uchun server action orqali olinadi — token
+ * brauzerga chiqmasin.
+ */
+export async function fetchMenuCategoriesAction(restaurantId: string) {
+  const token = await getAccessToken()
+  if (!token) return { success: false as const, error: "Avtorizatsiya" }
+  try {
+    const res = await apiRequest<unknown>(`/menu-categories/menu/${restaurantId}`, { accessToken: token })
+    return { success: true as const, data: res.data }
+  } catch (e: unknown) {
+    return { success: false as const, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
+  }
+}
+
 export async function deleteMenuCategoryAction(id: string) {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiya" }

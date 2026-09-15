@@ -23,15 +23,33 @@ import {
   deleteMyMenuCategoryAction,
   fetchMyCategoriesAction,
 } from "@/lib/actions/restaurant-panel"
+import {
+  createMenuCategoryAction,
+  updateMenuCategoryAction,
+  deleteMenuCategoryAction,
+  fetchMenuCategoriesAction,
+} from "@/lib/actions/products"
 
 interface Props {
   restaurant: any
   categories: any[]
+  /**
+   * Kim tahrirlayapti. Restoran o'z kategoriyalarini `my/*` orqali boshqaradi
+   * — u yerda har bir so'rov egasiga tekshiriladi; admin esa istalgan
+   * restoranniki bilan ishlaydi va restoran id sini o'zi uzatadi.
+   */
+  scope?: "admin" | "restaurant"
 }
 
 const emptyForm = { name_uz: "", name_ru: "", name_en: "", image: "", sort_order: 0, is_active: true }
 
-export function CategoriesClient({ restaurant, categories: initialCategories }: Props) {
+export function CategoriesClient({
+  restaurant,
+  categories: initialCategories,
+  scope = "restaurant",
+}: Props) {
+  const isAdmin = scope === "admin"
+  const restaurantId = restaurant?._id
   const [categories, setCategories] = useState(initialCategories)
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<any>(null)
@@ -41,7 +59,9 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
   const [uploading, setUploading] = useState(false)
 
   const refetch = async () => {
-    const res = await fetchMyCategoriesAction()
+    const res = isAdmin
+      ? await fetchMenuCategoriesAction(restaurantId)
+      : await fetchMyCategoriesAction()
     if (res.success && Array.isArray(res.data)) setCategories(res.data)
   }
 
@@ -80,8 +100,12 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
       is_active: form.is_active,
     }
     const r = editTarget
-      ? await updateMyMenuCategoryAction(editTarget._id, payload)
-      : await createMyMenuCategoryAction({ ...payload, restaurant_id: restaurant?._id })
+      ? isAdmin
+        ? await updateMenuCategoryAction(editTarget._id, payload)
+        : await updateMyMenuCategoryAction(editTarget._id, payload)
+      : isAdmin
+        ? await createMenuCategoryAction({ ...payload, restaurant_id: restaurantId })
+        : await createMyMenuCategoryAction({ ...payload, restaurant_id: restaurantId })
     setLoading(false)
     if (r.success) {
       toast.success(editTarget ? "Yangilandi" : "Qo'shildi")
@@ -91,14 +115,18 @@ export function CategoriesClient({ restaurant, categories: initialCategories }: 
   }
 
   const toggleActive = async (cat: any) => {
-    const r = await updateMyMenuCategoryAction(cat._id, { is_active: !cat.is_active })
+    const r = isAdmin
+      ? await updateMenuCategoryAction(cat._id, { is_active: !cat.is_active })
+      : await updateMyMenuCategoryAction(cat._id, { is_active: !cat.is_active })
     if (r.success) await refetch()
     else toast.error(r.error)
   }
 
   const handleDelete = async () => {
     setLoading(true)
-    const r = await deleteMyMenuCategoryAction(deleteId)
+    const r = isAdmin
+      ? await deleteMenuCategoryAction(deleteId)
+      : await deleteMyMenuCategoryAction(deleteId)
     setLoading(false)
     setDeleteId("")
     if (r.success) {
