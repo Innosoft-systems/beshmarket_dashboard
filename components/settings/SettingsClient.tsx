@@ -15,7 +15,7 @@ const TABS = [
   { id: "notifications", label: "Bildirishnoma" },
 ] as const
 
-const USER_SETTINGS = ["min_order_amount", "delivery_fee", "commission_rate", "free_delivery_after_orders"]
+const USER_SETTINGS = ["min_order_amount", "delivery_fee_per_km", "commission_rate", "free_delivery_after_orders"]
 const COURIER_SETTINGS = ["shift_cancellation_hours", "shift_penalty_per_hour", "courier_order_reject_penalty"]
 
 const SETTING_LABELS: Record<string, string> = {
@@ -23,7 +23,7 @@ const SETTING_LABELS: Record<string, string> = {
   shift_penalty_per_hour: "Soatlik jarima (so'm)",
   courier_order_reject_penalty: "Buyurtma rad etish jarimasi (so'm)",
   min_order_amount: "Minimal buyurtma summasi (so'm)",
-  delivery_fee: "Yetkazib berish narxi (so'm)",
+  delivery_fee_per_km: "Yetkazib berish tarifi (so'm/km)",
   free_delivery_after_orders: "Har N ta buyurtmadan keyingi bepul yetkazish (0 — o‘chiq)",
   commission_rate: "Komissiya foizi (%)",
 }

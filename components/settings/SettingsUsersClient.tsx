@@ -362,7 +362,7 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
   }
   const [form, setForm] = useState({
     min_order_amount: getSetting("min_order_amount"),
-    delivery_fee: getSetting("delivery_fee"),
+    delivery_fee_per_km: getSetting("delivery_fee_per_km"),
     service_fee_rate: getSetting("service_fee_rate"),
     service_fee_min: getSetting("service_fee_min"),
     service_fee_max: getSetting("service_fee_max"),
@@ -406,6 +406,10 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
   const [savingSound, setSavingSound] = useState(false)
 
   const handleSave = async () => {
+    if (form.delivery_fee_per_km === "") {
+      toast.error("1 km uchun yetkazish tarifini kiriting")
+      return
+    }
     setLoading(true)
     for (const [key, value] of Object.entries(form)) {
       await updateSettingAction(key, Number(value))
@@ -473,8 +477,18 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
           <Input type="number" value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} placeholder="15000" />
         </div>
         <div className="space-y-2">
-          <Label>{"Yetkazib berish narxi (so'm)"}</Label>
-          <Input type="number" value={form.delivery_fee} onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })} placeholder="5000" />
+          <Label>{"Yetkazib berish tarifi (so'm/km)"}</Label>
+          <Input
+            type="number"
+            min={0}
+            required
+            value={form.delivery_fee_per_km}
+            onChange={(e) => setForm({ ...form, delivery_fee_per_km: e.target.value })}
+            placeholder="1 km tarifini kiriting"
+          />
+          <p className="text-xs text-muted-foreground">
+            Yetkazish narxi = masofa (km) × ushbu tarif.
+          </p>
         </div>
         <div className="space-y-3 rounded-xl border p-4">
           <div>
