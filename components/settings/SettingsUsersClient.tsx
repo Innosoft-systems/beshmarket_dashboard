@@ -363,6 +363,9 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
   const [form, setForm] = useState({
     min_order_amount: getSetting("min_order_amount"),
     delivery_fee_per_km: getSetting("delivery_fee_per_km"),
+    delivery_fee_min: getSetting("delivery_fee_min"),
+    delivery_fee_max: getSetting("delivery_fee_max"),
+    delivery_max_distance_km: getSetting("delivery_max_distance_km"),
     service_fee_rate: getSetting("service_fee_rate"),
     service_fee_min: getSetting("service_fee_min"),
     service_fee_max: getSetting("service_fee_max"),
@@ -487,8 +490,57 @@ function OrderSettings({ settings }: { settings: SettingItem[] }) {
             placeholder="1 km tarifini kiriting"
           />
           <p className="text-xs text-muted-foreground">
-            Yetkazish narxi = masofa (km) × ushbu tarif.
+            Yetkazish narxi = yo&apos;l masofasi (km) × ushbu tarif. Masofa
+            OpenStreetMap yo&apos;llari bo&apos;ylab o&apos;lchanadi, to&apos;g&apos;ri chiziq bilan emas.
           </p>
+        </div>
+
+        <div className="space-y-3 rounded-xl border p-4">
+          <div>
+            <Label>Yetkazish narxi chegaralari</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Tarif masofaga ko&apos;paytirilgandan keyin qo&apos;llanadi. Chegarasiz
+              qoldirish uchun 0 kiriting.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-normal text-muted-foreground">{"Eng kami (so'm)"}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.delivery_fee_min}
+                onChange={(e) => setForm({ ...form, delivery_fee_min: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-normal text-muted-foreground">{"Eng ko'pi (so'm)"}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.delivery_fee_max}
+                onChange={(e) => setForm({ ...form, delivery_fee_max: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Eng uzoq masofa (km)
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              value={form.delivery_max_distance_km}
+              onChange={(e) => setForm({ ...form, delivery_max_distance_km: e.target.value })}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">
+              Bundan uzoqqa buyurtma qabul qilinmaydi. 0 — cheklov yo&apos;q, ya&apos;ni
+              boshqa shahardagi manzilga ham buyurtma o&apos;tadi.
+            </p>
+          </div>
         </div>
         <div className="space-y-3 rounded-xl border p-4">
           <div>
