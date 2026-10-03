@@ -16,7 +16,11 @@ const TABS = [
 ] as const
 
 const USER_SETTINGS = ["min_order_amount", "delivery_fee_per_km", "commission_rate", "free_delivery_after_orders"]
-const COURIER_SETTINGS = ["shift_cancellation_hours", "shift_penalty_per_hour", "courier_order_reject_penalty"]
+const COURIER_SETTINGS = ["shift_cancellation_hours", "shift_penalty_per_hour", "courier_order_reject_penalty", "courier_commission_rate"]
+
+const SETTING_HINTS: Record<string, string> = {
+  courier_commission_rate: "Yetkazish haqidan ushlanadi. Bepul yetkazishda olinmaydi. Servis xizmati 100% platformaga.",
+}
 
 const SETTING_LABELS: Record<string, string> = {
   shift_cancellation_hours: "Smena bekor qilish (soat)",
@@ -25,7 +29,8 @@ const SETTING_LABELS: Record<string, string> = {
   min_order_amount: "Minimal buyurtma summasi (so'm)",
   delivery_fee_per_km: "Yetkazib berish tarifi (so'm/km)",
   free_delivery_after_orders: "Har N ta buyurtmadan keyingi bepul yetkazish (0 — o‘chiq)",
-  commission_rate: "Komissiya foizi (%)",
+  commission_rate: "Restoran komissiyasi (standart, %)",
+  courier_commission_rate: "Kuryer komissiyasi (%)",
 }
 
 interface SettingsClientProps {
@@ -72,8 +77,13 @@ function GeneralSettings({ settings }: { settings: { key: string; value: any }[]
   const [loading, setLoading] = useState(false)
 
   const handleSave = async (key: string) => {
+    const num = Number(values[key])
+    if (key === "courier_commission_rate" && (!Number.isFinite(num) || num < 0 || num > 100)) {
+      toast.error("Komissiya 0 dan 100 gacha bo'lishi kerak")
+      return
+    }
     setLoading(true)
-    const result = await updateSettingAction(key, Number(values[key]))
+    const result = await updateSettingAction(key, num)
     setLoading(false)
     if (result.success) {
       toast.success("Saqlandi")
@@ -91,9 +101,11 @@ function GeneralSettings({ settings }: { settings: { key: string; value: any }[]
             <Label>{SETTING_LABELS[s.key] || s.key}</Label>
             <Input
               type="number"
+              {...(s.key === "courier_commission_rate" ? { min: 0, max: 100, step: "any" } : {})}
               value={values[s.key] ?? ""}
               onChange={(e) => setValues({ ...values, [s.key]: e.target.value })}
             />
+            {SETTING_HINTS[s.key] && <p className="text-xs text-muted-foreground">{SETTING_HINTS[s.key]}</p>}
           </div>
           <Button onClick={() => handleSave(s.key)} disabled={loading} size="lg">
             Saqlash
