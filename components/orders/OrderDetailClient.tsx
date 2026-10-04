@@ -11,6 +11,7 @@ import {
   Truck,
   Package,
   Clock,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
   assignCourierAction,
 } from "@/lib/actions/orders";
 import { OrderTimer } from "@/components/orders/OrderTimer";
+import { OrderReceiptDialog } from "@/components/orders/OrderReceipt";
 import { kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording";
 
 // Admin uchun ruxsat etilgan status o'tishlari
@@ -180,6 +182,7 @@ export function OrderDetailClient({
   const [selectedCourier, setSelectedCourier] = useState("");
   const [assigningCourier, setAssigningCourier] = useState(false);
   const [kitchenLoading, setKitchenLoading] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const restaurantTransitions: Record<
     string,
@@ -290,7 +293,16 @@ export function OrderDetailClient({
             </span>
           </div>
         </div>
+        <Button variant="outline" onClick={() => setReceiptOpen(true)}>
+          <Printer className="h-4 w-4" /> Chek
+        </Button>
       </div>
+
+      <OrderReceiptDialog
+        order={order}
+        open={receiptOpen}
+        onOpenChange={setReceiptOpen}
+      />
 
       {/* Actions */}
       {(available.length > 0 || canCancel || canMarkReady) && (

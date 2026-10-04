@@ -17,6 +17,7 @@ import {
   LoaderCircle,
   MapPin,
   PackageOpen,
+  Printer,
   Phone,
   Search,
   ShoppingBag,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { OrderReceiptDialog } from "@/components/orders/OrderReceipt"
 import {
   cancelOrderAction,
   updateKitchenStatusAction,
@@ -310,6 +312,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState<"accept" | "ready" | "cancel" | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [receiptOpen, setReceiptOpen] = useState(false)
   const previousOrderTabsRef = useRef(
     new Map(initialOrders.map((order) => [order._id, tabFor(order)])),
   )
@@ -550,9 +553,14 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
                   <p className="text-[11px] text-[#858b82]">{itemCount(selectedOrder)} ta mahsulot · {formatTime(selectedOrder.createdAt)}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-semibold tabular-nums tracking-[-0.035em]">{money.format(selectedOrder.total)} <span className="text-xs font-medium">so‘m</span></p>
-                <p className="text-[10px] uppercase tracking-wider text-[#939990]">buyurtma jami</p>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xl font-semibold tabular-nums tracking-[-0.035em]">{money.format(selectedOrder.total)} <span className="text-xs font-medium">so‘m</span></p>
+                  <p className="text-[10px] uppercase tracking-wider text-[#939990]">buyurtma jami</p>
+                </div>
+                <button type="button" onClick={() => setReceiptOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#f1f3ef] text-[#596156] transition-transform active:scale-95" aria-label="Chekni chop etish">
+                  <Printer className="h-5 w-5" />
+                </button>
               </div>
             </div>
 
@@ -670,6 +678,15 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
         loading={actionLoading === "cancel"}
         onConfirm={cancelOrder}
       />
+
+      {selectedOrder && (
+        <OrderReceiptDialog
+          order={selectedOrder}
+          open={receiptOpen}
+          onOpenChange={setReceiptOpen}
+          restaurantName={restaurantName}
+        />
+      )}
     </div>
   )
 }

@@ -27,6 +27,7 @@ export interface OrderClient {
 export interface OrderRestaurant {
   _id?: string
   name: string
+  phone?: string
   /** 'market' swaps cooking wording ("Tayyor") for picking wording ("Yig'ildi"). */
   type?: "restaurant" | "market"
 }
@@ -67,7 +68,9 @@ export interface Order {
   delivery_fee: number
   service_fee: number
   discount: number
+  promo_code?: string
   total: number
+  client_note?: string
   courier_note?: string
   restaurant_note?: string
   cancel_reason?: string
