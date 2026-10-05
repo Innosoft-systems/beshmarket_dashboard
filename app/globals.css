@@ -62,42 +62,50 @@
 
 @custom-variant dark (&:where(.never));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+/* Ranglar literal qiymat bilan: `@theme inline` dagi var(--x) bo'lsa, Tailwind
+   color-mix() ni tanimaydigan eski brauzerlar uchun `bg-primary/10` kabi
+   shaffof ranglarga TO'LIQ rangni fallback qiladi (masalan qizil tugmada qizil
+   matn ko'rinmay qoladi). Literal qiymatda esa #rrggbbaa fallback chiqadi.
+   :root dagi --primary va boshqalar shu qiymatlarga alias. */
+@theme static {
+  --color-background: oklch(0.985 0 0);
+  --color-foreground: oklch(0.15 0.01 260);
+  --color-sidebar-ring: oklch(0.566 0.173 143.5);
+  --color-sidebar-border: oklch(0.88 0.01 260);
+  --color-sidebar-accent-foreground: oklch(0.3 0.1 143.5);
+  --color-sidebar-accent: oklch(0.955 0.03 143.5);
+  --color-sidebar-primary-foreground: oklch(1 0 0);
+  --color-sidebar-primary: oklch(0.566 0.173 143.5);
+  --color-sidebar-foreground: oklch(0.15 0.01 260);
+  --color-sidebar: oklch(1 0 0);
+  --color-chart-5: oklch(0.6 0.18 25);
+  --color-chart-4: oklch(0.55 0.15 300);
+  --color-chart-3: oklch(0.6 0.16 60);
+  --color-chart-2: oklch(0.55 0.14 200);
+  --color-chart-1: oklch(0.566 0.173 143.5);
+  --color-ring: oklch(0.566 0.173 143.5);
+  --color-input: oklch(0.88 0.01 260);
+  --color-border: oklch(0.88 0.01 260);
+  --color-destructive: oklch(0.55 0.22 27);
+  --color-accent-foreground: oklch(0.3 0.1 143.5);
+  --color-accent: oklch(0.955 0.03 143.5);
+  --color-muted-foreground: oklch(0.45 0.01 260);
+  --color-muted: oklch(0.96 0.005 260);
+  --color-secondary-foreground: oklch(0.25 0.05 143.5);
+  --color-secondary: oklch(0.955 0.01 143.5);
+  --color-primary-foreground: oklch(1 0 0);
+  --color-primary: oklch(0.566 0.173 143.5);
+  --color-popover-foreground: oklch(0.15 0.01 260);
+  --color-popover: oklch(1 0 0);
+  --color-card-foreground: oklch(0.15 0.01 260);
+  --color-card: oklch(1 0 0);
+}
+
+@theme inline {
   --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: 'Poppins', ui-sans-serif, system-ui, sans-serif;
-
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -114,39 +122,39 @@
 }
 
 :root {
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.15 0.01 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.01 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.01 260);
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+  --popover: var(--color-popover);
+  --popover-foreground: var(--color-popover-foreground);
   /* BeshMarket brand green: #399918 */
-  --primary: oklch(0.566 0.173 143.5);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.955 0.01 143.5);
-  --secondary-foreground: oklch(0.25 0.05 143.5);
-  --muted: oklch(0.96 0.005 260);
-  --muted-foreground: oklch(0.45 0.01 260);
-  --accent: oklch(0.955 0.03 143.5);
-  --accent-foreground: oklch(0.3 0.1 143.5);
-  --destructive: oklch(0.55 0.22 27);
-  --border: oklch(0.88 0.01 260);
-  --input: oklch(0.88 0.01 260);
-  --ring: oklch(0.566 0.173 143.5);
-  --chart-1: oklch(0.566 0.173 143.5);
-  --chart-2: oklch(0.55 0.14 200);
-  --chart-3: oklch(0.6 0.16 60);
-  --chart-4: oklch(0.55 0.15 300);
-  --chart-5: oklch(0.6 0.18 25);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --destructive: var(--color-destructive);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
+  --chart-1: var(--color-chart-1);
+  --chart-2: var(--color-chart-2);
+  --chart-3: var(--color-chart-3);
+  --chart-4: var(--color-chart-4);
+  --chart-5: var(--color-chart-5);
   --radius: 0.625rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.15 0.01 260);
-  --sidebar-primary: oklch(0.566 0.173 143.5);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.955 0.03 143.5);
-  --sidebar-accent-foreground: oklch(0.3 0.1 143.5);
-  --sidebar-border: oklch(0.88 0.01 260);
-  --sidebar-ring: oklch(0.566 0.173 143.5);
+  --sidebar: var(--color-sidebar);
+  --sidebar-foreground: var(--color-sidebar-foreground);
+  --sidebar-primary: var(--color-sidebar-primary);
+  --sidebar-primary-foreground: var(--color-sidebar-primary-foreground);
+  --sidebar-accent: var(--color-sidebar-accent);
+  --sidebar-accent-foreground: var(--color-sidebar-accent-foreground);
+  --sidebar-border: var(--color-sidebar-border);
+  --sidebar-ring: var(--color-sidebar-ring);
 }
 
 
@@ -164,5 +172,23 @@
   }
   button, [role="button"], select, a[href], input[type="checkbox"], input[type="radio"] {
     cursor: pointer;
+  }
+}
+/* Eski brauzerlar uchun fallback (Chromium < 104/108). Tailwind 4 `-translate-*`
+   ni alohida `translate` xususiyati bilan, dialog balandligini esa `dvh` bilan
+   beradi. Ularni tanimaydigan brauzerda dialog markazga kelmaydi (tepasi ekran
+   o'rtasidan boshlanadi) va pastki qismi ekrandan chiqib, kesilib qoladi. */
+@supports not (translate: 0) {
+  [class*="translate-"] {
+    transform: translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0));
+  }
+}
+
+@supports not (height: 100dvh) {
+  [data-slot="dialog-content"] {
+    max-height: calc(100vh - 2rem);
+  }
+  [data-slot="sheet-content"] {
+    max-height: 100vh;
   }
 }

@@ -13,7 +13,8 @@ export function OrderTimer({ createdAt }: OrderTimerProps) {
 
   useEffect(() => {
     const update = () => {
-      const diff = Date.now() - new Date(createdAt).getTime()
+      // Qurilma soati serverdan orqada bo'lsa, ayirma manfiy chiqib "-1:-25" ko'rinardi.
+      const diff = Math.max(0, Date.now() - new Date(createdAt).getTime())
       const minutes = Math.floor(diff / 60000)
       const seconds = Math.floor((diff % 60000) / 1000)
 
