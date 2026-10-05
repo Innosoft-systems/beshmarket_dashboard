@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { updateSettingAction, updateLegalPageAction, getCourierFaqAction, updateCourierFaqAction } from "@/lib/actions/settings"
-import { Bike, CarFront, CircleDollarSign, Gauge, Save } from "lucide-react"
+import { Bike, CarFront, CircleDollarSign, Gauge, Percent, Save } from "lucide-react"
 
 const TABS = [
   { id: "general", label: "Umumiy" },
@@ -72,6 +72,7 @@ type CourierSettingForm = {
   courier_base_payout_moped: string | number
   courier_base_payout_motorcycle: string | number
   courier_base_payout_car: string | number
+  courier_commission_rate: string | number
 }
 
 export function SettingsCouriersClient({ settings, legalPages }: Props) {
@@ -120,11 +121,19 @@ function CourierGeneralSettings({ settings }: { settings: SettingItem[] }) {
     courier_base_payout_moped: getSetting("courier_base_payout_moped", 6500),
     courier_base_payout_motorcycle: getSetting("courier_base_payout_motorcycle", 7000),
     courier_base_payout_car: getSetting("courier_base_payout_car", 8000),
+    courier_commission_rate: getSetting("courier_commission_rate", 0),
   })
   const [loading, setLoading] = useState(false)
 
   const handleSave = async () => {
-    const invalidField = Object.entries(form).find(([, value]) => {
+    const commission = Number(form.courier_commission_rate)
+    if (form.courier_commission_rate === "" || !Number.isFinite(commission) || commission < 0 || commission > 100) {
+      toast.error("Kuryer komissiyasi 0 dan 100 gacha bo‘lishi kerak")
+      return
+    }
+
+    const invalidField = Object.entries(form).find(([key, value]) => {
+      if (key === "courier_commission_rate") return false
       const number = Number(value)
       return value === "" || !Number.isFinite(number) || number < 0 || !Number.isInteger(number)
     })
@@ -159,6 +168,9 @@ function CourierGeneralSettings({ settings }: { settings: SettingItem[] }) {
   }
 
   const perKmRate = Number(form.courier_per_km_rate) || 0
+  const commissionRate = Number(form.courier_commission_rate) || 0
+  const exampleDeliveryFee = 10000
+  const exampleCommission = Math.round((exampleDeliveryFee * commissionRate) / 100)
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -245,6 +257,47 @@ function CourierGeneralSettings({ settings }: { settings: SettingItem[] }) {
           <span className="size-1.5 rounded-full bg-primary" />
           Formula: transport bazaviy haqi + masofa × 1 km stavkasi + smena bonusi
         </p>
+      </section>
+
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.05] sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Percent className="size-5" />
+            </div>
+            <h2 className="text-lg font-semibold">Kuryer komissiyasi</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Mijoz to‘lagan yetkazish haqidan platforma ushlab qoladigan foiz.
+              Bepul yetkazishda olinmaydi. Servis xizmati to‘liq platformaga tushadi.
+            </p>
+          </div>
+
+          <div className="w-full rounded-xl bg-primary/[0.06] p-4 lg:w-72">
+            <Label htmlFor="courier-commission-rate" className="text-xs font-medium text-muted-foreground">
+              Komissiya foizi
+            </Label>
+            <div className="relative mt-2">
+              <Input
+                id="courier-commission-rate"
+                type="number"
+                min={0}
+                max={100}
+                step="any"
+                inputMode="decimal"
+                value={form.courier_commission_rate}
+                onChange={(event) => setField("courier_commission_rate", event.target.value)}
+                className="h-12 bg-white pr-12 text-base font-semibold"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                %
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Misol: {exampleDeliveryFee.toLocaleString("uz-UZ")} so‘m yetkazishdan{" "}
+              <span className="font-semibold tabular-nums text-foreground">{exampleCommission.toLocaleString("uz-UZ")} so‘m</span>
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.05] sm:p-6">
