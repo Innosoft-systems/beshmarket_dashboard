@@ -67,6 +67,11 @@ export interface Order {
   subtotal: number
   delivery_fee: number
   service_fee: number
+  courier_payout?: number
+  courier_commission_rate?: number
+  courier_commission_amount?: number
+  courier_service_fee_charged?: number
+  courier_balance_delta?: number
   discount: number
   promo_code?: string
   total: number

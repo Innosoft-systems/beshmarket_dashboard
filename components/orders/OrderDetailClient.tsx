@@ -519,6 +519,23 @@ export function OrderDetailClient({
             <span>Jami:</span>
             <span>{order.total?.toLocaleString()} so'm</span>
           </div>
+          {order.status === "delivered" && order.courier_id && (
+            <div className="pt-2 border-t space-y-1.5">
+              <div className="font-medium">Kuryerdan ushlangan</div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Komissiya ({order.courier_commission_rate ?? 0}%):</span>
+                <span>{(order.courier_commission_amount ?? 0).toLocaleString()} so'm</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Servis haqi:</span>
+                <span>{(order.courier_service_fee_charged ?? 0).toLocaleString()} so'm</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Kuryer balansiga ta'siri:</span>
+                <span>{(order.courier_balance_delta ?? 0).toLocaleString()} so'm</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
