@@ -29,7 +29,7 @@ async function loadCategories(id: string) {
   try {
     const [restaurantRes, categoriesRes] = await Promise.all([
       apiRequest<RestaurantSummary>(`/restaurants/admin/${id}`, { accessToken: token }),
-      apiRequest<MenuCategory[]>(`/menu-categories/menu/${id}`, { accessToken: token }),
+      apiRequest<MenuCategory[]>(`/menu-categories/admin/menu/${id}`, { accessToken: token }),
     ])
     if (!restaurantRes.data) return null
     return {

@@ -37,7 +37,7 @@ export default async function RestaurantProductsPage({ params }: Props) {
         `/products/admin?restaurant_id=${id}&page=1&limit=${PRODUCTS_PAGE_SIZE}`,
         { accessToken: token },
       ),
-      apiRequest<any>(`/menu-categories/menu/${id}`, { accessToken: token }),
+      apiRequest<any>(`/menu-categories/admin/menu/${id}`, { accessToken: token }),
       apiRequest<ProductCategoryCounts>(
         `/products/admin/category-counts?restaurant_id=${id}`,
         { accessToken: token },

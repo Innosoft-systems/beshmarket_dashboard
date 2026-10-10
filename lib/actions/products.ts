@@ -71,7 +71,7 @@ export async function fetchMenuCategoriesAction(restaurantId: string) {
   const token = await getAccessToken()
   if (!token) return { success: false as const, error: "Avtorizatsiya" }
   try {
-    const res = await apiRequest<unknown>(`/menu-categories/menu/${restaurantId}`, { accessToken: token })
+    const res = await apiRequest<unknown>(`/menu-categories/admin/menu/${restaurantId}`, { accessToken: token })
     return { success: true as const, data: res.data }
   } catch (e: unknown) {
     return { success: false as const, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
