@@ -62,6 +62,20 @@ export function useRestaurantSocket(accessToken: string | null) {
         throttledRefresh()
       })
 
+      // Server drops the socket when the access token expires; socket.io does
+      // not auto-reconnect after a server-initiated disconnect.
+      socket.on("disconnect", async (reason) => {
+        if (reason !== "io server disconnect") return
+        const newToken = await refreshAccessToken()
+        if (!newToken) {
+          if (typeof window !== "undefined") window.location.href = "/restaurant/login"
+          return
+        }
+        if (socketRef.current !== socket) return
+        socket.auth = { token: newToken }
+        socket.connect()
+      })
+
       socket.on("connect_error", async (err) => {
         const isAuthError = err.message?.toLowerCase().includes("auth") ||
           (err as unknown as { data?: { statusCode?: number } }).data?.statusCode === 401

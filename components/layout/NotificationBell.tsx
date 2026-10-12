@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAdminSocket, AdminNotificationPayload } from "@/hooks/use-admin-socket"
 import { useFcmToken } from "@/hooks/use-fcm-token"
+import { refreshAccessToken } from "@/lib/auth/refresh-client"
 import { isSafeInternalUrl } from "@/lib/utils/safe-url"
 
 const TYPE_ICONS: Record<string, string> = {
@@ -50,12 +51,22 @@ export function NotificationBell({ accessToken, initialCount, currentUserId }: P
   // Polling fallback: socket ishlamasa ham badge yangilanadi
   useEffect(() => {
     if (!accessToken) return
+    let token = accessToken
+    const fetchCount = (t: string) =>
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin-notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${t}` },
+        signal: AbortSignal.timeout(5000),
+      })
     const poll = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin-notifications/unread-count`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          signal: AbortSignal.timeout(5000),
-        })
+        let res = await fetchCount(token)
+        if (res.status === 401) {
+          // Access token expires after 15m — refresh once and retry
+          const newToken = await refreshAccessToken()
+          if (!newToken) return
+          token = newToken
+          res = await fetchCount(token)
+        }
         if (!res.ok) return
         const { data } = await res.json()
         setUnread(data?.count ?? 0)

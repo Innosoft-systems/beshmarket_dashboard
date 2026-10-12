@@ -49,6 +49,22 @@ export function useAdminSocket(
     function attachListeners(socket: ReturnType<typeof io>) {
       socket.off("admin.notification")
 
+      // The server drops the socket when the 15m access token expires, and
+      // socket.io never auto-reconnects after a server-initiated disconnect.
+      socket.off("disconnect")
+      socket.on("disconnect", async (reason) => {
+        if (reason !== "io server disconnect") return
+        const newToken = await refreshAccessToken()
+        if (!newToken) {
+          if (typeof window !== "undefined") window.location.href = "/login"
+          return
+        }
+        if (globalSocket !== socket) return
+        globalToken = newToken
+        socket.auth = { token: newToken }
+        socket.connect()
+      })
+
       socket.on("admin.notification", (payload: AdminNotificationPayload) => {
         if (currentUserIdRef.current && payload.actor_user_id === currentUserIdRef.current) return
         onNotificationRef.current(payload)

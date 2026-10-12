@@ -7,6 +7,7 @@ import { Bell, CheckCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useFcmToken } from "@/hooks/use-fcm-token"
+import { refreshAccessToken } from "@/lib/auth/refresh-client"
 import { toast } from "sonner"
 import { playOrderAlarm, prewarmOrderAlarm, stopOrderAlarm } from "@/lib/order-alarm"
 
@@ -89,6 +90,20 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
           ? { label: "Ko'rish", onClick: () => router.push(payload.data!.link) }
           : undefined,
       })
+    })
+
+    // Server drops the socket when the access token expires; socket.io does
+    // not auto-reconnect after a server-initiated disconnect.
+    socket.on("disconnect", async (reason) => {
+      if (reason !== "io server disconnect") return
+      const newToken = await refreshAccessToken()
+      if (!newToken) {
+        window.location.href = "/restaurant/login"
+        return
+      }
+      if (socketRef.current !== socket) return
+      socket.auth = { token: newToken }
+      socket.connect()
     })
 
     socketRef.current = socket
