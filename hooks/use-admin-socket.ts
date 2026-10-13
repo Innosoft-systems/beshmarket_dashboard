@@ -5,6 +5,7 @@ import { io } from "socket.io-client"
 import { toast } from "sonner"
 import { refreshAccessToken } from "@/lib/auth/refresh-client"
 import { isSafeInternalUrl } from "@/lib/utils/safe-url"
+import { playOrderAlarm, prewarmOrderAlarm } from "@/lib/order-alarm"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -46,6 +47,8 @@ export function useAdminSocket(
   useEffect(() => {
     if (!accessToken) return
 
+    prewarmOrderAlarm()
+
     function attachListeners(socket: ReturnType<typeof io>) {
       socket.off("admin.notification")
 
@@ -68,6 +71,9 @@ export function useAdminSocket(
       socket.on("admin.notification", (payload: AdminNotificationPayload) => {
         if (currentUserIdRef.current && payload.actor_user_id === currentUserIdRef.current) return
         onNotificationRef.current(payload)
+        // The bell is mounted in the dashboard layout, so this rings on every
+        // admin page (order.new only reaches pages that mount useOrderSocket).
+        if (payload.type === "new_order") playOrderAlarm(payload.data?.orderId, { loop: false })
         const icon = TYPE_ICONS[payload.type] || "🔔"
         toast.info(`${icon} ${payload.title}`, {
           description: payload.body,

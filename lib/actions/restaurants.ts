@@ -33,6 +33,7 @@ export async function createRestaurantAction(data: RestaurantFormValues) {
         order: data.order ?? 0,
         commission_rate: data.commission_rate,
         avg_prep_time: data.avg_prep_time,
+        telegram_chat_id: data.telegram_chat_id || undefined,
         is_active: true,
       },
       accessToken: token,
@@ -58,6 +59,18 @@ export async function updateRestaurantAction(id: string, data: RestaurantFormVal
       owner_password: owner_password || undefined,
     }, accessToken: token })
     revalidatePath("/restaurants")
+    return { success: true }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }
+  }
+}
+
+export async function sendRestaurantTelegramTestAction(id: string) {
+  const token = await getAccessToken()
+  if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
+
+  try {
+    await apiRequest(`/restaurants/admin/${id}/telegram-test`, { method: "POST", accessToken: token })
     return { success: true }
   } catch (error: unknown) {
     return { success: false, error: error instanceof ApiError ? error.message : "Xatolik yuz berdi" }

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Restaurant } from "@/types"
 import { restaurantFormSchema, RestaurantFormValues } from "@/schemas"
-import { createRestaurantAction, updateRestaurantAction } from "@/app/(dashboard)/restaurants/actions"
+import { createRestaurantAction, updateRestaurantAction, sendRestaurantTelegramTestAction } from "@/app/(dashboard)/restaurants/actions"
 
 type FormValues = RestaurantFormValues
 
@@ -43,6 +43,7 @@ export function RestaurantFormDialog({
   onSuccess,
 }: RestaurantFormDialogProps) {
   const [loading, setLoading] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [showOwnerPassword, setShowOwnerPassword] = useState(false)
   const isEdit = !!restaurant
 
@@ -64,6 +65,7 @@ export function RestaurantFormDialog({
       order: restaurant?.order ?? 0,
       commission_rate: restaurant?.commission_rate ?? 15,
       avg_prep_time: restaurant?.avg_prep_time ?? 30,
+      telegram_chat_id: restaurant?.telegram_chat_id || "",
     },
   })
 
@@ -72,6 +74,15 @@ export function RestaurantFormDialog({
   const latValue = useWatch({ control, name: "lat" })
   const lngValue = useWatch({ control, name: "lng" })
   const coordsMissing = !Number.isFinite(latValue as number) || !Number.isFinite(lngValue as number)
+
+  // Sends to the chat id already saved on the server, so save first after editing it.
+  const sendTest = async () => {
+    setTesting(true)
+    const result = await sendRestaurantTelegramTestAction(restaurant!._id)
+    setTesting(false)
+    if (result.success) toast.success("Test xabar yuborildi")
+    else toast.error(result.error || "Yuborib bo'lmadi")
+  }
 
   const onSubmit = async (data: FormValues) => {
     if (!isEdit && !data.owner_password) {
@@ -189,6 +200,22 @@ export function RestaurantFormDialog({
               qo'shilib, taxminiy yetkazish oralig'i chiqadi. Restoran buni o'z
               panelidan ham o'zgartira oladi.
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Telegram guruh chat ID</Label>
+            <Input {...register("telegram_chat_id")} placeholder="-1001234567890" />
+            {errors.telegram_chat_id && <p className="text-xs text-red-500">{errors.telegram_chat_id.message}</p>}
+            <p className="text-xs text-muted-foreground">
+              Botni restoranning Telegram guruhiga qo'shing; guruh chat ID si odatda
+              -100 bilan boshlanadi. Yangi buyurtmalar shu guruhga ham keladi.
+              Bo'sh qoldirilsa o'chiriladi.
+            </p>
+            {isEdit && (
+              <Button type="button" variant="outline" size="sm" disabled={testing} onClick={sendTest}>
+                {testing ? "Yuborilmoqda..." : "Test xabar yuborish"}
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

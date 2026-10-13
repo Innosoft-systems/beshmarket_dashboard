@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ImageUploader } from "@/components/ui/image-uploader"
-import { updateMyRestaurantAction } from "@/lib/actions/restaurant-panel"
+import { updateMyRestaurantAction, sendMyTelegramTestAction } from "@/lib/actions/restaurant-panel"
 
 export function RestaurantProfileForm({ restaurant }: { restaurant: any }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [locating, setLocating] = useState(false)
+  const [testing, setTesting] = useState(false)
   const mapRef = useRef<any>(null)
   const [form, setForm] = useState({
     name: restaurant.name || "",
@@ -30,6 +31,7 @@ export function RestaurantProfileForm({ restaurant }: { restaurant: any }) {
     cuisine_tags: (restaurant.cuisine_tags || []).join(", "),
     avg_prep_time: restaurant.avg_prep_time || 30,
     min_order_amount: restaurant.min_order_amount || 0,
+    telegram_chat_id: restaurant.telegram_chat_id || "",
   })
 
   const set = (key: string, value: any) => setForm((prev) => ({ ...prev, [key]: value }))
@@ -57,6 +59,14 @@ export function RestaurantProfileForm({ restaurant }: { restaurant: any }) {
   const handleMapClick = (e: any) => {
     const [lat, lng] = e.get("coords")
     setForm((prev) => ({ ...prev, lat, lng }))
+  }
+
+  const sendTest = async () => {
+    setTesting(true)
+    const result = await sendMyTelegramTestAction()
+    setTesting(false)
+    if (result.success) toast.success("Test xabar yuborildi")
+    else toast.error(result.error)
   }
 
   const save = async () => {
@@ -92,6 +102,24 @@ export function RestaurantProfileForm({ restaurant }: { restaurant: any }) {
         <Field label="Teglar (vergul bilan)" value={form.cuisine_tags} onChange={(v) => set("cuisine_tags", v)} className="md:col-span-2" />
         <Field label="Tayyorlash vaqti (daq)" type="number" value={String(form.avg_prep_time)} onChange={(v) => set("avg_prep_time", v)} />
         <Field label="Minimal buyurtma (so'm)" type="number" value={String(form.min_order_amount)} onChange={(v) => set("min_order_amount", v)} />
+
+        <div className="space-y-2 md:col-span-2">
+          <Label>Telegram guruh chat ID</Label>
+          <div className="flex gap-2">
+            <Input
+              value={form.telegram_chat_id}
+              onChange={(e) => set("telegram_chat_id", e.target.value)}
+              placeholder="-1001234567890"
+            />
+            <Button type="button" variant="outline" disabled={testing} onClick={sendTest}>
+              {testing ? "Yuborilmoqda..." : "Test xabar"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Botni Telegram guruhingizga qo'shing; guruh chat ID si odatda -100 bilan boshlanadi.
+            Yangi buyurtmalar shu guruhga ham keladi. Test uchun avval &quot;Saqlash&quot; ni bosing.
+          </p>
+        </div>
 
         <div className="space-y-2">
           <Label>Logo</Label>

@@ -14,6 +14,7 @@ export interface Restaurant {
   cuisine_tags?: string[];
   eco_score?: number;
   avg_prep_time?: number;
+  telegram_chat_id?: string;
   min_order_amount?: number;
   delivery_fee?: number;
   commission_rate?: number;

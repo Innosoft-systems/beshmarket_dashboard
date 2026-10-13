@@ -43,6 +43,38 @@ function swapSource(url: string): void {
   if (wasPlaying) next.play().catch(() => {})
 }
 
+let unlockRegistered = false
+
+/**
+ * Browsers reject `play()` until the user has interacted with the page, so a
+ * freshly loaded panel would stay silent for its first orders. On the first
+ * gesture, play the element muted and pause it again: that marks it as
+ * user-activated for every later programmatic `play()`.
+ */
+function registerAutoplayUnlock(): void {
+  if (unlockRegistered || typeof window === "undefined") return
+  unlockRegistered = true
+
+  const events = ["pointerdown", "keydown", "touchstart"] as const
+  const unlock = () => {
+    events.forEach((e) => window.removeEventListener(e, unlock))
+    const el = audio
+    if (!el || !el.paused) return
+    el.muted = true
+    el.play()
+      .then(() => {
+        // Leave a real alarm alone if one started in the meantime.
+        if (stopTimer === null) {
+          el.pause()
+          el.currentTime = 0
+        }
+      })
+      .catch(() => {})
+      .finally(() => { el.muted = false })
+  }
+  events.forEach((e) => window.addEventListener(e, unlock, { passive: true }))
+}
+
 /**
  * Creates the audio element and resolves the configured sound.
  * Re-fetches once the cached url goes stale, so a transient failure at page load
@@ -57,6 +89,7 @@ export function prewarmOrderAlarm(): void {
     audio.loop = true
     loadedUrl = DEFAULT_ORDER_SOUND_URL
   }
+  registerAutoplayUnlock()
 
   const isStale = Date.now() - urlResolvedAt > URL_TTL_MS
   if (urlPromise && !isStale) return
@@ -80,7 +113,9 @@ export function playOrderAlarm(orderId?: string, options: AlarmOptions = {}): vo
 
   el.loop = options.loop ?? true
   el.currentTime = 0
-  el.play().catch(() => {})
+  el.play().catch((err) => {
+    console.warn("[order-alarm] playback blocked:", err)
+  })
 
   if (stopTimer) clearTimeout(stopTimer)
   stopTimer = el.loop ? setTimeout(stopOrderAlarm, STOP_AFTER_MS) : null

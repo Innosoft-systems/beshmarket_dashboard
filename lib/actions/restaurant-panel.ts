@@ -28,6 +28,12 @@ export async function updateMyRestaurantAction(data: Record<string, unknown>) {
   })
 }
 
+export async function sendMyTelegramTestAction() {
+  return withToken(async (token) => {
+    await apiRequest("/restaurants/my/telegram-test", { method: "POST", accessToken: token })
+  })
+}
+
 export async function saveMyWorkingHoursAction(hours: WorkingHours[]) {
   return withToken(async (token) => {
     await apiRequest("/restaurants/my/working-hours", {

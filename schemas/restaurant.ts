@@ -26,6 +26,12 @@ export const restaurantFormSchema = z.object({
   commission_rate: z.number().min(0, "Komissiya 0% dan kam bo'lmaydi").max(100, "Komissiya 100% dan oshmaydi"),
   // Ilova kartochkadagi taxminiy vaqtni shu qiymat + mijozgacha bo'lgan yo'l
   // vaqtidan yasaydi, shuning uchun chegarasi bor.
+  // Restoran buyurtma xabarlari keladigan Telegram guruh ID si (ixtiyoriy).
+  telegram_chat_id: z
+    .string()
+    .trim()
+    .regex(/^(-?\d{5,20}|@[A-Za-z0-9_]{5,32})?$/, "Chat ID noto'g'ri (masalan -1001234567890)")
+    .optional(),
   avg_prep_time: z.number().int().min(1, "Kamida 1 daqiqa").max(240, "240 daqiqadan oshmasin"),
 });
 
