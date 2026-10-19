@@ -9,14 +9,41 @@ export interface SubscriberTotals {
   churned: number
   revenue: number
   orders: number
+  logged_in: number
+  logged_out: number
+  logged_out_now: number
+  buyers: number
+  orders_total: number
+  orders_delivered: number
+  orders_cancelled: number
+  orders_active: number
 }
 
 export interface SubscriberSeriesRow {
   period: string
   joined: number
   churned: number
+  logged_in: number
+  logged_out: number
   revenue: number
   orders: number
+  buyers: number
+  orders_total: number
+  orders_delivered: number
+  orders_cancelled: number
+}
+
+export interface SubscriberChange {
+  active: number
+  joined: number
+  churned: number
+  revenue: number
+  logged_in: number
+  logged_out: number
+  buyers: number
+  orders_total: number
+  orders_delivered: number
+  orders_cancelled: number
 }
 
 export interface SubscriberStats {
@@ -30,7 +57,7 @@ export interface SubscriberStats {
   }
   current: SubscriberTotals
   previous: SubscriberTotals
-  change: { active: number; joined: number; churned: number; revenue: number }
+  change: SubscriberChange
   series: SubscriberSeriesRow[]
 }
 

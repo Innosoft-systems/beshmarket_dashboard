@@ -54,6 +54,10 @@ describe("subscribers-period", () => {
   describe("resolvePeriod", () => {
     beforeEach(() => freezeDate("2026-10-14T10:00:00Z"))
 
+    it("last 7 days ends today and spans a month boundary", () => {
+      expect(resolvePeriod("week", "", "", "")).toEqual({ from: "2026-10-08", to: "2026-10-14" })
+    })
+
     it("current month", () => {
       expect(resolvePeriod("current", "", "", "")).toEqual({ from: "2026-10-01", to: "2026-10-31" })
     })

@@ -38,6 +38,10 @@ import { kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording
 // Admin uchun ruxsat etilgan status o'tishlari
 const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
   pending: [
+    // The admin can confirm on the restaurant's behalf (e.g. the venue is not
+    // watching its panel). Same endpoint as the restaurant: courier dispatch
+    // starts the moment this is pressed.
+    { value: "accepted", label: "Qabul qilish" },
     { value: "rejected", label: "Rad etish" },
   ],
   // "Tayyor" is deliberately absent — that is the kitchen track now, and it has

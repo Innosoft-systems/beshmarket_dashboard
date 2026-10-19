@@ -3,7 +3,7 @@
  * tested without rendering: the business runs on Asia/Tashkent calendar days.
  */
 
-export type PeriodMode = "current" | "previous" | "month" | "range"
+export type PeriodMode = "week" | "current" | "previous" | "month" | "range"
 
 export interface Period {
   from: string
@@ -41,6 +41,17 @@ export function isRangeInvalid(from: string, to: string): boolean {
   return !!from && !!to && from > to
 }
 
+/** The 7 calendar days ending today (Tashkent), inclusive. */
+export function lastSevenDays(): Period {
+  const today = todayTashkent()
+  const [y, m, d] = today.split("-").map(Number)
+  const start = new Date(Date.UTC(y, m - 1, d - 6))
+  return {
+    from: `${start.getUTCFullYear()}-${pad(start.getUTCMonth() + 1)}-${pad(start.getUTCDate())}`,
+    to: today,
+  }
+}
+
 /** Resolve the selected mode to a concrete period, or null while incomplete/invalid. */
 export function resolvePeriod(
   mode: PeriodMode,
@@ -49,6 +60,7 @@ export function resolvePeriod(
   rangeTo: string,
 ): Period | null {
   const thisMonth = todayTashkent().slice(0, 7)
+  if (mode === "week") return lastSevenDays()
   if (mode === "current") return monthBounds(thisMonth)
   if (mode === "previous") return monthBounds(shiftMonth(thisMonth, -1))
   if (mode === "month") return month ? monthBounds(month) : null

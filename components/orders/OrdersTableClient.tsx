@@ -120,6 +120,8 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
         ],
       }
     : {
+        // Admin may confirm for a restaurant that is not watching its panel.
+        pending: [{ value: "accepted", label: "Qabul qilish" }],
         accepted: [{ value: "assigned", label: "Kuryer tayinlash" }],
         ready: [{ value: "on_way", label: "Yo'lga chiqdi" }],
         on_way: [{ value: "delivered", label: "Yetkazildi" }],

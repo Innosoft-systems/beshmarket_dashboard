@@ -34,11 +34,14 @@ const GRID = "#e7e6e3"
 const AXIS_TEXT = "#6b6a66"
 
 const MODES: { id: PeriodMode; label: string }[] = [
+  { id: "week", label: "Oxirgi 7 kun" },
   { id: "current", label: "Joriy oy" },
   { id: "previous", label: "O'tgan oy" },
   { id: "month", label: "Oy tanlash" },
   { id: "range", label: "Oraliq" },
 ]
+
+const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0)
 
 const count = (n: number) => Math.round(Number(n) || 0).toLocaleString("uz-UZ")
 
@@ -60,6 +63,7 @@ function Kpi({
   previous,
   inverse,
   accent,
+  hint,
 }: {
   label: string
   value: string
@@ -67,6 +71,7 @@ function Kpi({
   previous: string
   inverse?: boolean
   accent: string
+  hint?: string
 }) {
   return (
     <div className="rounded-xl border bg-card p-4">
@@ -79,6 +84,21 @@ function Kpi({
         <Change value={change} inverse={inverse} />
         <span className="text-muted-foreground">oldingi davr: {previous}</span>
       </div>
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  )
+}
+
+/** A point-in-time number with no previous period to compare against. */
+function Snapshot({ label, value, hint, accent }: { label: string; value: string; hint: string; accent: string }) {
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: accent }} />
+        <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   )
 }
@@ -168,7 +188,7 @@ export function SubscribersClient() {
   const prev = stats?.previous
   const empty =
     !!stats &&
-    stats.series.every(r => r.joined === 0 && r.churned === 0 && r.revenue === 0) &&
+    stats.series.every(r => r.joined === 0 && r.churned === 0 && r.revenue === 0 && r.orders_total === 0 && r.logged_in === 0) &&
     stats.current.active === 0
 
   return (
@@ -176,7 +196,7 @@ export function SubscribersClient() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Obunachilar</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ro&apos;yxatdan o&apos;tgan mijozlar harakati va yetkazilgan buyurtmalar tushumi.
+          Mijozlar harakati, ilovaga kirish-chiqish va buyurtmalar natijasi — davr bo&apos;yicha.
         </p>
       </div>
 
@@ -257,11 +277,55 @@ export function SubscribersClient() {
         <LoadingState />
       ) : stats && cur && prev ? (
         <div className={cn("space-y-6 transition-opacity", loading && "pointer-events-none opacity-60")}>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Kpi label="Faol obunachilar" value={count(cur.active)} change={stats.change.active} previous={count(prev.active)} accent={SERIES.income} />
-            <Kpi label="Yangi qo'shilganlar" value={count(cur.joined)} change={stats.change.joined} previous={count(prev.joined)} accent={SERIES.third} />
-            <Kpi label="Chiqib ketganlar" value={count(cur.churned)} change={stats.change.churned} previous={count(prev.churned)} inverse accent={SERIES.cost} />
-            <Kpi label="Umumiy summa" value={som(cur.revenue)} change={stats.change.revenue} previous={som(prev.revenue)} accent={SERIES.fourth} />
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium text-muted-foreground">Foydalanuvchilar</h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Kpi label="Faol obunachilar" value={count(cur.active)} change={stats.change.active} previous={count(prev.active)} accent={SERIES.income} />
+              <Kpi label="Yangi qo'shilganlar" value={count(cur.joined)} change={stats.change.joined} previous={count(prev.joined)} accent={SERIES.third} />
+              <Kpi label="Hisobini o'chirganlar" value={count(cur.churned)} change={stats.change.churned} previous={count(prev.churned)} inverse accent={SERIES.cost} />
+              <Kpi
+                label="Buyurtma berganlar"
+                value={count(cur.buyers)}
+                change={stats.change.buyers}
+                previous={count(prev.buyers)}
+                accent={SERIES.fourth}
+                hint={`faol obunachilarning ${pct(cur.buyers, cur.active)}%`}
+              />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium text-muted-foreground">Ilovaga kirish</h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Kpi label="Ilovaga kirganlar" value={count(cur.logged_in)} change={stats.change.logged_in} previous={count(prev.logged_in)} accent={SERIES.income} />
+              <Kpi label="Ilovadan chiqqanlar" value={count(cur.logged_out)} change={stats.change.logged_out} previous={count(prev.logged_out)} inverse accent={SERIES.cost} />
+              <Snapshot label="Hozir tizimdan chiqib turganlar" value={count(cur.logged_out_now)} hint="kamida bir marta kirgan, hozir sessiyasi yo'q" accent={SERIES.third} />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium text-muted-foreground">Buyurtmalar</h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Kpi label="Jami buyurtmalar" value={count(cur.orders_total)} change={stats.change.orders_total} previous={count(prev.orders_total)} accent={SERIES.third} />
+              <Kpi
+                label="Muvaffaqiyatli (yetkazilgan)"
+                value={count(cur.orders_delivered)}
+                change={stats.change.orders_delivered}
+                previous={count(prev.orders_delivered)}
+                accent={SERIES.income}
+                hint={`${pct(cur.orders_delivered, cur.orders_total)}%`}
+              />
+              <Kpi
+                label="Bekor qilingan"
+                value={count(cur.orders_cancelled)}
+                change={stats.change.orders_cancelled}
+                previous={count(prev.orders_cancelled)}
+                inverse
+                accent={SERIES.cost}
+                hint={`${pct(cur.orders_cancelled, cur.orders_total)}% · jarayonda: ${count(cur.orders_active)}`}
+              />
+              <Kpi label="Umumiy summa" value={som(cur.revenue)} change={stats.change.revenue} previous={som(prev.revenue)} accent={SERIES.fourth} hint="yetkazilgan buyurtmalar" />
+            </div>
           </section>
 
           {empty ? (
@@ -288,6 +352,41 @@ export function SubscribersClient() {
               </ChartCard>
 
               <ChartCard
+                title="Buyurtmalar natijasi"
+                description={`Yetkazilgan va bekor qilingan · jami ${count(cur.orders_total)} ta`}
+              >
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={stats.series} margin={{ top: 4, right: 4, left: -16, bottom: 0 }} barGap={2}>
+                    <CartesianGrid stroke={GRID} vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={periodLabel} tick={{ fontSize: 11, fill: AXIS_TEXT }} tickLine={false} axisLine={{ stroke: GRID }} minTickGap={16} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: AXIS_TEXT }} tickLine={false} axisLine={false} width={48} />
+                    <Tooltip content={<SeriesTooltip periodLabel={periodLabel} />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: AXIS_TEXT, paddingTop: 8 }} />
+                    <Bar dataKey="orders_delivered" name="Yetkazilgan" fill={SERIES.income} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="orders_cancelled" name="Bekor qilingan" fill={SERIES.cost} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="buyers" name="Buyurtma berganlar" fill={SERIES.fourth} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              <ChartCard
+                title="Ilovaga kirish va chiqish"
+                description={monthly ? "Oylar bo'yicha" : "Kunlar bo'yicha"}
+              >
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={stats.series} margin={{ top: 4, right: 4, left: -16, bottom: 0 }} barGap={2}>
+                    <CartesianGrid stroke={GRID} vertical={false} />
+                    <XAxis dataKey="period" tickFormatter={periodLabel} tick={{ fontSize: 11, fill: AXIS_TEXT }} tickLine={false} axisLine={{ stroke: GRID }} minTickGap={16} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: AXIS_TEXT }} tickLine={false} axisLine={false} width={48} />
+                    <Tooltip content={<SeriesTooltip periodLabel={periodLabel} />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: AXIS_TEXT, paddingTop: 8 }} />
+                    <Bar dataKey="logged_in" name="Kirgan" fill={SERIES.income} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="logged_out" name="Chiqqan" fill={SERIES.cost} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              <ChartCard
                 title="Tushum"
                 description={`Yetkazilgan buyurtmalar summasi · ${count(cur.orders)} ta buyurtma`}
               >
@@ -305,8 +404,9 @@ export function SubscribersClient() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Faol — davr oxirigacha ro&apos;yxatdan o&apos;tgan, o&apos;chirilmagan va bloklanmagan mijozlar. Chiqib ketgan — hisobini o&apos;chirganlar.
-            Summa — davrdagi yetkazilgan buyurtmalar jami. Kunlar Toshkent vaqti bo&apos;yicha.
+            Faol — davr oxirigacha ro&apos;yxatdan o&apos;tgan, o&apos;chirilmagan va bloklanmagan mijozlar. Buyurtma berganlar — davrda kamida bitta bekor qilinmagan buyurtmasi bor mijozlar.
+            Ilovaga kirgan/chiqqan — davrdagi oxirgi kirish va chiqish vaqti bo&apos;yicha (chiqish vaqti yangi versiyadan boshlab yoziladi).
+            Bekor qilingan — mijoz yoki restoran tomonidan bekor qilingan va rad etilgan buyurtmalar. Summa — yetkazilgan buyurtmalar jami. Kunlar Toshkent vaqti bo&apos;yicha.
           </p>
         </div>
       ) : null}

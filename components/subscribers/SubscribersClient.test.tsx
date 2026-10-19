@@ -30,13 +30,42 @@ function freezeDate(iso: string) {
   })
 }
 
+type Totals = SubscriberStats["current"]
+type Row = SubscriberStats["series"][number]
+type Change = SubscriberStats["change"]
+
+const totals = (over: Partial<Totals> = {}): Totals => ({
+  active: 1200, joined: 30, churned: 5, revenue: 1250000, orders: 12,
+  logged_in: 300, logged_out: 40, logged_out_now: 90, buyers: 200,
+  orders_total: 15, orders_delivered: 12, orders_cancelled: 2, orders_active: 1,
+  ...over,
+})
+const row = (over: Partial<Row> = {}): Row => ({
+  period: "2026-10-01", joined: 1, churned: 0, logged_in: 2, logged_out: 0, revenue: 100, orders: 1,
+  buyers: 1, orders_total: 1, orders_delivered: 1, orders_cancelled: 0,
+  ...over,
+})
+const change = (over: Partial<Change> = {}): Change => ({
+  active: 9, joined: 50, churned: -38, revenue: 25,
+  logged_in: 10, logged_out: -5, buyers: 12, orders_total: 20, orders_delivered: 18, orders_cancelled: -30,
+  ...over,
+})
+const zeroTotals = (): Totals => totals({
+  active: 0, joined: 0, churned: 0, revenue: 0, orders: 0, logged_in: 0, logged_out: 0, logged_out_now: 0,
+  buyers: 0, orders_total: 0, orders_delivered: 0, orders_cancelled: 0, orders_active: 0,
+})
+const zeroRow = (): Row => row({
+  joined: 0, churned: 0, logged_in: 0, logged_out: 0, revenue: 0, orders: 0, buyers: 0,
+  orders_total: 0, orders_delivered: 0, orders_cancelled: 0,
+})
+
 function stats(over: Partial<SubscriberStats> = {}): SubscriberStats {
   return {
     period: { from: "2026-10-01", to: "2026-10-31", days: 31, previous_from: "2026-08-31", previous_to: "2026-09-30", granularity: "day" },
-    current: { active: 1200, joined: 30, churned: 5, revenue: 1250000, orders: 12 },
-    previous: { active: 1100, joined: 20, churned: 8, revenue: 1000000, orders: 10 },
-    change: { active: 9, joined: 50, churned: -38, revenue: 25 },
-    series: [{ period: "2026-10-01", joined: 1, churned: 0, revenue: 100, orders: 1 }],
+    current: totals(),
+    previous: totals({ active: 1100, joined: 20, churned: 8, revenue: 1000000, orders: 10 }),
+    change: change(),
+    series: [row()],
     ...over,
   }
 }
@@ -104,16 +133,16 @@ describe("SubscribersClient", () => {
     await screen.findByText("Faol obunachilar")
     // Joined up 50% is good; churn down 38% is also good (green, down arrow).
     expect(within(kpi("Yangi qo'shilganlar")).getByText(/50%/)).toHaveClass("text-emerald-600")
-    expect(within(kpi("Chiqib ketganlar")).getByText(/38%/)).toHaveClass("text-emerald-600")
-    expect(within(kpi("Chiqib ketganlar")).getByText(/38%/)).toHaveTextContent("▼")
+    expect(within(kpi("Hisobini o'chirganlar")).getByText(/38%/)).toHaveClass("text-emerald-600")
+    expect(within(kpi("Hisobini o'chirganlar")).getByText(/38%/)).toHaveTextContent("▼")
   })
 
   it("shows rising churn and falling revenue in red", async () => {
-    mocked.mockResolvedValue(ok(stats({ change: { active: -3, joined: 0, churned: 40, revenue: -10 } })))
+    mocked.mockResolvedValue(ok(stats({ change: change({ active: -3, joined: 0, churned: 40, revenue: -10 }) })))
     render(<SubscribersClient />)
     await screen.findByText("Faol obunachilar")
-    expect(within(kpi("Chiqib ketganlar")).getByText(/40%/)).toHaveClass("text-red-600")
-    expect(within(kpi("Chiqib ketganlar")).getByText(/40%/)).toHaveTextContent("▲")
+    expect(within(kpi("Hisobini o'chirganlar")).getByText(/40%/)).toHaveClass("text-red-600")
+    expect(within(kpi("Hisobini o'chirganlar")).getByText(/40%/)).toHaveTextContent("▲")
     expect(within(kpi("Umumiy summa")).getByText(/10%/)).toHaveClass("text-red-600")
     expect(within(kpi("Faol obunachilar")).getByText(/3%/)).toHaveClass("text-red-600")
     expect(within(kpi("Yangi qo'shilganlar")).getByText("0%")).toHaveClass("text-muted-foreground")
@@ -131,19 +160,40 @@ describe("SubscribersClient", () => {
   })
 
   it("shows the empty state when the period has no data", async () => {
-    mocked.mockResolvedValue(ok(stats({
-      current: { active: 0, joined: 0, churned: 0, revenue: 0, orders: 0 },
-      series: [{ period: "2026-10-01", joined: 0, churned: 0, revenue: 0, orders: 0 }],
-    })))
+    mocked.mockResolvedValue(ok(stats({ current: zeroTotals(), series: [zeroRow()] })))
     render(<SubscribersClient />)
     expect(await screen.findByText("Bu davrda ma'lumot yo'q")).toBeInTheDocument()
     expect(screen.queryByTestId("chart")).not.toBeInTheDocument()
   })
 
-  it("renders both charts when there is data", async () => {
+  it("renders all four charts when there is data", async () => {
     render(<SubscribersClient />)
     await screen.findByText("Faol obunachilar")
-    expect(screen.getAllByTestId("chart")).toHaveLength(2)
+    expect(screen.getAllByTestId("chart")).toHaveLength(4)
+  })
+
+  it("shows app login, buyer and order outcome KPIs", async () => {
+    render(<SubscribersClient />)
+    await screen.findByText("Faol obunachilar")
+    expect(within(kpi("Ilovaga kirganlar")).getByText("300")).toBeInTheDocument()
+    expect(within(kpi("Ilovadan chiqqanlar")).getByText("40")).toBeInTheDocument()
+    expect(within(kpi("Hozir tizimdan chiqib turganlar")).getByText("90")).toBeInTheDocument()
+    expect(within(kpi("Buyurtma berganlar")).getByText("200")).toBeInTheDocument()
+    // 200 of 1200 active customers ordered.
+    expect(within(kpi("Buyurtma berganlar")).getByText(/17%/)).toBeInTheDocument()
+    expect(within(kpi("Jami buyurtmalar")).getByText("15")).toBeInTheDocument()
+    expect(within(kpi("Muvaffaqiyatli (yetkazilgan)")).getByText("12")).toBeInTheDocument()
+    expect(within(kpi("Bekor qilingan")).getByText("2")).toBeInTheDocument()
+    // Cancellations going down is good.
+    expect(within(kpi("Bekor qilingan")).getByText(/30%/)).toHaveClass("text-emerald-600")
+  })
+
+  it("loads the last 7 days on the week tab", async () => {
+    render(<SubscribersClient />)
+    await waitFor(() => expect(mocked).toHaveBeenCalledTimes(1))
+    await userEvent.click(tab("Oxirgi 7 kun"))
+    await waitFor(() => expect(mocked).toHaveBeenCalledTimes(2))
+    expect(mocked).toHaveBeenLastCalledWith("2026-10-08", "2026-10-14")
   })
 
   it("shows the error and recovers on retry", async () => {
@@ -159,7 +209,7 @@ describe("SubscribersClient", () => {
   it("ignores a slow response that was superseded by a newer request", async () => {
     let first!: (v: ReturnType<typeof ok>) => void
     mocked.mockReturnValueOnce(new Promise(r => { first = r }))
-    mocked.mockResolvedValueOnce(ok(stats({ current: { active: 777, joined: 1, churned: 1, revenue: 1, orders: 1 } })))
+    mocked.mockResolvedValueOnce(ok(stats({ current: totals({ active: 777 }) })))
     render(<SubscribersClient />)
     await userEvent.click(tab("O'tgan oy"))
     expect(await screen.findByText("777")).toBeInTheDocument()
