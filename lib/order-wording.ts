@@ -12,6 +12,20 @@ export const venueTypeOf = (restaurant: unknown): VenueType => {
 
 export const isMarket = (venueType: VenueType) => venueType === "market"
 
+export type KitchenState = "pending" | "preparing" | "ready"
+
+/**
+ * Where the food is, for display. Accepting an order is what puts it in the
+ * kitchen, so once the order has left "pending" a kitchen_status that is still
+ * "pending" (or missing) reads as preparing — otherwise the list said
+ * "Tayyorlanmoqda" while the detail page said "Oshxonaga tushmagan".
+ */
+export const kitchenStateOf = (order: { status: string; kitchen_status?: string }): KitchenState => {
+  if (order.kitchen_status === "ready") return "ready"
+  if (order.kitchen_status === "preparing") return "preparing"
+  return order.status === "pending" ? "pending" : "preparing"
+}
+
 export const kitchenWording = (venueType: VenueType) =>
   isMarket(venueType)
     ? {

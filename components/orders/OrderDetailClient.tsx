@@ -33,7 +33,7 @@ import {
 } from "@/lib/actions/orders";
 import { OrderTimer } from "@/components/orders/OrderTimer";
 import { OrderReceiptDialog } from "@/components/orders/OrderReceipt";
-import { kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording";
+import { kitchenStateOf, kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording";
 
 // Admin uchun ruxsat etilgan status o'tishlari
 const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
@@ -213,7 +213,7 @@ export function OrderDetailClient({
   const orderLive = !["pending", "delivered", "rejected", "cancelled"].includes(
     order.status,
   );
-  const kitchenStatus: string = order.kitchen_status ?? "pending";
+  const kitchenStatus = kitchenStateOf(order);
   const canMarkReady = orderLive && kitchenStatus !== "ready";
   const venueType = venueTypeOf(order.restaurant_id);
   const words = kitchenWording(venueType);

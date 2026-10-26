@@ -27,7 +27,7 @@ import {
 import { updateOrderStatusAction, updateKitchenStatusAction, cancelOrderAction } from "@/lib/actions/orders"
 import { useOrderSocket, NewOrderPayload, StatusUpdatedPayload } from "@/hooks/use-order-socket"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording"
+import { kitchenStateOf, kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording"
 
 const STATUS_FILTER = [
   { value: "all", label: "Barcha statuslar" },
@@ -65,7 +65,7 @@ function KitchenHint({
   if (!live) return null
 
   const words = kitchenWording(venueType)
-  const ready = kitchenStatus === "ready"
+  const ready = kitchenStateOf({ status, kitchen_status: kitchenStatus }) === "ready"
   return (
     <span
       className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
