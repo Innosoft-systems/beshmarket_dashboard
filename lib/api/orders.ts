@@ -9,6 +9,7 @@ export interface GetOrdersParams {
   search?: string;
   date_from?: string;
   date_to?: string;
+  client_id?: string;
 }
 
 export async function getOrders(params: GetOrdersParams = {}, accessToken?: string) {
@@ -19,6 +20,7 @@ export async function getOrders(params: GetOrdersParams = {}, accessToken?: stri
   if (params.search) searchParams.append("search", params.search);
   if (params.date_from) searchParams.append("date_from", params.date_from);
   if (params.date_to) searchParams.append("date_to", params.date_to);
+  if (params.client_id) searchParams.append("client_id", params.client_id);
 
   const queryString = searchParams.toString();
   const endpoint = `/orders${queryString ? `?${queryString}` : ""}`;

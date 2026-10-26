@@ -1,9 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
+import Link from "next/link"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
-import { Search, X, MoreHorizontal, ShieldBan, ShieldCheck, Trash2 } from "lucide-react"
+import { Search, X, MoreHorizontal, ShieldBan, ShieldCheck, Trash2, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { User } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
@@ -24,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { formatDate, som } from "@/lib/format"
 import { blockUserAction, unblockUserAction, deleteUserAction } from "@/app/(dashboard)/users/actions"
 
 const ROLES = [
@@ -108,6 +110,10 @@ function ActionsCell({ user, onAction }: { user: User; onAction: () => void }) {
           <MoreHorizontal className="h-4 w-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem render={<Link href={`/users/${user._id}`} />}>
+            <Eye className="h-4 w-4 mr-2" />
+            Batafsil
+          </DropdownMenuItem>
           {user.is_blocked ? (
             <DropdownMenuItem onClick={() => openConfirm("unblock")}>
               <ShieldCheck className="h-4 w-4 mr-2 text-green-600" />
@@ -217,14 +223,43 @@ export function UsersTableClient({
       header: "F.I.SH",
       cell: ({ row }) => {
         const name = row.getValue("full_name") as string
-        return name
-          ? <span className="font-medium">{name}</span>
-          : <span className="text-muted-foreground italic">Kiritilmagan</span>
+        return (
+          <Link href={`/users/${row.original._id}`} className="hover:underline">
+            {name
+              ? <span className="font-medium">{name}</span>
+              : <span className="text-muted-foreground italic">Kiritilmagan</span>}
+          </Link>
+        )
       },
     },
     {
       accessorKey: "phone",
       header: "Telefon",
+    },
+    {
+      id: "orders",
+      header: "Buyurtmalar",
+      cell: ({ row }) => {
+        const stats = row.original.order_stats
+        if (!stats?.orders_count) return <span className="text-muted-foreground">0</span>
+        return (
+          <Link href={`/users/${row.original._id}`} className="hover:underline">
+            <span className="font-medium">{stats.orders_count} ta</span>
+            {stats.total_spent > 0 && (
+              <span className="block text-xs text-muted-foreground">{som(stats.total_spent)}</span>
+            )}
+          </Link>
+        )
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Ro'yxatdan o'tgan",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground whitespace-nowrap">
+          {formatDate(row.original.createdAt)}
+        </span>
+      ),
     },
     {
       accessorKey: "role",

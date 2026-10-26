@@ -17,6 +17,8 @@ export default function UsersLoading() {
         <div className="flex h-12 items-center px-3 gap-6 border-b">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-24" />
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-4 w-8" />
@@ -25,6 +27,8 @@ export default function UsersLoading() {
           <div key={i} className="flex items-center px-3 py-3 border-b last:border-0 gap-6">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-4 w-14" />
+            <Skeleton className="h-4 w-20" />
             <Skeleton className="h-5 w-16 rounded-full" />
             <Skeleton className="h-5 w-20 rounded-full" />
             <Skeleton className="h-7 w-7 rounded-md" />

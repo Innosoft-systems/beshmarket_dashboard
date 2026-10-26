@@ -20,3 +20,10 @@ export async function getUsers(params: GetUsersParams = {}, accessToken?: string
     accessToken,
   });
 }
+
+export async function getUser(id: string, accessToken?: string) {
+  return apiRequest<User>(`/users/${id}`, {
+    method: "GET",
+    accessToken,
+  });
+}

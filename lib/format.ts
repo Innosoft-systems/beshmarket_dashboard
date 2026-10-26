@@ -43,13 +43,32 @@ export function dayLabel(key: string): string {
   return `${day}.${month}`;
 }
 
+// Built by hand instead of toLocaleString("uz"): Node and Chrome ship
+// different Uzbek locale data ("26-okt" vs "M10"), which garbles the date
+// and breaks hydration. Tashkent is UTC+5 with no DST.
+const TASHKENT_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+function tashkentParts(value: string) {
+  const d = new Date(new Date(value).getTime() + TASHKENT_OFFSET_MS);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    day: pad(d.getUTCDate()),
+    month: d.getUTCMonth(),
+    year: d.getUTCFullYear(),
+    time: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`,
+  };
+}
+
+/** "26.10.2026" */
+export function formatDate(value?: string | null): string {
+  if (!value) return "—";
+  const p = tashkentParts(value);
+  return `${p.day}.${String(p.month + 1).padStart(2, "0")}.${p.year}`;
+}
+
+/** "26 Okt 2026, 19:56" */
 export function formatDateTime(value?: string | null): string {
   if (!value) return "—";
-  return new Date(value).toLocaleString("uz-UZ", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const p = tashkentParts(value);
+  return `${p.day} ${MONTHS[p.month]} ${p.year}, ${p.time}`;
 }
