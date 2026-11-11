@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
@@ -26,6 +27,74 @@ interface DataTableProps<TData, TValue> {
   currentPage: number
   onPageChange: (page: number) => void
   isLoading?: boolean
+  /** Show a "go to page" input next to the pager. Off by default. */
+  enablePageJump?: boolean
+}
+
+/**
+ * Parse the page-jump input: digits only, clamped to 1..pageCount.
+ * Returns null for empty/non-numeric input.
+ */
+export function parsePageJump(raw: string, pageCount: number): number | null {
+  const v = raw.trim()
+  if (!/^\d+$/.test(v)) return null
+  const n = Number(v)
+  if (!Number.isSafeInteger(n)) return Math.max(1, pageCount)
+  return Math.min(Math.max(n, 1), Math.max(1, pageCount))
+}
+
+export function PageJump({
+  pageCount,
+  currentPage,
+  onPageChange,
+  disabled,
+}: {
+  pageCount: number
+  currentPage: number
+  onPageChange: (page: number) => void
+  disabled?: boolean
+}) {
+  const [value, setValue] = React.useState("")
+  const target = parsePageJump(value, pageCount)
+  const canJump = !disabled && target !== null && target !== currentPage
+
+  if (pageCount <= 1) return null
+
+  const submit = () => {
+    if (!canJump || target === null) return
+    onPageChange(target)
+    setValue("")
+  }
+
+  return (
+    <form
+      className="flex items-center gap-2"
+      // min/max stay on the input for the spinner, but native validation would block
+      // out-of-range submits; parsePageJump clamps them instead (999 -> last, 0 -> 1).
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        submit()
+      }}
+    >
+      <Input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={pageCount}
+        step={1}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Sahifa"
+        aria-label="Sahifa raqami"
+        className="h-8 w-20 px-2 text-center tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        disabled={disabled}
+      />
+      <Button type="submit" variant="outline" size="sm" disabled={!canJump}>
+        O&apos;tish
+      </Button>
+    </form>
+  )
 }
 
 export function DataTable<TData, TValue>({
@@ -35,6 +104,7 @@ export function DataTable<TData, TValue>({
   currentPage,
   onPageChange,
   isLoading,
+  enablePageJump = false,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -98,11 +168,11 @@ export function DataTable<TData, TValue>({
       </div>
       
       {/* Pagination */}
-      <div className="flex items-center justify-between px-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-2">
         <div className="text-sm text-muted-foreground">
           Jami sahifalar: {pageCount}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -112,7 +182,7 @@ export function DataTable<TData, TValue>({
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Oldingi sahifa</span>
           </Button>
-          <div className="text-sm font-medium">
+          <div className="text-sm font-medium tabular-nums whitespace-nowrap">
             {currentPage} / {pageCount || 1}
           </div>
           <Button
@@ -124,6 +194,17 @@ export function DataTable<TData, TValue>({
             <ChevronRight className="h-4 w-4" />
             <span className="sr-only">Keyingi sahifa</span>
           </Button>
+          {enablePageJump && pageCount > 1 && (
+            <>
+              <span aria-hidden className="hidden h-5 w-px bg-border sm:block" />
+              <PageJump
+                pageCount={pageCount}
+                currentPage={currentPage}
+                onPageChange={onPageChange}
+                disabled={isLoading}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>
