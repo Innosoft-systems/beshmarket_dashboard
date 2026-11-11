@@ -1,8 +1,9 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState, useTransition } from "react"
-import { ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Wallet, Package, Calendar, Trash2, Pencil, FileText, Car, Clock, Zap } from "lucide-react"
+import { ChevronLeft, ChevronRight, ArrowLeft, ShieldCheck, ShieldBan, Power, Check, X, Bike, MapPin, Wallet, Package, Calendar, Trash2, Pencil, FileText, Car, Clock, Zap } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +21,30 @@ import { COURIER_STATUSES, ORDER_STATUSES } from "@/types"
 import { updateCourierAction, blockCourierUserAction, deleteCourierAction, correctionCourierAction, updateDocumentStatusAction, upsertCourierDocumentsAdminAction } from "@/lib/actions/couriers"
 import { forceStartCourierAction } from "@/lib/actions/shifts"
 import type { CourierDocuments } from "@/types/courier"
+import { PageJump } from "@/components/ui/data-table"
+import { OrderPeriodFilter, type OrderPeriodValue } from "@/components/orders/OrderPeriodFilter"
+
+const HISTORY_STATUS_OPTIONS = [
+  { value: "all", label: "Barchasi" },
+  { value: "delivered", label: "Yetkazilgan" },
+  { value: "cancelled", label: "Bekor qilingan" },
+]
+
+/** Logical filter key -> URL key on the courier page. */
+const HISTORY_URL_KEYS: Record<string, string> = {
+  page: "orders_page",
+  status: "orders_status",
+  period: "orders_period",
+  month: "orders_month",
+  date_from: "orders_from",
+  date_to: "orders_to",
+}
+
+export interface CourierOrdersFilters extends OrderPeriodValue {
+  status: string
+}
+
+const DEFAULT_ORDERS_FILTERS: CourierOrdersFilters = { status: "delivered", period: "", month: "", date_from: "", date_to: "" }
 
 interface UpcomingSlot {
   _id: string
@@ -35,6 +60,8 @@ interface Props {
   profile: any
   balanceData: { balance: number; transactions: any[] }
   orders?: any[]
+  ordersPagination?: { page: number; totalPages: number; total: number }
+  ordersFilters?: CourierOrdersFilters
   monthlyIncome?: number
   monthlyChart?: { label: string; amount: number; date: string }[]
   weeklyIncome?: number
@@ -42,9 +69,38 @@ interface Props {
   upcomingSlots?: UpcomingSlot[]
 }
 
-export function CourierDetailClient({ profile, balanceData, orders = [], monthlyIncome = 0, monthlyChart = [], weeklyIncome = 0, documents = null, upcomingSlots = [] }: Props) {
+export function CourierDetailClient({ profile, balanceData, orders = [], ordersPagination, ordersFilters = DEFAULT_ORDERS_FILTERS, monthlyIncome = 0, monthlyChart = [], weeklyIncome = 0, documents = null, upcomingSlots = [] }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
+  const [ordersLoading, startOrdersTransition] = useTransition()
+
+  const ordersPage = ordersPagination?.page ?? 1
+  const ordersTotalPages = ordersPagination?.totalPages ?? 1
+  const ordersTotal = ordersPagination?.total ?? orders.length
+  const qs = searchParams.toString()
+  const currentUrl = pathname + (qs ? `?${qs}` : "")
+
+  /** Update orders_* URL keys; any change other than the page resets to page 1. */
+  const navigateOrders = (updates: Record<string, string | undefined>) => {
+    const params = new URLSearchParams(qs)
+    Object.entries(updates).forEach(([key, value]) => {
+      const urlKey = HISTORY_URL_KEYS[key]
+      if (!urlKey) return
+      // "delivered" is the default status, so it stays out of the URL; "all" must be explicit.
+      const isDefault = key === "status"
+        ? value === "delivered"
+        : !value || value === "all" || (key === "page" && value === "1")
+      if (value && !isDefault) params.set(urlKey, value)
+      else params.delete(urlKey)
+    })
+    if (!("page" in updates)) params.delete("orders_page")
+    const next = params.toString()
+    startOrdersTransition(() => {
+      router.replace(`${pathname}${next ? `?${next}` : ""}`, { scroll: false })
+    })
+  }
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [correctionOpen, setCorrectionOpen] = useState(false)
@@ -385,42 +441,117 @@ export function CourierDetailClient({ profile, balanceData, orders = [], monthly
       )}
 
       {/* Buyurtmalar tarixi */}
-      {orders.length > 0 && (
-        <div className="rounded-xl border border-slate-300 bg-background overflow-hidden">
-          <div className="p-5 border-b">
-            <h3 className="font-semibold flex items-center gap-2"><Package className="h-5 w-5 text-blue-500" /> Buyurtmalar tarixi ({orders.length})</h3>
+      <div className="rounded-xl border border-slate-300 bg-background overflow-hidden">
+        <div className="p-5 border-b space-y-3">
+          <h3 className="font-semibold flex items-center gap-2"><Package className="h-5 w-5 text-blue-500" /> Buyurtmalar tarixi ({ordersTotal})</h3>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
+            <Select
+              value={ordersFilters.status}
+              onValueChange={(v) => navigateOrders({ status: v ?? "delivered" })}
+              disabled={ordersLoading}
+            >
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue>
+                  {HISTORY_STATUS_OPTIONS.find((o) => o.value === ordersFilters.status)?.label ?? "Yetkazilgan"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {HISTORY_STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <OrderPeriodFilter
+              compact
+              value={ordersFilters}
+              onChange={(updates) => navigateOrders(updates)}
+              disabled={ordersLoading}
+            />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="h-11 px-5 text-left font-medium">Buyurtma №</th>
-                  <th className="h-11 px-5 text-left font-medium">Restoran</th>
-                  <th className="h-11 px-5 text-left font-medium">Status</th>
-                  <th className="h-11 px-5 text-right font-medium">Summa</th>
-                  <th className="h-11 px-5 text-right font-medium">Sana</th>
+        </div>
+        <div className={`overflow-x-auto transition-opacity ${ordersLoading ? "opacity-60" : ""}`}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="h-11 px-5 text-left font-medium">Buyurtma №</th>
+                <th className="h-11 px-5 text-left font-medium">Restoran</th>
+                <th className="h-11 px-5 text-left font-medium">Status</th>
+                <th className="h-11 px-5 text-right font-medium">Summa</th>
+                <th className="h-11 px-5 text-right font-medium">Sana</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="h-24 px-5 text-center text-muted-foreground">Buyurtmalar topilmadi</td>
                 </tr>
-              </thead>
-              <tbody>
-                {orders.slice(0, 20).map((order: any, i: number) => {
+              ) : (
+                orders.map((order: any) => {
                   const statusInfo = ORDER_STATUSES.find((s) => s.value === order.status)
+                  const orderHref = `/orders/${order._id}?from=${encodeURIComponent(currentUrl)}`
                   return (
-                    <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="px-5 py-3 font-medium">{order.order_number}</td>
+                    <tr
+                      key={order._id}
+                      className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                      onClick={() => router.push(orderHref)}
+                    >
+                      <td className="px-5 py-3">
+                        {/* Real link for keyboard / middle-click; stopPropagation so the row click does not navigate a second time. */}
+                        <Link
+                          href={orderHref}
+                          className="font-medium text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {order.order_number}
+                        </Link>
+                      </td>
                       <td className="px-5 py-3">{order.restaurant_id?.name || "—"}</td>
                       <td className="px-5 py-3">
                         <Badge variant="outline" className={statusInfo?.color || ""}>{statusInfo?.label || order.status}</Badge>
                       </td>
-                      <td className="px-5 py-3 text-right">{order.total?.toLocaleString()} so'm</td>
-                      <td className="px-5 py-3 text-right text-muted-foreground">{new Date(order.createdAt).toLocaleDateString("uz")}</td>
+                      <td className="px-5 py-3 text-right whitespace-nowrap tabular-nums">{order.total?.toLocaleString()} so'm</td>
+                      <td className="px-5 py-3 text-right whitespace-nowrap tabular-nums text-muted-foreground">{new Date(order.createdAt).toLocaleDateString("uz")}</td>
                     </tr>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+        {ordersTotalPages > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t px-5 py-3">
+            <div className="text-sm text-muted-foreground">Jami sahifalar: {ordersTotalPages}</div>
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateOrders({ page: String(ordersPage - 1) })}
+                disabled={ordersPage <= 1 || ordersLoading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Oldingi sahifa</span>
+              </Button>
+              <div className="text-sm font-medium tabular-nums whitespace-nowrap">{ordersPage} / {ordersTotalPages}</div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateOrders({ page: String(ordersPage + 1) })}
+                disabled={ordersPage >= ordersTotalPages || ordersLoading}
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Keyingi sahifa</span>
+              </Button>
+              <span aria-hidden className="hidden h-5 w-px bg-border sm:block" />
+              <PageJump
+                pageCount={ordersTotalPages}
+                currentPage={ordersPage}
+                onPageChange={(p) => navigateOrders({ page: String(p) })}
+                disabled={ordersLoading}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Oylik daromadlar */}
       {monthlyChart.length > 0 && (
