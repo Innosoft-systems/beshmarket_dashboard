@@ -28,18 +28,13 @@ import { updateOrderStatusAction, updateKitchenStatusAction, cancelOrderAction }
 import { useOrderSocket, NewOrderPayload, StatusUpdatedPayload } from "@/hooks/use-order-socket"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { kitchenStateOf, kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording"
+import { resolveOrderDateRange } from "@/lib/order-period"
+import { todayTashkent } from "@/lib/subscribers-period"
+import { OrderPeriodFilter, type OrderPeriodValue } from "@/components/orders/OrderPeriodFilter"
 
 const STATUS_FILTER = [
   { value: "all", label: "Barcha statuslar" },
   ...ORDER_STATUSES.map((s) => ({ value: s.value, label: s.label })),
-] as const
-
-const PERIOD_FILTER = [
-  { value: "all", label: "Barcha vaqt" },
-  { value: "today", label: "Bugun" },
-  { value: "yesterday", label: "Kecha" },
-  { value: "week", label: "Hafta" },
-  { value: "month", label: "Oy" },
 ] as const
 
 function StatusBadge({ status }: { status: string }) {
@@ -233,7 +228,7 @@ interface OrdersTableClientProps {
   initialData: Order[]
   totalPages: number
   currentPage: number
-  filters: { search: string; status: string; period: string }
+  filters: { search: string; status: string; period: string; month?: string; date_from?: string; date_to?: string }
   accessToken?: string
   stats?: { todayOrders: number; totalOrders: number; pendingOrders?: number; onwayOrders?: number }
   scope?: "admin" | "restaurant"
@@ -311,8 +306,23 @@ export function OrdersTableClient({
 
   const hasActiveFilters = filters.search || filters.status || filters.period
 
+  const periodValue: OrderPeriodValue = {
+    period: filters.period,
+    month: filters.month ?? "",
+    date_from: filters.date_from ?? "",
+    date_to: filters.date_to ?? "",
+  }
+
+  // Current list URL, handed to the detail page so "Orqaga" restores page + filters.
+  const qs = searchParams.toString()
+  const listUrl = pathname + (qs ? `?${qs}` : "")
+  const withFrom = useCallback(
+    (href: string) => `${href}?from=${encodeURIComponent(listUrl)}`,
+    [listUrl],
+  )
+
   const navigate = useCallback(
-    (updates: Record<string, string>) => {
+    (updates: Record<string, string | undefined>) => {
       const params = new URLSearchParams(searchParams.toString())
       Object.entries(updates).forEach(([key, value]) => {
         if (value && value !== "all") params.set(key, value)
@@ -344,23 +354,9 @@ export function OrdersTableClient({
       if (filters.search) params.set("search", filters.search)
       if (filters.status) params.set("status", filters.status)
 
-      const today = new Date()
-      if (filters.period === "today") {
-        const d = today.toISOString().split("T")[0]
-        params.set("date_from", d); params.set("date_to", d)
-      } else if (filters.period === "yesterday") {
-        const y = new Date(today); y.setDate(y.getDate() - 1)
-        const d = y.toISOString().split("T")[0]
-        params.set("date_from", d); params.set("date_to", d)
-      } else if (filters.period === "week") {
-        const w = new Date(today); w.setDate(w.getDate() - 7)
-        params.set("date_from", w.toISOString().split("T")[0])
-        params.set("date_to", today.toISOString().split("T")[0])
-      } else if (filters.period === "month") {
-        const m = new Date(today); m.setDate(m.getDate() - 30)
-        params.set("date_from", m.toISOString().split("T")[0])
-        params.set("date_to", today.toISOString().split("T")[0])
-      }
+      const range = resolveOrderDateRange(periodValue)
+      if (range.date_from) params.set("date_from", range.date_from)
+      if (range.date_to) params.set("date_to", range.date_to)
 
       const base = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1`
       const endpoint = `${base}/orders`
@@ -414,7 +410,7 @@ export function OrdersTableClient({
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, "Buyurtmalar")
 
-      const fileName = `buyurtmalar_${today.toISOString().split("T")[0]}.xlsx`
+      const fileName = `buyurtmalar_${todayTashkent()}.xlsx`
       XLSX.writeFile(wb, fileName)
       toast.success(`${rows.length} ta buyurtma eksport qilindi`)
     } catch (e: any) {
@@ -443,7 +439,7 @@ export function OrdersTableClient({
           return (
             <div
               className="flex flex-col gap-0.5 cursor-pointer"
-              onClick={() => router.push(`/orders/group/${r.group_id}`)}
+              onClick={() => router.push(withFrom(`/orders/group/${r.group_id}`))}
             >
               {r.orders.map((o) => (
                 <span key={o._id} className="font-medium text-primary hover:underline text-sm">
@@ -456,7 +452,7 @@ export function OrdersTableClient({
         return (
           <span
             className="font-medium text-primary cursor-pointer hover:underline"
-            onClick={() => router.push(`${scope === "restaurant" ? "/restaurant/orders" : "/orders"}/${r._id}`)}
+            onClick={() => router.push(withFrom(`${scope === "restaurant" ? "/restaurant/orders" : "/orders"}/${r._id}`))}
           >
             {r.order_number}
           </span>
@@ -557,7 +553,7 @@ export function OrdersTableClient({
         return <ActionsCell order={r as Order} onAction={refreshData} scope={scope} />
       },
     },
-  ], [router, scope, refreshData]) // eslint-disable-line react-hooks/exhaustive-deps
+  ], [router, scope, refreshData, withFrom]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">
@@ -615,23 +611,7 @@ export function OrdersTableClient({
           </SelectContent>
         </Select>
 
-        <Select
-          value={filters.period || "all"}
-          onValueChange={(value) => navigate({ period: value ?? "all" })}
-        >
-          <SelectTrigger className="w-full sm:w-37.5">
-            <SelectValue>
-              {PERIOD_FILTER.find((p) => p.value === (filters.period || "all"))?.label}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {PERIOD_FILTER.map((p) => (
-              <SelectItem key={p.value} value={p.value}>
-                {p.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <OrderPeriodFilter value={periodValue} onChange={(updates) => navigate(updates)} />
 
         {hasActiveFilters && (
           <Button variant="outline" size="lg" onClick={resetFilters}>
@@ -653,6 +633,7 @@ export function OrdersTableClient({
         currentPage={currentPage}
         onPageChange={(page) => navigate({ page: page.toString() })}
         isLoading={isPending}
+        enablePageJump
       />
     </div>
   )

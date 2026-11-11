@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { getAccessToken } from "@/lib/auth/session"
 import { getPayments } from "@/lib/api/payments"
 import { PaymentsTableClient } from "@/components/payments/PaymentsTableClient"
+import { resolveOrderDateRange } from "@/lib/order-period"
 
 export const metadata: Metadata = { title: "To'lovlar | BeshMarket" }
 
@@ -25,26 +26,9 @@ export default async function PaymentsPage({ searchParams }: Props) {
   const period = params.period || ""
   const transaction_id = params.transaction_id || ""
 
-  // Period → date range
-  let date_from = ""
-  let date_to = ""
-  const today = new Date()
-  if (period === "today") {
-    date_from = today.toISOString().split("T")[0]
-    date_to = date_from
-  } else if (period === "yesterday") {
-    const y = new Date(today); y.setDate(y.getDate() - 1)
-    date_from = y.toISOString().split("T")[0]
-    date_to = date_from
-  } else if (period === "week") {
-    const w = new Date(today); w.setDate(w.getDate() - 7)
-    date_from = w.toISOString().split("T")[0]
-    date_to = today.toISOString().split("T")[0]
-  } else if (period === "month") {
-    const m = new Date(today); m.setDate(m.getDate() - 30)
-    date_from = m.toISOString().split("T")[0]
-    date_to = today.toISOString().split("T")[0]
-  }
+  // Period → date range, in Tashkent calendar days (backend reads date_from/date_to the same way).
+  // Only the page's own presets (today/yesterday/week/month) are passed; same meanings as before.
+  const { date_from, date_to } = resolveOrderDateRange({ period })
 
   const [listRes, paidRes, totalRes] = await Promise.all([
     getPayments({

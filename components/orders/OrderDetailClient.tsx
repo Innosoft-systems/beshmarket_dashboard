@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import {
   ArrowLeft,
@@ -34,6 +34,8 @@ import {
 import { OrderTimer } from "@/components/orders/OrderTimer";
 import { OrderReceiptDialog } from "@/components/orders/OrderReceipt";
 import { kitchenStateOf, kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording";
+import { resolveBackHref } from "@/lib/order-period";
+import { isSafeInternalUrl } from "@/lib/utils/safe-url";
 
 // Admin uchun ruxsat etilgan status o'tishlari
 const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
@@ -175,6 +177,7 @@ export function OrderDetailClient({
   scope = "admin",
 }: Props) {
   const router = useRouter();
+  const from = useSearchParams().get("from");
   const [isPending, startTransition] = useTransition();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -275,11 +278,15 @@ export function OrderDetailClient({
       <div className="flex items-start gap-4">
         <Button
           variant="outline"
-          onClick={() =>
+          onClick={() => {
+            const fallback =
+              scope === "restaurant" ? "/restaurant/orders" : "/orders";
             router.push(
-              scope === "restaurant" ? "/restaurant/orders" : "/orders",
-            )
-          }
+              isSafeInternalUrl(from ?? undefined)
+                ? resolveBackHref(from, fallback, scope)
+                : fallback,
+            );
+          }}
         >
           <ArrowLeft className="h-5 w-5" /> Orqaga
         </Button>

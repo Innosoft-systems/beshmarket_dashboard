@@ -1,41 +1,33 @@
+import { redirect } from "next/navigation"
 import { getAccessToken } from "@/lib/auth/session"
 import { apiRequest } from "@/lib/api/client"
 import { OrdersTableClient } from "@/components/orders/OrdersTableClient"
+import { lastPageRedirect, parsePageParam, resolveOrderDateRange } from "@/lib/order-period"
 
 interface Props {
-  searchParams: Promise<{ page?: string; search?: string; status?: string; period?: string }>
+  searchParams: Promise<{
+    page?: string
+    search?: string
+    status?: string
+    period?: string
+    month?: string
+    date_from?: string
+    date_to?: string
+  }>
 }
 
 export default async function RestaurantOrdersPage({ searchParams }: Props) {
   const token = await getAccessToken()
   const params = await searchParams
-  const page = Number(params.page) || 1
+  const page = parsePageParam(params.page)
   const search = params.search || ""
   const status = params.status || ""
   const period = params.period || ""
 
-  let date_from = ""
-  let date_to = ""
-  const today = new Date()
-  if (period === "today") {
-    date_from = today.toISOString().split("T")[0]
-    date_to = date_from
-  } else if (period === "yesterday") {
-    const y = new Date(today)
-    y.setDate(y.getDate() - 1)
-    date_from = y.toISOString().split("T")[0]
-    date_to = date_from
-  } else if (period === "week") {
-    const w = new Date(today)
-    w.setDate(w.getDate() - 7)
-    date_from = w.toISOString().split("T")[0]
-    date_to = today.toISOString().split("T")[0]
-  } else if (period === "month") {
-    const m = new Date(today)
-    m.setDate(m.getDate() - 30)
-    date_from = m.toISOString().split("T")[0]
-    date_to = today.toISOString().split("T")[0]
-  }
+  const month = params.month || ""
+  const rawFrom = params.date_from || ""
+  const rawTo = params.date_to || ""
+  const { date_from, date_to } = resolveOrderDateRange({ period, month, date_from: rawFrom, date_to: rawTo })
 
   const query = new URLSearchParams({
     page: String(page),
@@ -54,12 +46,16 @@ export default async function RestaurantOrdersPage({ searchParams }: Props) {
   const response = ordersRes?.data
   const stats = statsRes?.data
 
+  // Past the last page (hand-edited URL, stale back link): go to the last page instead of an empty table.
+  const lastPage = lastPageRedirect("/restaurant/orders", params, "page", page, response?.pagination?.totalPages)
+  if (lastPage) redirect(lastPage)
+
   return (
     <OrdersTableClient
       initialData={response?.data ?? []}
       totalPages={response?.pagination?.totalPages ?? 1}
       currentPage={response?.pagination?.page ?? page}
-      filters={{ search, status, period }}
+      filters={{ search, status, period, month, date_from: rawFrom, date_to: rawTo }}
       accessToken={token || ""}
       stats={{
         todayOrders: stats?.todayOrders ?? 0,

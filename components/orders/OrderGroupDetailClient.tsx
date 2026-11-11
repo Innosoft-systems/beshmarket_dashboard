@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useTransition } from "react"
 import { ArrowLeft, MapPin, Phone, User, Store, Truck, Package, Clock, Layers } from "lucide-react"
 import { toast } from "sonner"
@@ -11,6 +11,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ORDER_STATUSES } from "@/types"
 import { cancelOrderAction, assignGroupCourierAction } from "@/lib/actions/orders"
 import { OrderTimer } from "@/components/orders/OrderTimer"
+import { resolveBackHref } from "@/lib/order-period"
+import { isSafeInternalUrl } from "@/lib/utils/safe-url"
 
 function StatusBadge({ status }: { status: string }) {
   const s = ORDER_STATUSES.find((o) => o.value === status)
@@ -41,6 +43,7 @@ interface Props {
 
 export function OrderGroupDetailClient({ orders, couriers = [], groupId }: Props) {
   const router = useRouter()
+  const from = useSearchParams().get("from")
   const [isPending, startTransition] = useTransition()
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
@@ -91,7 +94,12 @@ export function OrderGroupDetailClient({ orders, couriers = [], groupId }: Props
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Button variant="outline" onClick={() => router.push("/orders")}>
+        <Button
+          variant="outline"
+          onClick={() =>
+            router.push(isSafeInternalUrl(from ?? undefined) ? resolveBackHref(from, "/orders") : "/orders")
+          }
+        >
           <ArrowLeft className="h-5 w-5" /> Orqaga
         </Button>
         <div className="flex-1 space-y-1">
