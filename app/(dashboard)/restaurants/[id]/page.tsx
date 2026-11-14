@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowLeft, Package } from "lucide-react"
+import { ArrowLeft, Package, RefreshCcw } from "lucide-react"
 import { getAccessToken } from "@/lib/auth/session"
 import { apiRequest } from "@/lib/api/client"
 import { Button } from "@/components/ui/button"
@@ -69,9 +69,14 @@ export default async function RestaurantDetailPage({
         >
           <ArrowLeft className="h-4 w-4" /> Restoranlar
         </Link>
-        <Button variant="outline" size="sm" className="gap-2" render={<Link href={`/restaurants/${id}/products`} />}>
-          <Package className="h-4 w-4" /> Mahsulotlar
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" render={<Link href={`/restaurants/${id}/products`} />}>
+            <Package className="h-4 w-4" /> Mahsulotlar
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" render={<Link href={`/restaurants/${id}/integration`} />}>
+            <RefreshCcw className="h-4 w-4" /> 1C integratsiya
+          </Button>
+        </div>
       </div>
 
       <RestaurantDetailClient
