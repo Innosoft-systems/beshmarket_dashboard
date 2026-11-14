@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  FULL_SYNC_OVERDUE_DAYS,
+  DAILY_FULL_GRACE_MINUTES,
+  DEFAULT_DAILY_FULL_AT,
   RUN_STATUS_LABELS,
+  addMinutesHHMM,
   formatAgo,
   formatTashkentDateTime,
   hiddenReasonRows,
-  isFullSyncOverdue,
+  isDailyFullMissing,
   runProgress,
 } from "@/lib/integrations"
 import type { IntegrationConnection, IntegrationRunSummary, IntegrationStatus } from "@/types/integration"
@@ -63,13 +65,16 @@ export function StatusPanel({
             }
           />
           <Fact
-            label="Oxirgi to'liq tekshiruv"
+            label={`Oxirgi to'liq katalog (har kuni ${c.daily_full_at ?? DEFAULT_DAILY_FULL_AT})`}
             iso={c.last_full_catalog_success_at}
             empty="Hali bo'lmagan"
             badge={
-              isFullSyncOverdue(c) ? (
-                <Badge variant="destructive" title={`${FULL_SYNC_OVERDUE_DAYS} kundan oshdi`}>
-                  kechikdi
+              isDailyFullMissing(c) ? (
+                <Badge
+                  variant="destructive"
+                  title={`Bugungi to'liq katalog soat ${addMinutesHHMM(c.daily_full_at ?? DEFAULT_DAILY_FULL_AT, DAILY_FULL_GRACE_MINUTES)} gacha kelmadi`}
+                >
+                  Bugun kelmadi
                 </Badge>
               ) : null
             }

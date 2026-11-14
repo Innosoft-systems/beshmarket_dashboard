@@ -74,6 +74,20 @@ describe("connectionSettingsSchema", () => {
   })
 })
 
+describe("schedule fields (rev 2 / rev 3)", () => {
+  it.each(["03:00", "00:00", "23:59"])("accepts %s", (t) => {
+    expect(issues({ ...base(), daily_full_at: t, heartbeat_from: t, heartbeat_to: t === "00:00" ? "01:00" : "00:00" })).toEqual([])
+  })
+  it.each(["3:00", "24:00", "12:60", "", "noon"])("rejects daily_full_at %p", (t) => {
+    expect(issues({ ...base(), daily_full_at: t }).map((i) => i.path)).toEqual(["daily_full_at"])
+  })
+  it("rejects an empty heartbeat window (same start and end)", () => {
+    expect(issues({ ...base(), heartbeat_from: "08:00", heartbeat_to: "08:00" })).toEqual([
+      { path: "heartbeat_to", message: "Boshlanish va tugash vaqti bir xil bo'lmasin" },
+    ])
+  })
+})
+
 describe("connectionToForm", () => {
   it("maps nulls to empty selects and the ratio to a percent string", () => {
     const f = connectionToForm(makeConnection({ max_deactivate_ratio: 0.3, stock_buffer: 2 }))
@@ -92,6 +106,21 @@ describe("connectionToForm", () => {
 })
 
 describe("formToPatch", () => {
+  it("defaults schedule fields when the connection has none (older backend)", () => {
+    const c = makeConnection({ daily_full_at: undefined, heartbeat_window: undefined })
+    const f = connectionToForm(c)
+    expect([f.daily_full_at, f.heartbeat_from, f.heartbeat_to]).toEqual(["03:00", "08:00", "22:00"])
+    expect(formToPatch(f, c)).toEqual({})
+  })
+
+  it("sends daily_full_at alone and the heartbeat window as one object", () => {
+    const c = makeConnection({ daily_full_at: "03:00", heartbeat_window: { from: "08:00", to: "22:00" } })
+    expect(formToPatch({ ...connectionToForm(c), daily_full_at: "02:30" }, c)).toEqual({ daily_full_at: "02:30" })
+    expect(formToPatch({ ...connectionToForm(c), heartbeat_to: "23:00" }, c)).toEqual({
+      heartbeat_window: { from: "08:00", to: "23:00" },
+    })
+  })
+
   it("is empty when nothing changed", () => {
     const c = makeConnection()
     expect(formToPatch(connectionToForm(c), c)).toEqual({})

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { DEFAULT_DAILY_FULL_AT, DEFAULT_HEARTBEAT_WINDOW } from "@/lib/integrations"
 import type { ConnectionPatch, IntegrationConnection } from "@/types/integration"
 
 /** Backend limits: contract §3.3 and UpdateConnectionDto (eco-xarid-back B1). */
@@ -13,6 +14,10 @@ const ipSchema = z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])
 export function isValidIp(value: string): boolean {
   return ipSchema.safeParse(value.trim()).success
 }
+
+/** 'HH:mm', same pattern as the backend DTO (^([01]\d|2[0-3]):[0-5]\d$). */
+const hhmm = (label: string) =>
+  z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, `${label}: vaqtni 03:00 ko'rinishida kiriting`)
 
 const intInRange = (min: number, max: number, message: string) =>
   z
@@ -47,6 +52,11 @@ export const connectionSettingsSchema = z
       DEACTIVATE_PERCENT_MAX,
       `Chegara ${DEACTIVATE_PERCENT_MIN}% dan ${DEACTIVATE_PERCENT_MAX}% gacha bo'lishi kerak`,
     ),
+    /** Rev 3: daily full catalog time (Tashkent). */
+    daily_full_at: hhmm("To'liq katalog vaqti"),
+    /** Rev 2: hours in which 30 min of silence counts as a broken link. */
+    heartbeat_from: hhmm("Boshlanishi"),
+    heartbeat_to: hhmm("Tugashi"),
   })
   .superRefine((v, ctx) => {
     // Mirrors the backend rule we can see (§3.3); the other half,
@@ -56,6 +66,14 @@ export const connectionSettingsSchema = z
         code: "custom",
         path: ["offers_mode"],
         message: "Jonli rejim uchun avval chakana narx turini tanlang",
+      })
+    }
+    // Equal ends would make an empty window (the backend would never alert).
+    if (v.heartbeat_from && v.heartbeat_from === v.heartbeat_to) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["heartbeat_to"],
+        message: "Boshlanish va tugash vaqti bir xil bo'lmasin",
       })
     }
     if (v.promo_price_type_id && v.promo_price_type_id === v.retail_price_type_id) {
@@ -82,6 +100,9 @@ export function connectionToForm(c: IntegrationConnection): ConnectionSettingsVa
     category_level: c.category_level,
     new_products_visible: c.new_products_visible,
     max_deactivate_percent: String(Math.round((c.max_deactivate_ratio ?? 0.5) * 100)),
+    daily_full_at: c.daily_full_at ?? DEFAULT_DAILY_FULL_AT,
+    heartbeat_from: c.heartbeat_window?.from ?? DEFAULT_HEARTBEAT_WINDOW.from,
+    heartbeat_to: c.heartbeat_window?.to ?? DEFAULT_HEARTBEAT_WINDOW.to,
   }
 }
 
@@ -120,5 +141,12 @@ export function formToPatch(v: ConnectionSettingsValues, c: IntegrationConnectio
   if (Math.round(ratio * 100) !== Math.round((c.max_deactivate_ratio ?? 0.5) * 100)) {
     patch.max_deactivate_ratio = ratio
   }
+
+  if (v.daily_full_at.trim() !== (c.daily_full_at ?? DEFAULT_DAILY_FULL_AT)) patch.daily_full_at = v.daily_full_at.trim()
+  // The window is one object on the server: send both ends when either changed.
+  const from = v.heartbeat_from.trim()
+  const to = v.heartbeat_to.trim()
+  const cur = c.heartbeat_window ?? DEFAULT_HEARTBEAT_WINDOW
+  if (from !== cur.from || to !== cur.to) patch.heartbeat_window = { from, to }
   return patch
 }

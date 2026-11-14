@@ -58,9 +58,11 @@ export interface IntegrationConnection {
   full_sync_requested_at?: string | null
   /** Rev 2 (T33a): Tashkent hours in which silence counts as a broken link (B7). */
   heartbeat_window?: { from: string; to: string }
+  /** Rev 3 (T31): 'HH:mm' Tashkent time of the daily full catalog (default '03:00'). */
+  daily_full_at?: string
   /** Rev 2 (T33a): set by B7 while the link is considered down. */
   link_down_since?: string | null
-  /** Optional: the push URL, if the backend includes it in the connection view. */
+  /** The push URL (B2 adds it to every connection view; optional for older backends). */
   endpoint_url?: string
   audit?: IntegrationAuditEntry[]
   createdAt?: string
@@ -175,6 +177,7 @@ export interface CategoryMenuOption {
   source?: "1c" | null
 }
 
+/** Normalised GET …/categories (the backend sends `{ maps, categories }`). */
 export interface CategoriesData {
   maps: CategoryMap[]
   menu_categories: CategoryMenuOption[]
@@ -214,5 +217,7 @@ export type ConnectionPatch = Partial<
     | "new_products_visible"
     | "max_deactivate_ratio"
     | "protocol"
+    | "heartbeat_window"
+    | "daily_full_at"
   >
 >

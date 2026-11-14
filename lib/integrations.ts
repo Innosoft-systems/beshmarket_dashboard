@@ -261,19 +261,81 @@ export const ERROR_CODE_LABELS: Record<string, string> = {
 }
 
 // ---------------------------------------------------------------------------
-// Connection health (A1 rev 2)
+// Connection health (A1 rev 2 / rev 3)
 
-/** T33(b): reconciliation overdue after 8 days. */
-export const FULL_SYNC_OVERDUE_DAYS = 8
+/** Same constants as the backend's rev 3 rule (integrations-admin.service.ts). */
+export const DAILY_FULL_GRACE_MINUTES = 180
+export const DAILY_FULL_EARLY_MINUTES = 60
+export const DEFAULT_DAILY_FULL_AT = "03:00"
+export const DEFAULT_HEARTBEAT_WINDOW = { from: "08:00", to: "22:00" } as const
 
-/** True when catalog is live and the last full run is older than 8 days. Unknown (null) is not "overdue" here. */
-export function isFullSyncOverdue(
-  c: Pick<IntegrationConnection, "catalog_mode" | "last_full_catalog_success_at">,
+const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/
+const DAY_MS = 24 * 60 * 60_000
+const TASHKENT_MS = 5 * 60 * 60_000
+
+export function isHHMM(v: string): boolean {
+  return HHMM_RE.test(v)
+}
+
+function hhmmToMinutes(v: string | null | undefined, fallback: number): number {
+  const m = HHMM_RE.exec(v ?? "")
+  return m ? Number(m[1]) * 60 + Number(m[2]) : fallback
+}
+
+/** "03:00" + 180 → "06:00"; wraps past midnight ("23:30" + 180 → "02:30"). */
+export function addMinutesHHMM(v: string, minutes: number): string {
+  const total = (((hhmmToMinutes(v, 0) + minutes) % 1440) + 1440) % 1440
+  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`
+}
+
+/**
+ * The most recent daily-full slot whose deadline (`daily_full_at + 3 h`,
+ * Tashkent) has passed at `now`. A port of the backend's `lastDailyFullSlot`.
+ */
+export function lastDailyFullSlot(dailyFullAt: string | null | undefined, now: number): { start: number; deadline: number } {
+  const minutes = hhmmToMinutes(dailyFullAt, 3 * 60)
+  const tashkentMidnight = Math.floor((now + TASHKENT_MS) / DAY_MS) * DAY_MS - TASHKENT_MS
+  let start = tashkentMidnight + minutes * 60_000
+  while (start + DAILY_FULL_GRACE_MINUTES * 60_000 > now) start -= DAY_MS
+  return { start, deadline: start + DAILY_FULL_GRACE_MINUTES * 60_000 }
+}
+
+/**
+ * Rev 3 "Bugun kelmadi": the last passed deadline had no full catalog that
+ * started from `daily_full_at − 1 h`. The dashboard only sees
+ * `last_full_catalog_success_at` (set by LIVE full runs), so the badge is shown
+ * only while catalog is live; in other modes the backend's `stale` flag covers it.
+ */
+export function isDailyFullMissing(
+  c: Pick<IntegrationConnection, "enabled" | "catalog_mode" | "daily_full_at" | "last_full_catalog_success_at" | "createdAt">,
   now: number = Date.now(),
 ): boolean {
-  if (c.catalog_mode !== "live" || !c.last_full_catalog_success_at) return false
-  const t = Date.parse(c.last_full_catalog_success_at)
-  return !Number.isNaN(t) && now - t > FULL_SYNC_OVERDUE_DAYS * 24 * 60 * 60_000
+  if (!c.enabled || c.catalog_mode !== "live") return false
+  const slot = lastDailyFullSlot(c.daily_full_at, now)
+  const created = Date.parse(c.createdAt ?? "")
+  if (!Number.isNaN(created) && created > slot.start) return false
+  const last = Date.parse(c.last_full_catalog_success_at ?? "")
+  return Number.isNaN(last) || last < slot.start - DAILY_FULL_EARLY_MINUTES * 60_000
+}
+
+/**
+ * Which mode a 400 on PATCH refused `live` for, so the form can disable that
+ * "Jonli" option: catalog until B5 (panel locks), offers until B6 (stock).
+ * When both were switched in one save, the server text decides.
+ */
+export function liveRefusalTarget(
+  patch: { catalog_mode?: IntegrationMode; offers_mode?: IntegrationMode },
+  message: string,
+): "catalog" | "offers" | null {
+  const catalog = patch.catalog_mode === "live"
+  const offers = patch.offers_mode === "live"
+  if (catalog && !offers) return "catalog"
+  if (offers && !catalog) return "offers"
+  if (catalog && offers) {
+    if (/katalog/i.test(message)) return "catalog"
+    if (/narx|qoldiq/i.test(message)) return "offers"
+  }
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -306,9 +368,9 @@ export function applyChoice(map: CategoryMap, choice: string): CategoryMap {
 }
 
 /**
- * GET …/categories returns the maps plus the venue's menu categories (§3.3).
- * Accepts `{ maps, menu_categories }` (also `category_maps` / `categories`)
- * or a bare array of maps, and always returns both lists.
+ * GET …/categories returns `{ maps, categories }` (B2). Also accepts
+ * `menu_categories` / `category_maps` or a bare array of maps, and always
+ * returns both lists.
  */
 export function normaliseCategoriesData(raw: unknown): CategoriesData {
   if (Array.isArray(raw)) return { maps: raw as CategoryMap[], menu_categories: [] }

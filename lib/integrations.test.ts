@@ -12,7 +12,10 @@ import {
   groupDiff,
   hiddenReasonRows,
   isBucketRun,
-  isFullSyncOverdue,
+  addMinutesHHMM,
+  isDailyFullMissing,
+  lastDailyFullSlot,
+  liveRefusalTarget,
   normaliseCategoriesData,
   orderedChanges,
   runBatches,
@@ -168,13 +171,61 @@ describe("run helpers (A2)", () => {
   })
 })
 
-describe("isFullSyncOverdue (rev 2, T33b)", () => {
-  const now = Date.parse("2026-11-14T12:00:00.000Z")
-  it("only when catalog is live and the last full run is over 8 days old", () => {
-    expect(isFullSyncOverdue({ catalog_mode: "live", last_full_catalog_success_at: "2026-11-05T11:00:00.000Z" }, now)).toBe(true)
-    expect(isFullSyncOverdue({ catalog_mode: "live", last_full_catalog_success_at: "2026-11-07T12:00:00.000Z" }, now)).toBe(false)
-    expect(isFullSyncOverdue({ catalog_mode: "dry_run", last_full_catalog_success_at: "2026-10-01T00:00:00.000Z" }, now)).toBe(false)
-    expect(isFullSyncOverdue({ catalog_mode: "live", last_full_catalog_success_at: null }, now)).toBe(false)
+describe("daily full (rev 3)", () => {
+  const at = (iso: string) => Date.parse(iso)
+
+  it("adds minutes to HH:mm across midnight", () => {
+    expect(addMinutesHHMM("03:00", 180)).toBe("06:00")
+    expect(addMinutesHHMM("23:30", 180)).toBe("02:30")
+  })
+
+  it("finds the last slot whose deadline (+3 h) has passed, like the backend", () => {
+    // 06:05 Tashkent = 01:05 UTC: today's 03:00 slot (22:00 UTC the day before) is past its 06:00 deadline.
+    const s1 = lastDailyFullSlot("03:00", at("2026-11-14T01:05:00.000Z"))
+    expect(new Date(s1.start).toISOString()).toBe("2026-11-13T22:00:00.000Z")
+    expect(new Date(s1.deadline).toISOString()).toBe("2026-11-14T01:00:00.000Z")
+    // 05:00 Tashkent: today's deadline not reached yet → yesterday's slot.
+    const s2 = lastDailyFullSlot("03:00", at("2026-11-14T00:00:00.000Z"))
+    expect(new Date(s2.start).toISOString()).toBe("2026-11-12T22:00:00.000Z")
+    // 23:30 slot, deadline 02:30 the next day.
+    const s3 = lastDailyFullSlot("23:30", at("2026-11-13T21:40:00.000Z")) // 02:40 Tashkent on the 14th
+    expect(new Date(s3.start).toISOString()).toBe("2026-11-13T18:30:00.000Z")
+  })
+
+  const conn = {
+    enabled: true,
+    catalog_mode: "live" as const,
+    daily_full_at: "03:00",
+    createdAt: "2026-11-01T00:00:00.000Z",
+  }
+  const now = at("2026-11-14T01:05:00.000Z") // 06:05 Tashkent
+
+  it("flags a missing full only past the deadline, while catalog is live", () => {
+    expect(isDailyFullMissing({ ...conn, last_full_catalog_success_at: null }, now)).toBe(true)
+    // A full at 03:10 Tashkent today → fine.
+    expect(isDailyFullMissing({ ...conn, last_full_catalog_success_at: "2026-11-13T22:10:00.000Z" }, now)).toBe(false)
+    // Started up to 1 h early (02:10) still counts.
+    expect(isDailyFullMissing({ ...conn, last_full_catalog_success_at: "2026-11-13T21:10:00.000Z" }, now)).toBe(false)
+    // Yesterday's → missing.
+    expect(isDailyFullMissing({ ...conn, last_full_catalog_success_at: "2026-11-12T22:10:00.000Z" }, now)).toBe(true)
+  })
+
+  it("is never flagged for dry-run/off, a disabled connection, or one created after the slot", () => {
+    expect(isDailyFullMissing({ ...conn, catalog_mode: "dry_run", last_full_catalog_success_at: null }, now)).toBe(false)
+    expect(isDailyFullMissing({ ...conn, enabled: false, last_full_catalog_success_at: null }, now)).toBe(false)
+    expect(
+      isDailyFullMissing({ ...conn, createdAt: "2026-11-13T23:00:00.000Z", last_full_catalog_success_at: null }, now),
+    ).toBe(false)
+  })
+})
+
+describe("liveRefusalTarget", () => {
+  it("attributes a 400 on 'live' to the mode that was switched", () => {
+    expect(liveRefusalTarget({ catalog_mode: "live" }, "x")).toBe("catalog")
+    expect(liveRefusalTarget({ offers_mode: "live" }, "x")).toBe("offers")
+    expect(liveRefusalTarget({ catalog_mode: "live", offers_mode: "live" }, "Katalogni jonli rejimga ...")).toBe("catalog")
+    expect(liveRefusalTarget({ catalog_mode: "live", offers_mode: "live" }, "Narx va qoldiqni ...")).toBe("offers")
+    expect(liveRefusalTarget({ catalog_mode: "dry_run" }, "x")).toBeNull()
   })
 })
 
@@ -211,6 +262,8 @@ describe("category mapping helpers (A3)", () => {
   it("normalises the categories response", () => {
     const maps = [map()]
     const menu = [{ _id: "m1", name_uz: "Chexollar", is_active: false, source: "1c" as const }]
+    // The real B2 response: { maps, categories }.
+    expect(normaliseCategoriesData({ maps, categories: menu })).toEqual({ maps, menu_categories: menu })
     expect(normaliseCategoriesData({ maps, menu_categories: menu })).toEqual({ maps, menu_categories: menu })
     expect(normaliseCategoriesData({ category_maps: maps, categories: menu })).toEqual({ maps, menu_categories: menu })
     expect(normaliseCategoriesData(maps)).toEqual({ maps, menu_categories: [] })

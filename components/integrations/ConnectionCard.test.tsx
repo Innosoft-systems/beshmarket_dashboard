@@ -65,7 +65,7 @@ describe("ConnectionCard: no connection", () => {
 
     expect(mocked.create).toHaveBeenCalledWith("rest1", "json")
     expect(await screen.findByText(SECRET)).toBeInTheDocument()
-    expect(screen.getByText(ENDPOINT)).toBeInTheDocument()
+    expect(within(screen.getByRole("dialog")).getByText(ENDPOINT)).toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: "Saqlab oldim, yopish" }))
     await waitFor(() => expect(document.body.innerHTML).not.toContain(SECRET))
@@ -135,9 +135,11 @@ describe("ConnectionCard: connected", () => {
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "O'chirish" }))
     expect(mocked.update).toHaveBeenCalledWith("conn1", { enabled: false })
     expect(await screen.findByText("O'chirilgan")).toBeInTheDocument()
+    // The switch is disabled while the first save is in flight; wait for it.
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Ulanishni yoqish" })).not.toHaveAttribute("data-disabled"))
 
     await user.click(screen.getByRole("switch", { name: "Ulanishni yoqish" }))
-    expect(mocked.update).toHaveBeenLastCalledWith("conn1", { enabled: true })
+    await waitFor(() => expect(mocked.update).toHaveBeenLastCalledWith("conn1", { enabled: true }))
   })
 
   it("shows the status panel: counts, hidden reasons and stale badge", () => {
@@ -174,7 +176,11 @@ describe("ConnectionCard: rev 2", () => {
 
   it("shows the endpoint only when the connection carries it", () => {
     const { unmount } = render(
-      <ConnectionCard restaurantId="rest1" initialConnection={makeConnection()} initialStatus={makeStatus()} />,
+      <ConnectionCard
+        restaurantId="rest1"
+        initialConnection={makeConnection({ endpoint_url: undefined })}
+        initialStatus={makeStatus()}
+      />,
     )
     expect(screen.queryByText(ENDPOINT)).not.toBeInTheDocument()
     unmount()
@@ -188,15 +194,23 @@ describe("ConnectionCard: rev 2", () => {
     expect(screen.getByText(ENDPOINT)).toBeInTheDocument()
   })
 
-  it("link down and overdue reconciliation are flagged in the status panel", () => {
+  it("link down and a missing daily full (rev 3) are flagged in the status panel", () => {
     const conn = makeConnection({
       catalog_mode: "live",
+      daily_full_at: "03:00",
       link_down_since: "2026-11-14T08:00:00.000Z",
       last_full_catalog_success_at: "2026-11-01T08:00:00.000Z",
     })
     render(<ConnectionCard restaurantId="rest1" initialConnection={conn} initialStatus={makeStatus({ connection: conn })} />)
     expect(screen.getByText("Uzilgan")).toBeInTheDocument()
-    expect(screen.getByText("kechikdi")).toBeInTheDocument()
+    expect(screen.getByText("Bugun kelmadi")).toBeInTheDocument()
+    expect(screen.getByText(/Oxirgi to'liq katalog \(har kuni 03:00\)/)).toBeInTheDocument()
+  })
+
+  it("no 'Bugun kelmadi' while catalog is not live", () => {
+    const conn = makeConnection({ catalog_mode: "dry_run", last_full_catalog_success_at: null })
+    render(<ConnectionCard restaurantId="rest1" initialConnection={conn} initialStatus={makeStatus({ connection: conn })} />)
+    expect(screen.queryByText("Bugun kelmadi")).not.toBeInTheDocument()
   })
 
   it("tabs load categories / runs lazily and keep unsaved settings", async () => {

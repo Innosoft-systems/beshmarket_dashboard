@@ -31,6 +31,10 @@ export function makeConnection(overrides: Partial<IntegrationConnection> = {}): 
     last_catalog_success_at: null,
     last_offers_success_at: null,
     last_error: null,
+    daily_full_at: "03:00",
+    heartbeat_window: { from: "08:00", to: "22:00" },
+    endpoint_url: "https://api.beshmarket.uz/api/v1/integrations/1c/json",
+    createdAt: "2026-11-01T00:00:00.000Z",
     ...overrides,
   }
 }
