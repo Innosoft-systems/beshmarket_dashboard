@@ -123,20 +123,25 @@ export function TabsTrigger({
 export function TabsContent({
   value,
   className,
+  keepMounted = false,
   children,
 }: {
   value: string
   className?: string
+  /** Keep the panel mounted (hidden) while another tab is active, e.g. to keep unsaved form input. */
+  keepMounted?: boolean
   children: React.ReactNode
 }) {
   const tabs = useTabs("TabsContent")
-  if (tabs.value !== value) return null
+  const active = tabs.value === value
+  if (!active && !keepMounted) return null
 
   return (
     <div
       role="tabpanel"
       id={`${tabs.baseId}-panel-${value}`}
       aria-labelledby={`${tabs.baseId}-tab-${value}`}
+      hidden={!active}
       className={className}
     >
       {children}
