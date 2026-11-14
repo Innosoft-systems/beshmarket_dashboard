@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Power, FolderPlus, PackageX, Search, X } from "lucide-react"
+import { Plus, Pencil, Trash2, Power, FolderPlus, PackageX, Search, X, EyeOff, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getFullImgUrl } from "@/lib/utils"
@@ -29,6 +29,14 @@ import {
 } from "@/lib/actions/products"
 import type { ProductCategoryCounts, ProductsPage } from "@/lib/products-list"
 import {
+  NO_SYNC_FLAGS,
+  hiddenBySyncLabel,
+  isPriceLocked,
+  isSyncedProduct,
+  showHiddenNotice,
+  type SyncFlags,
+} from "@/lib/product-sync"
+import {
   createMyMenuCategoryAction,
   deleteMyMenuCategoryAction,
   deleteMyProductAction,
@@ -41,11 +49,20 @@ interface Props {
   counts: ProductCategoryCounts
   categories: any[]
   scope?: "admin" | "restaurant"
+  /** What 1C manages for this venue (A4). Booleans only; defaults to "not connected". */
+  syncFlags?: SyncFlags
 }
 
 const SEARCH_DEBOUNCE_MS = 350
 
-export function ProductsClient({ restaurant, initial, counts: initialCounts, categories, scope = "admin" }: Props) {
+export function ProductsClient({
+  restaurant,
+  initial,
+  counts: initialCounts,
+  categories,
+  scope = "admin",
+  syncFlags = NO_SYNC_FLAGS,
+}: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [formOpen, setFormOpen] = useState(false)
@@ -203,7 +220,14 @@ export function ProductsClient({ restaurant, initial, counts: initialCounts, cat
     const r = scope === "restaurant"
       ? await updateMyProductAction(p._id, { is_active: !p.is_active })
       : await updateProductAction(p._id, { is_active: !p.is_active })
-    r.success ? afterMutation() : toast.error(r.error)
+    if (!r.success) {
+      toast.error(r.error)
+      return
+    }
+    // Showing a product that 1C hides: say what happens instead of silently staying hidden.
+    const notice = !p.is_active ? showHiddenNotice(p, scope) : null
+    if (notice) toast.info(notice)
+    afterMutation()
   }
 
   const toggleAvailable = async (p: any) => {
@@ -370,7 +394,18 @@ export function ProductsClient({ restaurant, initial, counts: initialCounts, cat
                       }
                     </td>
                     <td className="px-4 py-2">
-                      <div className="font-medium">{p.name_uz}</div>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        {p.name_uz}
+                        {isSyncedProduct(p) && (
+                          <Badge
+                            variant="outline"
+                            className="border-violet-200 bg-violet-50 px-1.5 text-[10px] text-violet-700"
+                            title="Bu mahsulot 1C dan keladi"
+                          >
+                            1C
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground">{p.name_ru}</div>
                     </td>
                     <td className="px-4 py-2 text-muted-foreground text-xs">{cat?.name_uz || "—"}</td>
@@ -396,6 +431,16 @@ export function ProductsClient({ restaurant, initial, counts: initialCounts, cat
                           )}
                         </>
                       )}
+                      {isPriceLocked(p, syncFlags) && (
+                        <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground" title="Narx 1C dan boshqariladi">
+                          <Lock className="h-3 w-3" /> 1C dan boshqariladi
+                        </div>
+                      )}
+                      {isSyncedProduct(p) && syncFlags.stock_managed && (
+                        <div className="text-[11px] text-muted-foreground">
+                          Qoldiq: {p.stock === null || p.stock === undefined ? "—" : p.stock}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-center">
                       {p.variants?.length > 0
@@ -408,6 +453,11 @@ export function ProductsClient({ restaurant, initial, counts: initialCounts, cat
                       <Badge variant="outline" className={p.is_active ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-600"}>
                         {p.is_active ? "Faol" : "Nofaol"}
                       </Badge>
+                      {hiddenBySyncLabel(p) && (
+                        <div className="mt-1 text-[11px] text-amber-700" title="1C sababli yashirilgan">
+                          {hiddenBySyncLabel(p)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-center">
                       <button
@@ -431,9 +481,30 @@ export function ProductsClient({ restaurant, initial, counts: initialCounts, cat
                         <Button size="sm" variant="outline" disabled={isPending} onClick={() => toggleAvailable(p)} title="Mavjud/Qolmadi">
                           <PackageX className={`h-3.5 w-3.5 ${p.is_available !== false ? "text-blue-500" : "text-orange-500"}`} />
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-red-500" disabled={isPending} onClick={() => setDeleteId(p._id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {isSyncedProduct(p) ? (
+                          // 1C products can't be deleted (the next sync would bring them back): hide instead.
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-1 text-xs"
+                            disabled={isPending || !p.is_active}
+                            onClick={() => toggleActive(p)}
+                            title="1C mahsulotini o'chirib bo'lmaydi — uni yashiring"
+                          >
+                            <EyeOff className="h-3.5 w-3.5" /> Yashirish
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-500"
+                            disabled={isPending}
+                            onClick={() => setDeleteId(p._id)}
+                            aria-label="O'chirish"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -475,6 +546,7 @@ export function ProductsClient({ restaurant, initial, counts: initialCounts, cat
           restaurantId={restaurant._id}
           categories={categories}
           scope={scope}
+          syncFlags={syncFlags}
           onSaved={afterMutation}
           onClose={() => { setFormOpen(false); setEditProduct(null) }}
         />

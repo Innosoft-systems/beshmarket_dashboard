@@ -1,6 +1,7 @@
 import { getAccessToken } from "@/lib/auth/session"
 import { apiRequest } from "@/lib/api/client"
 import { ProductsClient } from "@/components/restaurants/ProductsClient"
+import { parseSyncFlags } from "@/lib/product-sync"
 import {
   PRODUCTS_PAGE_SIZE,
   type ProductCategoryCounts,
@@ -17,7 +18,7 @@ export default async function RestaurantMenuPage() {
 
   // First page only — the table pages the rest in as it is scrolled, and the
   // counts are computed over the whole menu rather than over what loaded.
-  const [restaurantRes, productsRes, categoriesRes, countsRes] = await Promise.all([
+  const [restaurantRes, productsRes, categoriesRes, countsRes, syncRes] = await Promise.all([
     apiRequest<any>("/restaurants/my", { accessToken: token }).catch(() => null),
     apiRequest<ProductsPage>(`/products/my?page=1&limit=${PRODUCTS_PAGE_SIZE}`, {
       accessToken: token,
@@ -26,6 +27,8 @@ export default async function RestaurantMenuPage() {
     apiRequest<ProductCategoryCounts>("/products/my/category-counts", {
       accessToken: token,
     }).catch(() => null),
+    // 1C flags only (connected / price / stock / content managed): no credentials exist on this route.
+    apiRequest<unknown>("/integrations/1c/my/status", { accessToken: token }).catch(() => null),
   ])
 
   const initial = productsRes?.data ?? EMPTY_PAGE
@@ -46,6 +49,7 @@ export default async function RestaurantMenuPage() {
         counts={counts}
         categories={categories}
         scope="restaurant"
+        syncFlags={parseSyncFlags(syncRes?.data)}
       />
     </div>
   )

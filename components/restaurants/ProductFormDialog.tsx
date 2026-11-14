@@ -4,14 +4,30 @@
 import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { X, Upload } from "lucide-react"
+import { X, Upload, Lock, RotateCcw, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createProductAction, updateProductAction } from "@/lib/actions/products"
-import { createMyProductAction, updateMyProductAction } from "@/lib/actions/restaurant-panel"
+import { createProductAction, unlockProductSyncFieldsAction, updateProductAction } from "@/lib/actions/products"
+import {
+  createMyProductAction,
+  unlockMyProductSyncFieldsAction,
+  updateMyProductAction,
+} from "@/lib/actions/restaurant-panel"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import {
+  LOCKABLE_FIELD_LABELS,
+  NO_SYNC_FLAGS,
+  hiddenBySyncLabel,
+  isPriceLocked,
+  isSyncedProduct,
+  lockedFields,
+  unlockConfirmText,
+  type LockableField,
+  type SyncFlags,
+} from "@/lib/product-sync"
 import { getFullImgUrl } from "@/lib/utils"
 import { OptionTypesEditor, type LocalOptionType } from "./OptionTypesEditor"
 import { VariantEditor, type LocalVariant } from "./VariantEditor"
@@ -29,6 +45,8 @@ interface Props {
    */
   onSaved?: () => void
   scope?: "admin" | "restaurant"
+  /** What 1C manages for this venue (A4); only matters for 1C products. */
+  syncFlags?: SyncFlags
 }
 
 function initOptionTypes(product?: any): LocalOptionType[] {
@@ -87,7 +105,15 @@ function initModifierGroups(product?: any): LocalModifierGroup[] {
   }))
 }
 
-export function ProductFormDialog({ product, restaurantId, categories, onClose, onSaved, scope = "admin" }: Props) {
+export function ProductFormDialog({
+  product,
+  restaurantId,
+  categories,
+  onClose,
+  onSaved,
+  scope = "admin",
+  syncFlags = NO_SYNC_FLAGS,
+}: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
@@ -104,6 +130,52 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
   )
 
   useEffect(() => () => { uploadAbortRef.current?.abort() }, [])
+
+  // 1C product (B5): locked fields are kept by the sync; price is read-only while 1C manages it.
+  const synced = isSyncedProduct(product)
+  const priceLocked = isPriceLocked(product, syncFlags)
+  const [locked, setLocked] = useState<LockableField[]>(() => lockedFields(product))
+  const [unlockField, setUnlockField] = useState<LockableField | null>(null)
+  const [unlocking, setUnlocking] = useState(false)
+
+  const unlock = async () => {
+    if (!unlockField || !product) return
+    setUnlocking(true)
+    const r = scope === "restaurant"
+      ? await unlockMyProductSyncFieldsAction(product._id, [unlockField])
+      : await unlockProductSyncFieldsAction(product._id, [unlockField])
+    setUnlocking(false)
+    if (!r.success) {
+      setUnlockField(null)
+      toast.error(r.error)
+      return
+    }
+    const field = unlockField
+    setLocked(prev => prev.filter(f => f !== field))
+    setUnlockField(null)
+    toast.success(`"${LOCKABLE_FIELD_LABELS[field]}" 1C ga qaytarildi`)
+    onSaved?.()
+  }
+
+  /** Label with the lock / "1C dan olish" control for a lockable field of a 1C product. */
+  const lockLabel = (field: LockableField, text: string) => (
+    <div className="flex min-h-5 items-center justify-between gap-2">
+      <Label>{text}</Label>
+      {synced && locked.includes(field) && (
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <Lock className="h-3 w-3" aria-label="Qo'lda o'zgartirilgan, 1C yangilamaydi" />
+          <button
+            type="button"
+            className="inline-flex items-center gap-0.5 text-primary hover:underline"
+            onClick={() => setUnlockField(field)}
+            aria-label={`${LOCKABLE_FIELD_LABELS[field]}: 1C dan olish`}
+          >
+            <RotateCcw className="h-3 w-3" /> 1C dan olish
+          </button>
+        </span>
+      )}
+    </div>
+  )
 
   const [form, setForm] = useState({
     name_uz: product?.name_uz || "",
@@ -181,7 +253,8 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
     const body: Record<string, unknown> = {
       ...form,
       restaurant_id: restaurantId,
-      slug: slug(form.name_uz) || slug(form.name_ru),
+      // A 1C product keeps the slug the sync made (rebuilding it from a Cyrillic name gives "").
+      slug: synced ? undefined : slug(form.name_uz) || slug(form.name_ru),
       price: hasVariants ? undefined : +form.price,
       discount_price: (!hasVariants && form.discount_price) ? +form.discount_price : undefined,
     }
@@ -266,9 +339,27 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
         </div>
 
         <div className="p-6 space-y-5">
+          {synced && (
+            <div role="note" className="flex gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-200">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Bu mahsulot 1C dan keladi</p>
+                <p className="text-xs">
+                  Nom, tavsif, rasm yoki kategoriyani o&apos;zgartirsangiz, 1C ularni endi yangilamaydi (qulf belgisi).
+                  &quot;1C dan olish&quot; bilan yana 1C ga qaytarasiz.
+                  {priceLocked && " Narx 1C dan boshqariladi va bu yerda o'zgarmaydi."}
+                  {" "}Mahsulotni o&apos;chirib bo&apos;lmaydi, faqat yashirish mumkin.
+                </p>
+                {hiddenBySyncLabel(product) && (
+                  <p className="text-xs font-medium">1C sababli yashirilgan: {hiddenBySyncLabel(product)}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Category */}
           <div className="space-y-1.5">
-            <Label>Kategoriya *</Label>
+            {lockLabel("menu_category_id", "Kategoriya *")}
             <Select value={form.menu_category_id}
               onValueChange={(v) => setForm({ ...form, menu_category_id: v ?? form.menu_category_id })}>
               <SelectTrigger>
@@ -286,7 +377,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {["uz", "ru", "en"].map(lang => (
               <div key={lang} className="space-y-1.5">
-                <Label>Nomi ({lang.toUpperCase()}) *</Label>
+                {lockLabel(`name_${lang}` as LockableField, `Nomi (${lang.toUpperCase()}) *`)}
                 <Input value={(form as any)[`name_${lang}`]}
                   onChange={e => setForm({ ...form, [`name_${lang}`]: e.target.value })} />
               </div>
@@ -297,7 +388,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {["uz", "ru", "en"].map(lang => (
               <div key={lang} className="space-y-1.5">
-                <Label>Tavsif ({lang.toUpperCase()})</Label>
+                {lockLabel(`description_${lang}` as LockableField, `Tavsif (${lang.toUpperCase()})`)}
                 <Textarea
                   rows={3}
                   value={(form as any)[`description_${lang}`]}
@@ -314,6 +405,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
               <input
                 type="checkbox"
                 checked={hasVariants}
+                disabled={priceLocked}
                 onChange={e => {
                   setHasVariants(e.target.checked)
                   if (!e.target.checked) { setOptionTypes([]); setVariants([]) }
@@ -326,13 +418,17 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
             {!hasVariants && (
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Narx (so&apos;m) *</Label>
-                  <Input type="number" value={form.price}
+                  <Label htmlFor="product-price">Narx (so&apos;m) *</Label>
+                  <Input id="product-price" type="number" value={form.price} readOnly={priceLocked}
+                    aria-describedby={priceLocked ? "price-managed-hint" : undefined}
+                    className={priceLocked ? "bg-muted" : undefined}
                     onChange={e => setForm({ ...form, price: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Aksiya narxi</Label>
-                  <Input type="number" value={form.discount_price}
+                  <Label htmlFor="product-discount-price">Aksiya narxi</Label>
+                  <Input id="product-discount-price" type="number" value={form.discount_price} readOnly={priceLocked}
+                    aria-describedby={priceLocked ? "price-managed-hint" : undefined}
+                    className={priceLocked ? "bg-muted" : undefined}
                     onChange={e => setForm({ ...form, discount_price: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
@@ -341,6 +437,17 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
                     onChange={e => setForm({ ...form, weight: e.target.value })} />
                 </div>
               </div>
+            )}
+
+            {priceLocked && (
+              <p id="price-managed-hint" className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" /> 1C dan boshqariladi: narxni 1C da o&apos;zgartiring.
+              </p>
+            )}
+            {synced && syncFlags.stock_managed && (
+              <p className="text-sm">
+                Qoldiq (1C): <span className="font-medium">{product?.stock ?? "kuzatilmaydi"}</span>
+              </p>
             )}
 
             {hasVariants && (
@@ -379,7 +486,7 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
 
           {/* Images */}
           <div className="space-y-2">
-            <Label>Rasmlar</Label>
+            {lockLabel("images", "Rasmlar")}
             <div className="flex flex-wrap gap-2">
               {form.images.map((url: string, i: number) => (
                 <div key={i} className="relative h-20 w-20 rounded-lg overflow-hidden border">
@@ -398,6 +505,18 @@ export function ProductFormDialog({ product, restaurantId, categories, onClose, 
             </div>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={unlockField !== null}
+          onOpenChange={open => { if (!open) setUnlockField(null) }}
+          title="1C dan olish"
+          description={unlockField ? unlockConfirmText(unlockField) : ""}
+          confirmLabel="1C ga qaytarish"
+          cancelLabel="Ortga"
+          variant="default"
+          loading={unlocking}
+          onConfirm={unlock}
+        />
 
         <div className="flex justify-end gap-3 px-6 py-4 border-t sticky bottom-0 bg-background">
           <Button variant="outline" onClick={onClose}>Bekor qilish</Button>

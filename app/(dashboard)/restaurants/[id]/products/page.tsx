@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react"
 import { getAccessToken } from "@/lib/auth/session"
 import { apiRequest } from "@/lib/api/client"
 import { ProductsClient } from "@/components/restaurants/ProductsClient"
+import { flagsFromConnection } from "@/lib/product-sync"
+import type { IntegrationConnection } from "@/types/integration"
 import {
   PRODUCTS_PAGE_SIZE,
   type ProductCategoryCounts,
@@ -31,7 +33,7 @@ export default async function RestaurantProductsPage({ params }: Props) {
     // scrolled. The counts come from the database over the whole menu — the
     // page used to fetch 100 rows and count those, so a larger menu reported
     // the size of its first page.
-    const [restRes, productsRes, categoriesRes, countsRes] = await Promise.all([
+    const [restRes, productsRes, categoriesRes, countsRes, connectionRes] = await Promise.all([
       apiRequest<any>(`/restaurants/admin/${id}`, { accessToken: token }),
       apiRequest<ProductsPage>(
         `/products/admin?restaurant_id=${id}&page=1&limit=${PRODUCTS_PAGE_SIZE}`,
@@ -42,6 +44,11 @@ export default async function RestaurantProductsPage({ params }: Props) {
         `/products/admin/category-counts?restaurant_id=${id}`,
         { accessToken: token },
       ),
+      // 1C flags (A4). Only the four booleans go to the client, never the connection.
+      apiRequest<IntegrationConnection | null>(
+        `/integrations/1c/connections?restaurant_id=${encodeURIComponent(id)}`,
+        { accessToken: token },
+      ).catch(() => null),
     ])
 
     if (!restRes.data) notFound()
@@ -69,6 +76,7 @@ export default async function RestaurantProductsPage({ params }: Props) {
           initial={initial}
           counts={counts}
           categories={categories}
+          syncFlags={flagsFromConnection(connectionRes?.data ?? null)}
         />
       </div>
     )
