@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { toast } from "sonner"
 import { updateConnectionAction } from "@/lib/actions/integrations"
@@ -134,6 +134,56 @@ describe("ConnectionSettingsForm", () => {
     expect(update).toHaveBeenCalledWith("conn1", { offers_mode: "live" })
     expect(toast.error).toHaveBeenCalledWith(reason)
     expect(await screen.findByRole("note")).toHaveTextContent(reason)
+  })
+
+  it("backend 400 on catalog 'Jonli' (until B5) disables catalog 'Jonli' only", async () => {
+    const user = userEvent.setup()
+    const reason =
+      "Katalogni jonli rejimga hali o'tkazib bo'lmaydi: panelda qo'lda tahrirlangan nomlarni himoyalash hali yoqilmagan"
+    update.mockResolvedValue({ success: false, error: reason, status: 400 })
+    renderForm()
+
+    await user.click(screen.getByRole("combobox", { name: "Katalog (mahsulotlar)" }))
+    await user.click(await screen.findByRole("option", { name: "Jonli" }))
+    await user.click(save())
+
+    expect(update).toHaveBeenCalledWith("conn1", { catalog_mode: "live" })
+    const notes = await screen.findAllByRole("note")
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toHaveTextContent(reason)
+
+    // The catalog mode goes back to its saved value, and its "Jonli" is disabled.
+    expect(screen.getByRole("combobox", { name: "Katalog (mahsulotlar)" })).toHaveTextContent("Sinov")
+    await user.click(screen.getByRole("combobox", { name: "Katalog (mahsulotlar)" }))
+    expect(await screen.findByRole("option", { name: "Jonli" })).toHaveAttribute("aria-disabled", "true")
+  })
+
+  it("schedule: daily full time and heartbeat window are saved (rev 2 / rev 3)", async () => {
+    update.mockResolvedValue({
+      success: true,
+      data: makeConnection({ daily_full_at: "02:30", heartbeat_window: { from: "09:00", to: "22:00" } }),
+    })
+    renderForm()
+    expect(screen.getByLabelText("Har kunlik to'liq katalog vaqti")).toHaveValue("03:00")
+    expect(screen.getByText(/Soat 06:00 gacha kelmasa/)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText("Har kunlik to'liq katalog vaqti"), { target: { value: "02:30" } })
+    fireEvent.change(screen.getByLabelText("Aloqa nazorati: boshlanishi"), { target: { value: "09:00" } })
+    expect(await screen.findByText(/Soat 05:30 gacha kelmasa/)).toBeInTheDocument()
+    await userEvent.setup().click(save())
+
+    expect(update).toHaveBeenCalledWith("conn1", {
+      daily_full_at: "02:30",
+      heartbeat_window: { from: "09:00", to: "22:00" },
+    })
+  })
+
+  it("schedule: equal heartbeat ends are refused before saving", async () => {
+    renderForm()
+    fireEvent.change(screen.getByLabelText("Aloqa nazorati: tugashi"), { target: { value: "08:00" } })
+    await userEvent.setup().click(save())
+    expect(await screen.findByText("Boshlanish va tugash vaqti bir xil bo'lmasin")).toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
   })
 
   it("empty state when 1C has not reported price types or warehouses", () => {

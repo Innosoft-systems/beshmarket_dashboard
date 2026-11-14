@@ -8,7 +8,16 @@ import { Loader2, Plus, Save, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { updateConnectionAction } from "@/lib/actions/integrations"
-import { CATEGORY_LEVEL_LABELS, MODE_HINTS, MODE_LABELS, PROTOCOL_LABELS } from "@/lib/integrations"
+import {
+  CATEGORY_LEVEL_LABELS,
+  DAILY_FULL_GRACE_MINUTES,
+  MODE_HINTS,
+  MODE_LABELS,
+  PROTOCOL_LABELS,
+  addMinutesHHMM,
+  isHHMM,
+  liveRefusalTarget,
+} from "@/lib/integrations"
 import {
   connectionSettingsSchema,
   connectionToForm,
@@ -39,14 +48,19 @@ export function ConnectionSettingsForm({
   onSaved: (next: IntegrationConnection) => void
 }) {
   const [saving, setSaving] = useState(false)
-  // Set when the backend refused offers_mode=live (400); "Jonli" is then disabled with that reason.
-  const [offersLiveBlocked, setOffersLiveBlocked] = useState<string | null>(null)
+  // Set when the backend refused `live` for a mode (400: B5 / B6 not shipped yet);
+  // "Jonli" is then disabled for that mode with the server's reason.
+  const [liveBlocked, setLiveBlocked] = useState<{ catalog: string | null; offers: string | null }>({
+    catalog: null,
+    offers: null,
+  })
 
   const {
     control,
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<ConnectionSettingsValues>({
     resolver: zodResolver(connectionSettingsSchema),
@@ -54,6 +68,7 @@ export function ConnectionSettingsForm({
   })
 
   const offersMode = useWatch({ control, name: "offers_mode" })
+  const dailyFullAt = useWatch({ control, name: "daily_full_at" })
 
   const onSubmit = async (values: ConnectionSettingsValues) => {
     const patch = formToPatch(values, connection)
@@ -65,7 +80,13 @@ export function ConnectionSettingsForm({
     try {
       const res = await updateConnectionAction(connection._id, patch)
       if (!res.success) {
-        if (res.status === 400 && patch.offers_mode === "live") setOffersLiveBlocked(res.error)
+        const target = res.status === 400 ? liveRefusalTarget(patch, res.error) : null
+        if (target) {
+          setLiveBlocked((prev) => ({ ...prev, [target]: res.error }))
+          // Put that mode back to its saved value; the rest of the edit stays.
+          const field = target === "catalog" ? "catalog_mode" : "offers_mode"
+          setValue(field, connection[field], { shouldDirty: true })
+        }
         toast.error(res.error)
         return
       }
@@ -102,13 +123,14 @@ export function ConnectionSettingsForm({
               name="catalog_mode"
               label="Katalog (mahsulotlar)"
               error={errors.catalog_mode?.message}
+              liveBlocked={liveBlocked.catalog}
             />
             <ModeField
               control={control}
               name="offers_mode"
               label="Narx va qoldiq"
               error={errors.offers_mode?.message}
-              liveBlocked={offersLiveBlocked}
+              liveBlocked={liveBlocked.offers}
             />
           </div>
 
@@ -261,6 +283,55 @@ export function ConnectionSettingsForm({
               )}
             />
           </div>
+
+          {/* Schedule (rev 2 heartbeat window, rev 3 daily full) */}
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium">Jadval (Toshkent vaqti)</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="daily_full_at">Har kunlik to&apos;liq katalog vaqti</Label>
+                <Input
+                  id="daily_full_at"
+                  type="time"
+                  step={60}
+                  {...register("daily_full_at")}
+                  aria-invalid={!!errors.daily_full_at}
+                  className={cn(errors.daily_full_at && "border-destructive")}
+                />
+                <FieldError message={errors.daily_full_at?.message} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="heartbeat_from">Aloqa nazorati: boshlanishi</Label>
+                <Input
+                  id="heartbeat_from"
+                  type="time"
+                  step={60}
+                  {...register("heartbeat_from")}
+                  aria-invalid={!!errors.heartbeat_from}
+                  className={cn(errors.heartbeat_from && "border-destructive")}
+                />
+                <FieldError message={errors.heartbeat_from?.message} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="heartbeat_to">Aloqa nazorati: tugashi</Label>
+                <Input
+                  id="heartbeat_to"
+                  type="time"
+                  step={60}
+                  {...register("heartbeat_to")}
+                  aria-invalid={!!errors.heartbeat_to}
+                  className={cn(errors.heartbeat_to && "border-destructive")}
+                />
+                <FieldError message={errors.heartbeat_to?.message} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              1C har kuni shu vaqtda to&apos;liq katalogni yuboradi (qolgan vaqtda faqat o&apos;zgarishlar).
+              {isHHMM(dailyFullAt ?? "") &&
+                ` Soat ${addMinutesHHMM(dailyFullAt, DAILY_FULL_GRACE_MINUTES)} gacha kelmasa, ogohlantirish chiqadi.`}{" "}
+              Aloqa nazorati oralig&apos;ida 1C 30 daqiqa jim qolsa, aloqa uzilgan deb hisoblanadi.
+            </p>
+          </fieldset>
 
           {/* IP allow-list */}
           <Controller
