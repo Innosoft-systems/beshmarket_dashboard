@@ -99,6 +99,18 @@ export async function deleteMyProductAction(id: string) {
   })
 }
 
+/** 1C product: give locked fields back to 1C (B5 `POST /products/my/:id/sync/unlock`). */
+export async function unlockMyProductSyncFieldsAction(id: string, fields: string[]) {
+  return withToken(async (token) => {
+    const res = await apiRequest<{ sync?: { locked_fields?: string[] } | null }>(
+      `/products/my/${encodeURIComponent(id)}/sync/unlock`,
+      { method: "POST", body: { fields }, accessToken: token },
+    )
+    revalidatePath("/restaurant/menu")
+    return res.data
+  })
+}
+
 export async function createMyMenuCategoryAction(data: Record<string, unknown>) {
   return withToken(async (token) => {
     const res = await apiRequest<MenuCategory>("/menu-categories/my/menu", { method: "POST", body: data, accessToken: token })

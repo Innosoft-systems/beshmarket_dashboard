@@ -1,3 +1,5 @@
+import type { ProductSyncInfo } from "@/lib/product-sync"
+
 export interface Product {
   _id: string
   restaurant_id: string | { _id: string; name: string }
@@ -15,6 +17,13 @@ export interface Product {
   weight?: string
   is_active: boolean
   is_available: boolean
+  /** 1C fields (B5). Present on admin / panel reads, never on public ones. */
+  external_id?: string
+  sku?: string
+  unit?: string
+  /** null = stock not tracked. */
+  stock?: number | null
+  sync?: ProductSyncInfo | null
   avg_rating: number
   review_count: number
   order_count: number

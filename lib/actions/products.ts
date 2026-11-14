@@ -154,3 +154,19 @@ export async function loadProductCountsAction(
     return { success: false as const, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
   }
 }
+
+/** 1C product: give locked fields back to 1C (admin, B5 `POST /products/:id/sync/unlock`). */
+export async function unlockProductSyncFieldsAction(id: string, fields: string[]) {
+  const token = await getAccessToken()
+  if (!token) return { success: false as const, error: "Avtorizatsiya" }
+  try {
+    const res = await apiRequest<{ sync?: { locked_fields?: string[] } | null }>(
+      `/products/${encodeURIComponent(id)}/sync/unlock`,
+      { method: "POST", body: { fields }, accessToken: token },
+    )
+    revalidatePath("/restaurants")
+    return { success: true as const, data: res.data }
+  } catch (e: unknown) {
+    return { success: false as const, error: e instanceof ApiError ? e.message : "Xatolik yuz berdi" }
+  }
+}
