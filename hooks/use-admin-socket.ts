@@ -33,6 +33,17 @@ const TYPE_ICONS: Record<string, string> = {
 let globalSocket: ReturnType<typeof io> | null = null
 let globalToken: string | null = null
 
+// Platform pause broadcasts (`platform.maintenance`, payload = public `maintenance` object).
+// Listeners live outside the socket so they survive reconnects and token refreshes.
+type PlatformMaintenanceListener = (payload: unknown) => void
+const platformMaintenanceListeners = new Set<PlatformMaintenanceListener>()
+
+/** Subscribe to platform pause changes on the shared admin socket. Returns an unsubscribe function. */
+export function subscribePlatformMaintenance(listener: PlatformMaintenanceListener): () => void {
+  platformMaintenanceListeners.add(listener)
+  return () => { platformMaintenanceListeners.delete(listener) }
+}
+
 export function useAdminSocket(
   accessToken: string | null,
   onNotification: (n: AdminNotificationPayload) => void,
@@ -51,6 +62,11 @@ export function useAdminSocket(
 
     function attachListeners(socket: ReturnType<typeof io>) {
       socket.off("admin.notification")
+
+      socket.off("platform.maintenance")
+      socket.on("platform.maintenance", (payload: unknown) => {
+        platformMaintenanceListeners.forEach((listener) => listener(payload))
+      })
 
       // The server drops the socket when the 15m access token expires, and
       // socket.io never auto-reconnects after a server-initiated disconnect.
