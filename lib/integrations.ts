@@ -3,11 +3,19 @@
  * connection page. No React, no fetch (tested in lib/integrations.test.ts).
  */
 import type {
+  CategoriesData,
   CategoryLevel,
+  CategoryMap,
+  CategoryMapBody,
+  DiffOp,
   HiddenBySyncReason,
+  IntegrationConnection,
   IntegrationMode,
   IntegrationProtocol,
   IntegrationRunSummary,
+  RunDiffItem,
+  RunItemError,
+  RunKind,
 } from "@/types/integration"
 
 export const PROTOCOL_LABELS: Record<IntegrationProtocol, string> = {
@@ -96,4 +104,219 @@ export function hiddenReasonRows(
 export function runProgress(run: IntegrationRunSummary | null | undefined): string {
   if (!run) return "—"
   return `${run.batches_done?.length ?? 0}/${run.batch_total ?? 0}`
+}
+
+// ---------------------------------------------------------------------------
+// Run log (A2)
+
+export const RUN_KIND_LABELS: Record<RunKind, string> = {
+  catalog: "Katalog",
+  offers: "Narx-qoldiq",
+}
+
+/**
+ * Rev 2 (T30): delta requests are aggregated into hourly bucket runs. Older
+ * or partial docs may lack `is_bucket`, so the bucket sync_id prefix counts too.
+ */
+export function isBucketRun(run: Pick<IntegrationRunSummary, "is_bucket" | "sync_id">): boolean {
+  return run.is_bucket === true || (typeof run.sync_id === "string" && run.sync_id.startsWith("delta:"))
+}
+
+function tashkentHour(ms: number): number {
+  const h = new Intl.DateTimeFormat("en-GB", { timeZone: TASHKENT, hour: "2-digit", hourCycle: "h23" }).format(new Date(ms))
+  return Number(h)
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0")
+
+/** When a run started: first batch, else creation. */
+export function runStartedAt(run: IntegrationRunSummary): string | null {
+  return run.first_batch_at ?? run.createdAt ?? null
+}
+
+/** "O'zgarishlar, 14:00–15:00" for an hourly bucket; "To'liq" for a full run. */
+export function runLabel(run: IntegrationRunSummary): string {
+  if (!isBucketRun(run)) return "To'liq"
+  const started = Date.parse(runStartedAt(run) ?? "")
+  if (Number.isNaN(started)) return "O'zgarishlar"
+  const h = tashkentHour(started)
+  return `O'zgarishlar, ${pad2(h)}:00–${pad2((h + 1) % 24)}:00`
+}
+
+/** Badge variant for a run status. */
+export function runStatusVariant(status: IntegrationRunSummary["status"]): "destructive" | "secondary" | "outline" {
+  if (status === "failed" || status === "needs_review") return "destructive"
+  if (status === "receiving") return "outline"
+  return "secondary"
+}
+
+/** Batches "n/total" only make sense for a full run; buckets have no batch order. */
+export function runBatches(run: IntegrationRunSummary): string | null {
+  return isBucketRun(run) ? null : runProgress(run)
+}
+
+/** "45 son", "2 daq 5 son", "1 soat 3 daq"; null when not measurable. */
+export function runDuration(run: IntegrationRunSummary): string | null {
+  const from = Date.parse(run.first_batch_at ?? "")
+  const to = Date.parse(run.finished_at ?? run.last_batch_at ?? "")
+  if (Number.isNaN(from) || Number.isNaN(to) || to < from) return null
+  const s = Math.round((to - from) / 1000)
+  if (s < 60) return `${s} son`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m} daq ${s % 60} son`
+  return `${Math.floor(m / 60)} soat ${m % 60} daq`
+}
+
+type CounterKey = keyof NonNullable<IntegrationRunSummary["counters"]>
+
+const COUNTER_LABELS: [CounterKey, string][] = [
+  ["created", "yangi"],
+  ["updated", "yangilandi"],
+  ["deactivated", "yashirildi"],
+  ["reactivated", "qaytdi"],
+  ["rejected", "xato"],
+]
+
+/** Non-zero headline counters, e.g. "12 yangi · 3 xato"; "o'zgarish yo'q" when all zero. */
+export function runCountersSummary(run: IntegrationRunSummary): string {
+  const c = run.counters ?? {}
+  const parts = COUNTER_LABELS.filter(([k]) => (c[k] ?? 0) > 0).map(([k, label]) => `${c[k]} ${label}`)
+  return parts.length ? parts.join(" · ") : "o'zgarish yo'q"
+}
+
+export const DIFF_OP_LABELS: Record<DiffOp, string> = {
+  create: "Yangi",
+  update: "O'zgaradi",
+  deactivate: "Yashiriladi",
+  reactivate: "Qaytadi",
+  link: "Bog'lanadi",
+}
+
+const DIFF_ORDER: DiffOp[] = ["create", "update", "deactivate", "reactivate", "link"]
+
+/** diff_sample grouped by op, in a fixed order, empty groups dropped. */
+export function groupDiff(
+  items: RunDiffItem[] | null | undefined,
+): { op: DiffOp; label: string; items: RunDiffItem[] }[] {
+  const list = items ?? []
+  return DIFF_ORDER.map((op) => ({ op, label: DIFF_OP_LABELS[op], items: list.filter((i) => i.op === op) })).filter(
+    (g) => g.items.length > 0,
+  )
+}
+
+const CHANGE_FIELD_LABELS: Record<string, string> = {
+  name: "Nomi",
+  name_uz: "Nomi (uz)",
+  name_ru: "Nomi (ru)",
+  name_en: "Nomi (en)",
+  price: "Narx",
+  discount_price: "Chegirma narxi",
+  is_active: "Faol",
+  is_available: "Mavjud",
+  stock: "Qoldiq",
+  menu_category_id: "Kategoriya",
+  images: "Rasmlar",
+  description_uz: "Tavsif (uz)",
+  description_ru: "Tavsif (ru)",
+}
+
+export function changeFieldLabel(field: string): string {
+  return CHANGE_FIELD_LABELS[field] ?? field
+}
+
+/** Display a from/to value: numbers grouped, booleans in Uzbek, arrays by length. */
+export function formatChangeValue(v: unknown): string {
+  if (v === null || v === undefined || v === "") return "—"
+  if (typeof v === "boolean") return v ? "ha" : "yo'q"
+  if (typeof v === "number") return v.toLocaleString("ru-RU")
+  if (Array.isArray(v)) return `${v.length} ta`
+  if (typeof v === "object") return JSON.stringify(v)
+  return String(v)
+}
+
+/** Name and price first (the plan's "from → to for name and price"), then the rest alphabetically. */
+export function orderedChanges(changes: RunDiffItem["changes"]): [string, { from: unknown; to: unknown }][] {
+  const rank = (k: string) => (k.startsWith("name") ? 0 : k === "price" ? 1 : k === "discount_price" ? 2 : 3)
+  return Object.entries(changes ?? {}).sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+}
+
+/** Error codes in a run with counts, most frequent first. */
+export function errorCodeCounts(errors: RunItemError[] | null | undefined): { code: string; count: number }[] {
+  const counts = new Map<string, number>()
+  for (const e of errors ?? []) counts.set(e.code, (counts.get(e.code) ?? 0) + 1)
+  return [...counts.entries()]
+    .map(([code, count]) => ({ code, count }))
+    .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code))
+}
+
+export const ERROR_CODE_LABELS: Record<string, string> = {
+  MISSING_FIELD: "Majburiy maydon yo'q",
+  INVALID_FIELD: "Noto'g'ri qiymat",
+  DUPLICATE_IN_BATCH: "Paketda takror",
+  UNKNOWN_PRODUCT: "Noma'lum mahsulot",
+  CATEGORY_IGNORED: "Kategoriya import qilinmaydi",
+  IMAGE_TOO_LARGE: "Rasm juda katta",
+  IMAGE_BAD_TYPE: "Rasm turi noto'g'ri",
+  IMAGE_MISSING_BODY: "Rasm fayli yo'q",
+}
+
+// ---------------------------------------------------------------------------
+// Connection health (A1 rev 2)
+
+/** T33(b): reconciliation overdue after 8 days. */
+export const FULL_SYNC_OVERDUE_DAYS = 8
+
+/** True when catalog is live and the last full run is older than 8 days. Unknown (null) is not "overdue" here. */
+export function isFullSyncOverdue(
+  c: Pick<IntegrationConnection, "catalog_mode" | "last_full_catalog_success_at">,
+  now: number = Date.now(),
+): boolean {
+  if (c.catalog_mode !== "live" || !c.last_full_catalog_success_at) return false
+  const t = Date.parse(c.last_full_catalog_success_at)
+  return !Number.isNaN(t) && now - t > FULL_SYNC_OVERDUE_DAYS * 24 * 60 * 60_000
+}
+
+// ---------------------------------------------------------------------------
+// Category mapping (A3)
+
+export const AUTO_CHOICE = "__auto__"
+export const IGNORE_CHOICE = "__ignore__"
+
+/** "Аксессуары › Чехлы"; the group id when the path is empty. */
+export function formatGroupPath(map: Pick<CategoryMap, "path" | "group_id">): string {
+  return map.path?.length ? map.path.join(" › ") : map.group_id
+}
+
+/** Select value of a row: a menu category id, AUTO_CHOICE or IGNORE_CHOICE. */
+export function categoryChoice(map: Pick<CategoryMap, "ignored" | "menu_category_id">): string {
+  if (map.ignored) return IGNORE_CHOICE
+  return map.menu_category_id ?? AUTO_CHOICE
+}
+
+/** PUT body for a select value. */
+export function choiceToBody(choice: string): CategoryMapBody {
+  if (choice === IGNORE_CHOICE) return { menu_category_id: null, ignored: true }
+  if (choice === AUTO_CHOICE) return { menu_category_id: null, ignored: false }
+  return { menu_category_id: choice, ignored: false }
+}
+
+/** Apply a choice locally (optimistic update); `auto` stays true only for the auto rule. */
+export function applyChoice(map: CategoryMap, choice: string): CategoryMap {
+  return { ...map, ...choiceToBody(choice), auto: choice === AUTO_CHOICE }
+}
+
+/**
+ * GET …/categories returns the maps plus the venue's menu categories (§3.3).
+ * Accepts `{ maps, menu_categories }` (also `category_maps` / `categories`)
+ * or a bare array of maps, and always returns both lists.
+ */
+export function normaliseCategoriesData(raw: unknown): CategoriesData {
+  if (Array.isArray(raw)) return { maps: raw as CategoryMap[], menu_categories: [] }
+  const r = (raw ?? {}) as Record<string, unknown>
+  const maps = r.maps ?? r.category_maps ?? r.items ?? []
+  const menu = r.menu_categories ?? r.categories ?? []
+  return {
+    maps: Array.isArray(maps) ? (maps as CategoryMap[]) : [],
+    menu_categories: Array.isArray(menu) ? (menu as CategoriesData["menu_categories"]) : [],
+  }
 }

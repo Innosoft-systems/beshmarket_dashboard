@@ -52,6 +52,16 @@ export interface IntegrationConnection {
   last_catalog_success_at?: string | null
   last_offers_success_at?: string | null
   last_error?: { at: string; message: string } | null
+  /** Rev 2 (T31/T33): last completed FULL catalog run (weekly reconciliation). */
+  last_full_catalog_success_at?: string | null
+  /** Rev 2 (T31): set by "request full sync", cleared by a completed full run. */
+  full_sync_requested_at?: string | null
+  /** Rev 2 (T33a): Tashkent hours in which silence counts as a broken link (B7). */
+  heartbeat_window?: { from: string; to: string }
+  /** Rev 2 (T33a): set by B7 while the link is considered down. */
+  link_down_since?: string | null
+  /** Optional: the push URL, if the backend includes it in the connection view. */
+  endpoint_url?: string
   audit?: IntegrationAuditEntry[]
   createdAt?: string
   updatedAt?: string
@@ -69,13 +79,22 @@ export interface CreateConnectionResult {
   credentials: IntegrationCredentials
 }
 
-/** Run summary as listed by the status endpoint (no errors / diff_sample). */
+export type RunKind = "catalog" | "offers"
+export type RunStatus = "receiving" | "complete" | "needs_review" | "abandoned" | "superseded" | "failed"
+/** Rev 2 (T29): catalog full|delta; offers delta|snapshot. */
+export type RunMode = "full" | "delta" | "snapshot"
+
+/** Run as listed (runs list, status `last_run`): no errors / diff_sample. */
 export interface IntegrationRunSummary {
   _id: string
-  kind: "catalog" | "offers"
+  kind: RunKind
   sync_id: string
+  /** Rev 2. Older docs may lack it. */
+  mode?: RunMode
+  /** Rev 2 (T30): hourly aggregate of delta requests. */
+  is_bucket?: boolean
   dry_run: boolean
-  status: "receiving" | "complete" | "needs_review" | "abandoned" | "superseded" | "failed"
+  status: RunStatus
   batch_total: number
   batches_done: number[]
   first_batch_at?: string | null
@@ -94,6 +113,77 @@ export interface IntegrationRunSummary {
     | "images_failed",
     number
   >>
+  createdAt?: string
+}
+
+export interface RunItemError {
+  external_id: string | null
+  code: string
+  field?: string
+  message: string
+  batch_no?: number
+}
+
+export type DiffOp = "create" | "update" | "deactivate" | "reactivate" | "link"
+
+export interface RunDiffItem {
+  op: DiffOp
+  external_id: string
+  product_id?: string
+  name: string
+  changes?: Record<string, { from: unknown; to: unknown }>
+}
+
+/** GET /runs/:runId */
+export interface IntegrationRun extends IntegrationRunSummary {
+  source_ip?: string
+  errors?: RunItemError[]
+  diff_sample?: RunDiffItem[]
+}
+
+export interface RunsPage {
+  data: IntegrationRunSummary[]
+  pagination: { page: number; limit?: number; total: number; totalPages: number }
+}
+
+export interface RunsQuery {
+  kind?: RunKind
+  status?: RunStatus
+  /** Rev 2 A2 filter "To'liq / O'zgarishlar". */
+  mode?: "full" | "delta"
+  page?: number
+  limit?: number
+}
+
+/** integration_category_maps row (§3.1). */
+export interface CategoryMap {
+  _id?: string
+  group_id: string
+  path: string[]
+  menu_category_id: string | null
+  ignored: boolean
+  auto: boolean
+  product_count: number
+  last_seen_at?: string | null
+}
+
+/** The venue's menu categories as GET …/categories lists them. */
+export interface CategoryMenuOption {
+  _id: string
+  name_uz: string
+  is_active: boolean
+  source?: "1c" | null
+}
+
+export interface CategoriesData {
+  maps: CategoryMap[]
+  menu_categories: CategoryMenuOption[]
+}
+
+/** PUT …/categories/:groupId */
+export interface CategoryMapBody {
+  menu_category_id: string | null
+  ignored: boolean
 }
 
 export interface IntegrationStatus {

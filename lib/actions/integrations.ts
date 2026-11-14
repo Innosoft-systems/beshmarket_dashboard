@@ -2,13 +2,20 @@
 
 import { getAccessToken } from "@/lib/auth/session"
 import { apiRequest, ApiError } from "@/lib/api/client"
+import { normaliseCategoriesData } from "@/lib/integrations"
 import type {
+  CategoriesData,
+  CategoryMap,
+  CategoryMapBody,
   ConnectionPatch,
   CreateConnectionResult,
   IntegrationConnection,
   IntegrationCredentials,
   IntegrationProtocol,
+  IntegrationRun,
   IntegrationStatus,
+  RunsPage,
+  RunsQuery,
 } from "@/types/integration"
 
 /**
@@ -24,7 +31,7 @@ type Result<T> = { success: true; data: T } | { success: false; error: string; s
 
 async function call<T>(
   endpoint: string,
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "PUT",
   body?: unknown,
 ): Promise<Result<T>> {
   const token = await getAccessToken()
@@ -67,4 +74,43 @@ export async function rotateSecretAction(connectionId: string) {
 
 export async function getConnectionStatusAction(connectionId: string) {
   return call<IntegrationStatus>(`${BASE}/connections/${encodeURIComponent(connectionId)}/status`, "GET")
+}
+
+/** Rev 2 (T31): ask the store's 1C for a full upload on its next request. Idempotent. */
+export async function requestFullSyncAction(connectionId: string) {
+  return call<IntegrationConnection>(
+    `${BASE}/connections/${encodeURIComponent(connectionId)}/request-full-sync`,
+    "POST",
+  )
+}
+
+// ─── Run log (A2) ───────────────────────────────────────────────────────────
+
+export async function listRunsAction(connectionId: string, query: RunsQuery = {}) {
+  const params = new URLSearchParams()
+  if (query.kind) params.set("kind", query.kind)
+  if (query.status) params.set("status", query.status)
+  if (query.mode) params.set("mode", query.mode)
+  params.set("page", String(query.page ?? 1))
+  params.set("limit", String(query.limit ?? 20))
+  return call<RunsPage>(`${BASE}/connections/${encodeURIComponent(connectionId)}/runs?${params}`, "GET")
+}
+
+export async function getRunAction(runId: string) {
+  return call<IntegrationRun>(`${BASE}/runs/${encodeURIComponent(runId)}`, "GET")
+}
+
+// ─── Category mapping (A3) ──────────────────────────────────────────────────
+
+export async function getCategoryMapsAction(connectionId: string): Promise<Result<CategoriesData>> {
+  const res = await call<unknown>(`${BASE}/connections/${encodeURIComponent(connectionId)}/categories`, "GET")
+  return res.success ? { success: true, data: normaliseCategoriesData(res.data) } : res
+}
+
+export async function putCategoryMapAction(connectionId: string, groupId: string, body: CategoryMapBody) {
+  return call<CategoryMap>(
+    `${BASE}/connections/${encodeURIComponent(connectionId)}/categories/${encodeURIComponent(groupId)}`,
+    "PUT",
+    body,
+  )
 }
