@@ -4,7 +4,10 @@ import { toast } from "sonner"
 import {
   createConnectionAction,
   getConnectionAction,
+  getCategoryMapsAction,
   getConnectionStatusAction,
+  listRunsAction,
+  requestFullSyncAction,
   rotateSecretAction,
   updateConnectionAction,
 } from "@/lib/actions/integrations"
@@ -21,7 +24,13 @@ jest.mock("@/lib/actions/integrations", () => ({
   updateConnectionAction: jest.fn(),
   rotateSecretAction: jest.fn(),
   getConnectionStatusAction: jest.fn(),
+  requestFullSyncAction: jest.fn(),
+  listRunsAction: jest.fn(),
+  getRunAction: jest.fn(),
+  getCategoryMapsAction: jest.fn(),
+  putCategoryMapAction: jest.fn(),
 }))
+jest.mock("@/lib/actions/products", () => ({ updateMenuCategoryAction: jest.fn() }))
 
 const mocked = {
   get: getConnectionAction as jest.MockedFunction<typeof getConnectionAction>,
@@ -29,6 +38,9 @@ const mocked = {
   update: updateConnectionAction as jest.MockedFunction<typeof updateConnectionAction>,
   rotate: rotateSecretAction as jest.MockedFunction<typeof rotateSecretAction>,
   status: getConnectionStatusAction as jest.MockedFunction<typeof getConnectionStatusAction>,
+  fullSync: requestFullSyncAction as jest.MockedFunction<typeof requestFullSyncAction>,
+  runs: listRunsAction as jest.MockedFunction<typeof listRunsAction>,
+  categories: getCategoryMapsAction as jest.MockedFunction<typeof getCategoryMapsAction>,
 }
 
 const SECRET = "Xy9SecretSecretSecretSecretSecretSecret12"
@@ -141,5 +153,72 @@ describe("ConnectionCard: connected", () => {
     expect(screen.getByText("Tarozi mahsuloti: 8")).toBeInTheDocument()
     expect(screen.getByText("Bad batch")).toBeInTheDocument()
     expect(screen.getByText("20")).toBeInTheDocument() // hidden = 120 - 100
+  })
+})
+
+describe("ConnectionCard: rev 2", () => {
+  it("requests a full sync and then shows it is waiting for 1C", async () => {
+    const user = userEvent.setup()
+    mocked.fullSync.mockResolvedValue({
+      success: true,
+      data: makeConnection({ full_sync_requested_at: "2026-11-14T09:00:00.000Z" }),
+    })
+    render(<ConnectionCard restaurantId="rest1" initialConnection={makeConnection()} initialStatus={makeStatus()} />)
+
+    await user.click(screen.getByRole("button", { name: /To'liq qayta yuborishni so'rash/ }))
+
+    expect(mocked.fullSync).toHaveBeenCalledWith("conn1")
+    expect(await screen.findByText("So'raldi, 1C kutilmoqda")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /To'liq qayta yuborishni so'rash/ })).not.toBeInTheDocument()
+  })
+
+  it("shows the endpoint only when the connection carries it", () => {
+    const { unmount } = render(
+      <ConnectionCard restaurantId="rest1" initialConnection={makeConnection()} initialStatus={makeStatus()} />,
+    )
+    expect(screen.queryByText(ENDPOINT)).not.toBeInTheDocument()
+    unmount()
+    render(
+      <ConnectionCard
+        restaurantId="rest1"
+        initialConnection={makeConnection({ endpoint_url: ENDPOINT })}
+        initialStatus={makeStatus()}
+      />,
+    )
+    expect(screen.getByText(ENDPOINT)).toBeInTheDocument()
+  })
+
+  it("link down and overdue reconciliation are flagged in the status panel", () => {
+    const conn = makeConnection({
+      catalog_mode: "live",
+      link_down_since: "2026-11-14T08:00:00.000Z",
+      last_full_catalog_success_at: "2026-11-01T08:00:00.000Z",
+    })
+    render(<ConnectionCard restaurantId="rest1" initialConnection={conn} initialStatus={makeStatus({ connection: conn })} />)
+    expect(screen.getByText("Uzilgan")).toBeInTheDocument()
+    expect(screen.getByText("kechikdi")).toBeInTheDocument()
+  })
+
+  it("tabs load categories / runs lazily and keep unsaved settings", async () => {
+    const user = userEvent.setup()
+    mocked.categories.mockResolvedValue({ success: true, data: { maps: [], menu_categories: [] } })
+    mocked.runs.mockResolvedValue({ success: true, data: { data: [], pagination: { page: 1, total: 0, totalPages: 1 } } })
+    render(<ConnectionCard restaurantId="rest1" initialConnection={makeConnection()} initialStatus={makeStatus()} />)
+    expect(mocked.categories).not.toHaveBeenCalled()
+    expect(mocked.runs).not.toHaveBeenCalled()
+
+    const buffer = screen.getByLabelText("Qoldiq zaxirasi (dona)")
+    await user.clear(buffer)
+    await user.type(buffer, "9")
+
+    await user.click(screen.getByRole("tab", { name: "Kategoriyalar" }))
+    expect(await screen.findByText("1C hali guruh yubormagan.")).toBeInTheDocument()
+    expect(mocked.categories).toHaveBeenCalledWith("conn1")
+
+    await user.click(screen.getByRole("tab", { name: "Jurnal" }))
+    expect(await screen.findByText(/Hali yozuv yo'q/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("tab", { name: "Sozlamalar" }))
+    expect(screen.getByLabelText("Qoldiq zaxirasi (dona)")).toHaveValue("9")
   })
 })

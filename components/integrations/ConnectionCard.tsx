@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
-import { KeyRound, Link2, Loader2, Plug } from "lucide-react"
+import { History, KeyRound, Link2, Loader2, Plug } from "lucide-react"
 
 import {
   createConnectionAction,
   getConnectionAction,
   getConnectionStatusAction,
+  requestFullSyncAction,
   rotateSecretAction,
   updateConnectionAction,
 } from "@/lib/actions/integrations"
@@ -26,8 +27,11 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { CredentialsDialog } from "./CredentialsDialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CategoryMappingTable } from "./CategoryMappingTable"
+import { CopyField, CredentialsDialog } from "./CredentialsDialog"
 import { ConnectionSettingsForm } from "./ConnectionSettingsForm"
+import { RunsTable } from "./RunsTable"
 import { StatusPanel } from "./StatusPanel"
 
 /**
@@ -94,6 +98,18 @@ export function ConnectionCard({
       setCredentials(res.data)
       setConnection({ ...connection, login: res.data.login, secret_rotated_at: new Date().toISOString() })
       toast.success("Yangi parol yaratildi, eskisi endi ishlamaydi")
+    })
+
+  const requestFullSync = () =>
+    startBusy(async () => {
+      if (!connection) return
+      const res = await requestFullSyncAction(connection._id)
+      if (!res.success) {
+        toast.error(res.error)
+        return
+      }
+      setConnection(res.data)
+      toast.success("So'raldi: 1C keyingi so'rovida to'liq katalogni yuboradi")
     })
 
   const setEnabled = (enabled: boolean) =>
@@ -177,18 +193,47 @@ export function ConnectionCard({
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfirmRotate(true)} disabled={busy}>
               <KeyRound className="h-4 w-4" /> Parolni almashtirish
             </Button>
+            {connection.full_sync_requested_at ? (
+              <Badge variant="outline" className="gap-1" title={formatTashkentDateTime(connection.full_sync_requested_at)}>
+                <History className="h-3 w-3" /> So&apos;raldi, 1C kutilmoqda
+              </Badge>
+            ) : (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={requestFullSync} disabled={busy}>
+                <History className="h-4 w-4" /> To&apos;liq qayta yuborishni so&apos;rash
+              </Button>
+            )}
           </div>
         </CardHeader>
+        {connection.endpoint_url && (
+          <CardContent className="max-w-xl">
+            <CopyField label="Manzil (endpoint)" value={connection.endpoint_url} />
+          </CardContent>
+        )}
       </Card>
 
-      <StatusPanel
-        connection={connection}
-        status={status}
-        loading={statusLoading}
-        onRefresh={() => loadStatus(connection._id)}
-      />
-
-      <ConnectionSettingsForm connection={connection} onSaved={setConnection} />
+      <Tabs defaultValue="settings" className="space-y-4">
+        <TabsList className="flex w-full overflow-x-auto sm:inline-flex sm:w-auto">
+          <TabsTrigger value="settings">Sozlamalar</TabsTrigger>
+          <TabsTrigger value="categories">Kategoriyalar</TabsTrigger>
+          <TabsTrigger value="runs">Jurnal</TabsTrigger>
+        </TabsList>
+        {/* Kept mounted so unsaved settings survive a look at the other tabs. */}
+        <TabsContent value="settings" keepMounted className="space-y-4">
+          <StatusPanel
+            connection={connection}
+            status={status}
+            loading={statusLoading}
+            onRefresh={() => loadStatus(connection._id)}
+          />
+          <ConnectionSettingsForm connection={connection} onSaved={setConnection} />
+        </TabsContent>
+        <TabsContent value="categories">
+          <CategoryMappingTable connectionId={connection._id} />
+        </TabsContent>
+        <TabsContent value="runs">
+          <RunsTable connectionId={connection._id} />
+        </TabsContent>
+      </Tabs>
 
       <ConfirmDialog
         open={confirmRotate}

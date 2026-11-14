@@ -5,10 +5,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
+  FULL_SYNC_OVERDUE_DAYS,
   RUN_STATUS_LABELS,
   formatAgo,
   formatTashkentDateTime,
   hiddenReasonRows,
+  isFullSyncOverdue,
   runProgress,
 } from "@/lib/integrations"
 import type { IntegrationConnection, IntegrationRunSummary, IntegrationStatus } from "@/types/integration"
@@ -48,7 +50,30 @@ export function StatusPanel({
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Fact label="Oxirgi so'rov" iso={c.last_request_at} empty="1C hali bog'lanmagan" />
+          <Fact
+            label="Aloqa (oxirgi so'rov)"
+            iso={c.last_request_at}
+            empty="1C hali bog'lanmagan"
+            badge={
+              c.link_down_since ? (
+                <Badge variant="destructive" title={`${formatTashkentDateTime(c.link_down_since)} dan beri`}>
+                  Uzilgan
+                </Badge>
+              ) : null
+            }
+          />
+          <Fact
+            label="Oxirgi to'liq tekshiruv"
+            iso={c.last_full_catalog_success_at}
+            empty="Hali bo'lmagan"
+            badge={
+              isFullSyncOverdue(c) ? (
+                <Badge variant="destructive" title={`${FULL_SYNC_OVERDUE_DAYS} kundan oshdi`}>
+                  kechikdi
+                </Badge>
+              ) : null
+            }
+          />
           <Fact label="Oxirgi katalog (muvaffaqiyatli)" iso={c.last_catalog_success_at} />
           <Fact label="Oxirgi narx-qoldiq (muvaffaqiyatli)" iso={c.last_offers_success_at} />
         </dl>
@@ -100,11 +125,24 @@ export function StatusPanel({
   )
 }
 
-function Fact({ label, iso, empty = "—" }: { label: string; iso?: string | null; empty?: string }) {
+function Fact({
+  label,
+  iso,
+  empty = "—",
+  badge,
+}: {
+  label: string
+  iso?: string | null
+  empty?: string
+  badge?: React.ReactNode
+}) {
   const ago = formatAgo(iso)
   return (
     <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {label}
+        {badge}
+      </dt>
       <dd className="font-medium">
         {iso ? (
           <>

@@ -72,7 +72,8 @@ export function CredentialsDialog({
   )
 }
 
-function CopyField({ label, value }: { label: string; value: string }) {
+/** A value with a copy button (also used for the endpoint on the connection card). */
+export function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false)
 
   const copy = async () => {
