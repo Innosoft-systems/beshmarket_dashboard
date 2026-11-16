@@ -122,7 +122,7 @@ export function CategoryMappingTable({ connectionId }: { connectionId: string })
     }
     toast.success(
       isActive
-        ? `"${cat.name_uz}" faollashtirildi. Unga tegishli, shu sababli yashirilgan 1C mahsulotlari endi ko'rinadi.`
+        ? `"${cat.name_uz}" faollashtirildi. Unga tegishli, shu sababli yashirilgan 1C mahsulotlari endi ko'rinadi (qo'lda yashirilganlari yashirin qoladi).`
         : `"${cat.name_uz}" yashirildi`,
     )
   }
@@ -225,7 +225,7 @@ export function CategoryMappingTable({ connectionId }: { connectionId: string })
           <CardTitle className="text-base">1C yaratgan kategoriyalar</CardTitle>
           <CardDescription>
             Avtomatik yaratilgan kategoriyalar ko&apos;rib chiqilmaguncha yashirin turadi, ularning mahsulotlari ham
-            (&quot;Kategoriya hali faollashtirilmagan&quot;). Tekshirib, faollashtiring: mahsulotlar ham ko&apos;rinadi.
+            (&quot;Kategoriya hali faollashtirilmagan&quot;). Tekshirib, faollashtiring: mahsulotlar ham ko&apos;rinadi (qo&apos;lda yashirilganlaridan tashqari).
           </CardDescription>
         </CardHeader>
         <CardContent>
