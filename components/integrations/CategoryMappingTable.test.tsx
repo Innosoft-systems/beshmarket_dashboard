@@ -128,6 +128,8 @@ describe("CategoryMappingTable", () => {
     await user.click(toggle)
     expect(patchCategory).toHaveBeenCalledWith("m-auto", { is_active: true })
     await waitFor(() => expect(toggle).toBeChecked())
+    // Its products hidden as category_inactive will appear: say so.
+    expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/faollashtirildi\. .*yashirilgan 1C mahsulotlari endi ko'rinadi/))
 
     await user.click(toggle)
     expect(patchCategory).toHaveBeenLastCalledWith("m-auto", { is_active: false })

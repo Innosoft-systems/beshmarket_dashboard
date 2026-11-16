@@ -49,6 +49,16 @@ interface Props {
   syncFlags?: SyncFlags
 }
 
+/** Text fields a panel edit locks for 1C; sent only when actually edited. */
+const TEXT_LOCKABLE_FIELDS = [
+  "name_uz",
+  "name_ru",
+  "name_en",
+  "description_uz",
+  "description_ru",
+  "description_en",
+] as const
+
 function initOptionTypes(product?: any): LocalOptionType[] {
   if (!product?.option_types?.length) return []
   return product.option_types.map((ot: any) => ({
@@ -223,7 +233,9 @@ export function ProductFormDialog({
       if (!variants.length) return toast.error("Kamida 1 ta variant kerak")
       const missingPrice = variants.some(v => !v.price || isNaN(+v.price))
       if (missingPrice) return toast.error("Barcha variantlarda narx kiritilishi shart")
-    } else {
+    } else if (!priceLocked) {
+      // While 1C manages the price it is read-only and not sent, so it can't be required
+      // (a product hidden as "Narx yo'q" must still be editable).
       if (!form.price) return toast.error("Narx majburiy")
     }
 
@@ -257,6 +269,20 @@ export function ProductFormDialog({
       slug: synced ? undefined : slug(form.name_uz) || slug(form.name_ru),
       price: hasVariants ? undefined : +form.price,
       discount_price: (!hasVariants && form.discount_price) ? +form.discount_price : undefined,
+    }
+
+    if (synced) {
+      // RV-2b R2-2: price is read-only while 1C manages it, so never send it
+      // (a product without a price would otherwise send 0 and be refused).
+      if (priceLocked) {
+        delete body.price
+        delete body.discount_price
+      }
+      // RV-2b R2-1: send name / description only when edited. An untouched
+      // missing description would go out as "" and lock the field for good.
+      for (const field of TEXT_LOCKABLE_FIELDS) {
+        if ((form as Record<string, unknown>)[field] === (product?.[field] ?? "")) delete body[field]
+      }
     }
 
     if (hasVariants) {

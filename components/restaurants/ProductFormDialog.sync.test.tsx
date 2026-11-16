@@ -156,7 +156,51 @@ describe("ProductFormDialog: 1C products (A4)", () => {
     // undefined is dropped when the body is serialised, so no slug reaches the API.
     expect(body.slug).toBeUndefined()
     expect(JSON.parse(JSON.stringify(body))).not.toHaveProperty("slug")
-    expect(body.price).toBe(120000) // unchanged value; the backend drops it silently
+  })
+
+  it("never sends price fields while 1C manages prices (RV-2b R2-2)", async () => {
+    const user = userEvent.setup()
+    updateAdmin.mockResolvedValue({ success: true })
+    // A product hidden as no_price has no price: the form must not send 0.
+    renderForm({ ...SYNCED, price: undefined, sync: { ...SYNCED.sync, hidden_by_sync: "no_price" } })
+    await user.click(screen.getByRole("button", { name: "Saqlash" }))
+    const body = updateAdmin.mock.calls[0][1]
+    expect(body).not.toHaveProperty("price")
+    expect(body).not.toHaveProperty("discount_price")
+  })
+
+  it("price is still sent for a 1C product when 1C does not manage prices", async () => {
+    const user = userEvent.setup()
+    updateAdmin.mockResolvedValue({ success: true })
+    renderForm(SYNCED, "admin", NO_SYNC_FLAGS)
+    await user.click(screen.getByRole("button", { name: "Saqlash" }))
+    expect(updateAdmin.mock.calls[0][1].price).toBe(120000)
+  })
+
+  it("sends names / descriptions only when edited (RV-2b R2-1)", async () => {
+    const user = userEvent.setup()
+    updateAdmin.mockResolvedValue({ success: true })
+    // No description_* keys at all, like a 1C product created without a description.
+    renderForm(SYNCED)
+    const inputs = screen.getAllByDisplayValue("Чехол iPhone 15")
+    await user.clear(inputs[1])
+    await user.type(inputs[1], "Чехол для iPhone 15")
+    await user.click(screen.getByRole("button", { name: "Saqlash" }))
+    const body = updateAdmin.mock.calls[0][1]
+    expect(body.name_ru).toBe("Чехол для iPhone 15")
+    for (const f of ["name_uz", "name_en", "description_uz", "description_ru", "description_en"]) {
+      expect(body).not.toHaveProperty(f)
+    }
+  })
+
+  it("hand-made products still send every field", async () => {
+    const user = userEvent.setup()
+    updateAdmin.mockResolvedValue({ success: true })
+    renderForm(HAND_MADE)
+    await user.click(screen.getByRole("button", { name: "Saqlash" }))
+    expect(updateAdmin.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ name_uz: "Lavash", description_uz: "", price: 30000 }),
+    )
   })
 
   it("the backend's 400 text on save is shown via toast", async () => {

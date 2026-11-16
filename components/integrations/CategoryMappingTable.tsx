@@ -120,7 +120,11 @@ export function CategoryMappingTable({ connectionId }: { connectionId: string })
       toast.error(res.error ?? "Xatolik yuz berdi")
       return
     }
-    toast.success(isActive ? `"${cat.name_uz}" faollashtirildi` : `"${cat.name_uz}" yashirildi`)
+    toast.success(
+      isActive
+        ? `"${cat.name_uz}" faollashtirildi. Unga tegishli, shu sababli yashirilgan 1C mahsulotlari endi ko'rinadi.`
+        : `"${cat.name_uz}" yashirildi`,
+    )
   }
 
   if (loading && !data) {
@@ -220,7 +224,8 @@ export function CategoryMappingTable({ connectionId }: { connectionId: string })
         <CardHeader>
           <CardTitle className="text-base">1C yaratgan kategoriyalar</CardTitle>
           <CardDescription>
-            Avtomatik yaratilgan kategoriyalar ko&apos;rib chiqilmaguncha yashirin turadi. Tekshirib, faollashtiring.
+            Avtomatik yaratilgan kategoriyalar ko&apos;rib chiqilmaguncha yashirin turadi, ularning mahsulotlari ham
+            (&quot;Kategoriya hali faollashtirilmagan&quot;). Tekshirib, faollashtiring: mahsulotlar ham ko&apos;rinadi.
           </CardDescription>
         </CardHeader>
         <CardContent>

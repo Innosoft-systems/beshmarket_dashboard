@@ -86,6 +86,7 @@ describe("product state", () => {
     expect(hiddenBySyncLabel(synced({ hidden_by_sync: "missing" }))).toBe("1C da yo'q")
     expect(hiddenBySyncLabel(synced({ hidden_by_sync: "no_price" }))).toBe("Narx yo'q")
     expect(hiddenBySyncLabel(synced({ hidden_by_sync: "weighted" }))).toBe("Tarozi mahsuloti")
+    expect(hiddenBySyncLabel(synced({ hidden_by_sync: "category_inactive" }))).toBe("Kategoriya hali faollashtirilmagan")
     expect(hiddenBySyncLabel(synced())).toBeNull()
   })
 
