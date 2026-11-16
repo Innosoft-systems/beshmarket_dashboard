@@ -107,6 +107,18 @@ export function isPriceLocked(p: WithSync, flags: SyncFlags): boolean {
   return isSyncedProduct(p) && flags.price_managed
 }
 
+/**
+ * The 1C stock to show, or null. Shown while 1C manages stock, and also
+ * whenever the product carries a number: orders and the cart enforce any
+ * numeric stock (B6), even after offers stop being live.
+ */
+export function syncedStock(p: (WithSync & { stock?: number | null }) | null | undefined, flags: SyncFlags): number | "untracked" | null {
+  if (!isSyncedProduct(p)) return null
+  const stock = p!.stock
+  if (typeof stock === "number") return stock
+  return flags.stock_managed ? "untracked" : null
+}
+
 /** Uzbek label for why the sync hides a product; null when it doesn't. */
 export function hiddenBySyncLabel(p: WithSync): string | null {
   const reason = isSyncedProduct(p) ? p!.sync!.hidden_by_sync : null

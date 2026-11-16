@@ -103,6 +103,24 @@ describe("ProductFormDialog: 1C products (A4)", () => {
   it("price stays editable when 1C does not manage prices", () => {
     renderForm(SYNCED, "admin", { ...NO_SYNC_FLAGS, connected: true })
     expect(screen.getByLabelText("Narx (so'm) *")).not.toHaveAttribute("readonly")
+  })
+
+  it("1C stock: shown when tracked (any flags), hidden when untracked and not managed", () => {
+    const { unmount } = render(
+      <ProductFormDialog product={SYNCED} restaurantId="r1" categories={CATEGORIES} syncFlags={NO_SYNC_FLAGS} onClose={jest.fn()} />,
+    )
+    // B6 enforces any numeric stock in orders, so it is shown even when offers are not live.
+    expect(screen.getByText(/Qoldiq \(1C\):/)).toHaveTextContent("4")
+    unmount()
+    render(
+      <ProductFormDialog
+        product={{ ...SYNCED, stock: null }}
+        restaurantId="r1"
+        categories={CATEGORIES}
+        syncFlags={NO_SYNC_FLAGS}
+        onClose={jest.fn()}
+      />,
+    )
     expect(screen.queryByText(/Qoldiq \(1C\):/)).not.toBeInTheDocument()
   })
 

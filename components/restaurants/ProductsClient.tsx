@@ -34,6 +34,7 @@ import {
   isPriceLocked,
   isSyncedProduct,
   showHiddenNotice,
+  syncedStock,
   type SyncFlags,
 } from "@/lib/product-sync"
 import {
@@ -436,9 +437,9 @@ export function ProductsClient({
                           <Lock className="h-3 w-3" /> 1C dan boshqariladi
                         </div>
                       )}
-                      {isSyncedProduct(p) && syncFlags.stock_managed && (
-                        <div className="text-[11px] text-muted-foreground">
-                          Qoldiq: {p.stock === null || p.stock === undefined ? "—" : p.stock}
+                      {syncedStock(p, syncFlags) !== null && (
+                        <div className="text-[11px] text-muted-foreground" title="1C qoldig'i (sotuvga, zaxirasiz)">
+                          Qoldiq: {syncedStock(p, syncFlags) === "untracked" ? "—" : syncedStock(p, syncFlags)}
                         </div>
                       )}
                     </td>

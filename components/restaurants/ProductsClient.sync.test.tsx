@@ -98,6 +98,14 @@ describe("ProductsClient: 1C products (A4)", () => {
     expect(within(r).queryByText(/Qoldiq:/)).not.toBeInTheDocument()
   })
 
+  it("untracked 1C stock: '—' while stock is managed, nothing otherwise", () => {
+    const { unmount } = renderList("admin", MANAGED, [{ ...SYNCED, stock: null }])
+    expect(within(row("Chexol iPhone 15")).getByText("Qoldiq: —")).toBeInTheDocument()
+    unmount()
+    renderList("admin", NO_SYNC_FLAGS, [{ ...SYNCED, stock: null }])
+    expect(within(row("Chexol iPhone 15")).queryByText(/Qoldiq:/)).not.toBeInTheDocument()
+  })
+
   it.each(["admin", "restaurant"] as const)("%s: synced rows get the 1C badge, no delete, the hide reason", (scope) => {
     renderList(scope)
     const r = row("Chexol iPhone 15")
@@ -114,7 +122,8 @@ describe("ProductsClient: 1C products (A4)", () => {
     const r = row("Chexol iPhone 15")
     expect(within(r).getByText("1C")).toBeInTheDocument()
     expect(within(r).queryByText("1C dan boshqariladi")).not.toBeInTheDocument()
-    expect(within(r).queryByText(/Qoldiq:/)).not.toBeInTheDocument()
+    // Numeric stock is shown regardless of the flags (B6 enforces it in orders).
+    expect(within(r).getByText("Qoldiq: 7")).toBeInTheDocument()
   })
 
   it("'Yashirish' hides an active synced product via is_active:false", async () => {

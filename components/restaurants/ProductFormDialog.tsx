@@ -24,6 +24,7 @@ import {
   isPriceLocked,
   isSyncedProduct,
   lockedFields,
+  syncedStock,
   unlockConfirmText,
   type LockableField,
   type SyncFlags,
@@ -470,9 +471,13 @@ export function ProductFormDialog({
                 <Lock className="h-3 w-3" /> 1C dan boshqariladi: narxni 1C da o&apos;zgartiring.
               </p>
             )}
-            {synced && syncFlags.stock_managed && (
+            {syncedStock(product, syncFlags) !== null && (
               <p className="text-sm">
-                Qoldiq (1C): <span className="font-medium">{product?.stock ?? "kuzatilmaydi"}</span>
+                Qoldiq (1C):{" "}
+                <span className="font-medium">
+                  {syncedStock(product, syncFlags) === "untracked" ? "kuzatilmaydi" : syncedStock(product, syncFlags)}
+                </span>
+                <span className="ml-1 text-xs text-muted-foreground">(faqat 1C da o&apos;zgaradi)</span>
               </p>
             )}
 

@@ -7,6 +7,7 @@ import {
   lockedFields,
   parseSyncFlags,
   showHiddenNotice,
+  syncedStock,
   unlockConfirmText,
 } from "./product-sync"
 
@@ -80,6 +81,15 @@ describe("product state", () => {
     expect(isPriceLocked(synced(), managed)).toBe(true)
     expect(isPriceLocked(synced(), NO_SYNC_FLAGS)).toBe(false)
     expect(isPriceLocked({}, managed)).toBe(false)
+  })
+
+  it("syncedStock: number when tracked, 'untracked' only while managed, null for hand-made", () => {
+    const managed = { ...NO_SYNC_FLAGS, connected: true, stock_managed: true }
+    expect(syncedStock({ ...synced(), stock: 3 }, NO_SYNC_FLAGS)).toBe(3)
+    expect(syncedStock({ ...synced(), stock: 0 }, managed)).toBe(0)
+    expect(syncedStock({ ...synced(), stock: null }, managed)).toBe("untracked")
+    expect(syncedStock({ ...synced(), stock: null }, NO_SYNC_FLAGS)).toBeNull()
+    expect(syncedStock({ stock: 5 } as never, managed)).toBeNull()
   })
 
   it("labels the sync's hide reason in Uzbek", () => {
