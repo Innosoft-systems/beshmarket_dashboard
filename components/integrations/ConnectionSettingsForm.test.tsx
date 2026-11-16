@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { toast } from "sonner"
 import { updateConnectionAction } from "@/lib/actions/integrations"
@@ -223,6 +223,27 @@ describe("ConnectionSettingsForm", () => {
       await waitFor(() => expect(screen.getByLabelText("Yashirish chegarasi (%)")).toHaveValue("30"))
       expect(save()).toBeDisabled()
     })
+  })
+
+  it("warehouses: no mapped warehouse means no stock; warns when offers are live (B4)", () => {
+    renderForm(makeConnection({ warehouse_ids: [] }))
+    expect(screen.getByText(/Hech biri tanlanmasa, qoldiq qo'llanmaydi/)).toBeInTheDocument()
+    expect(screen.queryByText(/ombor tanlanmagan: 1C qoldig'i mahsulotlarga yozilmaydi/)).not.toBeInTheDocument()
+    cleanup()
+    renderForm(makeConnection({ offers_mode: "live", retail_price_type_id: "pt-retail", warehouse_ids: [] }))
+    expect(screen.getByText(/ombor tanlanmagan: 1C qoldig'i mahsulotlarga yozilmaydi/)).toBeInTheDocument()
+  })
+
+  it("offers 'Jonli' with a retail price type is sent and saved (B6 allows it)", async () => {
+    const user = userEvent.setup()
+    update.mockResolvedValue({ success: true, data: makeConnection({ offers_mode: "live", retail_price_type_id: "pt-retail" }) })
+    renderForm(makeConnection({ retail_price_type_id: "pt-retail", warehouse_ids: ["wh-1"] }))
+    await user.click(screen.getByRole("combobox", { name: "Narx va qoldiq" }))
+    await user.click(await screen.findByRole("option", { name: "Jonli" }))
+    await user.click(save())
+    expect(update).toHaveBeenCalledWith("conn1", { offers_mode: "live" })
+    expect(toast.success).toHaveBeenCalledWith("Sozlamalar saqlandi")
+    expect(screen.queryByRole("note")).not.toBeInTheDocument()
   })
 
   it("empty state when 1C has not reported price types or warehouses", () => {

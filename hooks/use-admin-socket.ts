@@ -26,6 +26,7 @@ const TYPE_ICONS: Record<string, string> = {
   new_review: "⭐",
   new_penalty: "⚠️",
   new_courier: "🚴",
+  integration_1c: "🔄",
 }
 
 // Singleton socket shared across re-renders to avoid reconnects on navigation.

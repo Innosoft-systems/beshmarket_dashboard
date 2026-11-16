@@ -12,6 +12,7 @@ const TYPE_ICONS: Record<string, string> = {
   new_review: "⭐",
   new_penalty: "⚠️",
   new_courier: "🚴",
+  integration_1c: "🔄",
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -20,6 +21,7 @@ const TYPE_LABELS: Record<string, string> = {
   new_review: "Yangi izoh",
   new_penalty: "Jarima",
   new_courier: "Yangi kuryer",
+  integration_1c: "1C integratsiya",
 }
 
 function timeAgo(iso: string) {

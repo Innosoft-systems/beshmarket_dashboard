@@ -10,6 +10,7 @@ import {
   RUN_STATUS_LABELS,
   errorCodeCounts,
   formatTashkentDateTime,
+  isWarningCode,
   isBucketRun,
   runBatches,
   runDuration,
@@ -96,6 +97,7 @@ function RunDetail({ run, code, onCode }: { run: IntegrationRun; code: string; o
   const errors = useMemo(() => run.errors ?? [], [run.errors])
   const codes = useMemo(() => errorCodeCounts(errors), [errors])
   const shown = code === ALL_CODES ? errors : errors.filter((e) => e.code === code)
+  const warningCount = errors.filter((e) => isWarningCode(e.code)).length
   const bucket = isBucketRun(run)
   const batches = runBatches(run)
 
@@ -162,6 +164,11 @@ function RunDetail({ run, code, onCode }: { run: IntegrationRun; code: string; o
             </Select>
           )}
         </div>
+        {warningCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {`Ulardan ${warningCount} tasi ogohlantirish: mahsulot qabul qilingan, faqat ko'rsatilgan qism qo'llanmagan.`}
+          </p>
+        )}
         {errors.length === 0 ? (
           <p className="text-sm text-muted-foreground">Xato yo&apos;q.</p>
         ) : (
@@ -183,6 +190,11 @@ function RunDetail({ run, code, onCode }: { run: IntegrationRun; code: string; o
                     </TableCell>
                     <TableCell className="whitespace-normal">
                       <span className="font-mono text-xs">{e.code}</span>
+                      {isWarningCode(e.code) && (
+                        <Badge variant="outline" className="ml-1.5 px-1 py-0 text-[10px]">
+                          Ogohlantirish
+                        </Badge>
+                      )}
                       {ERROR_CODE_LABELS[e.code] && (
                         <span className="block text-xs text-muted-foreground">{ERROR_CODE_LABELS[e.code]}</span>
                       )}

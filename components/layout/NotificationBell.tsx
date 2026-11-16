@@ -16,6 +16,7 @@ const TYPE_ICONS: Record<string, string> = {
   new_review: "⭐",
   new_penalty: "⚠️",
   new_courier: "🚴",
+  integration_1c: "🔄",
 }
 
 function timeAgo(iso: string) {

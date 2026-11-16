@@ -206,8 +206,14 @@ export function ConnectionSettingsForm({
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Hech biri tanlanmasa, barcha omborlar qoldig&apos;i yig&apos;indisi olinadi.
+                  Qoldiq faqat tanlangan omborlar yig&apos;indisidan olinadi. Hech biri tanlanmasa, qoldiq qo&apos;llanmaydi
+                  (kuzatilmaydi).
                 </p>
+                {offersMode === "live" && field.value.length === 0 && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400" role="status">
+                    Narx va qoldiq jonli, lekin ombor tanlanmagan: 1C qoldig&apos;i mahsulotlarga yozilmaydi.
+                  </p>
+                )}
               </fieldset>
             )}
           />

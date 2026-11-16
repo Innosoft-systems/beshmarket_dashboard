@@ -1,4 +1,6 @@
 import {
+  ERROR_CODE_LABELS,
+  isWarningCode,
   AUTO_CHOICE,
   IGNORE_CHOICE,
   applyChoice,
@@ -221,6 +223,16 @@ describe("daily full (rev 3)", () => {
     expect(
       isDailyFullMissing({ ...conn, createdAt: "2026-11-13T23:00:00.000Z", last_full_catalog_success_at: null }, now),
     ).toBe(false)
+  })
+})
+
+describe("run-log codes (phase 2)", () => {
+  it("labels the new codes in Uzbek and marks them as warnings", () => {
+    expect(ERROR_CODE_LABELS.OFFER_IGNORED).toBe("Chakana narx 0: qo'llanmadi (mahsulot bepul sotilmaydi)")
+    expect(ERROR_CODE_LABELS.CATEGORY_FALLBACK).toMatch(/avtomatik qoida/)
+    expect(ERROR_CODE_LABELS.IMAGE_FETCH_FAILED).toMatch(/yuklab olinmadi/)
+    for (const c of ["OFFER_IGNORED", "CATEGORY_FALLBACK", "IMAGE_FETCH_FAILED"]) expect(isWarningCode(c)).toBe(true)
+    for (const c of ["INVALID_FIELD", "UNKNOWN_PRODUCT", "MISSING_FIELD"]) expect(isWarningCode(c)).toBe(false)
   })
 })
 

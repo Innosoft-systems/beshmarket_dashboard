@@ -104,6 +104,53 @@ describe("RunsTable", () => {
     expect(await screen.findByText(/Jurnalni yuklab bo'lmadi: Server xatosi/)).toBeInTheDocument()
   })
 
+  it("an offers bucket (kind=offers) shows as Narx-qoldiq with its hour and counters", async () => {
+    listRuns.mockResolvedValueOnce(page([{ ...BUCKET, counters: { updated: 12, rejected: 1 } }]))
+    render(<RunsTable connectionId="conn1" />)
+    const r = (await screen.findByText("O'zgarishlar, 14:00–15:00")).closest("tr")!
+    expect(within(r).getByText("Narx-qoldiq")).toBeInTheDocument()
+    expect(within(r).getByText("12 yangilandi · 1 xato")).toBeInTheDocument()
+  })
+
+  it("an offers run: OFFER_IGNORED is a labelled warning and the price/stock diff is readable", async () => {
+    const user = userEvent.setup()
+    getRun.mockResolvedValue({
+      success: true,
+      data: {
+        ...BUCKET,
+        dry_run: true,
+        errors: [
+          {
+            external_id: "guid-7",
+            code: "OFFER_IGNORED",
+            field: "prices",
+            message: "Розничная цена 0 не применена: товар не продаётся бесплатно",
+            batch_no: 1,
+          },
+        ],
+        diff_sample: [
+          {
+            op: "update",
+            external_id: "guid-8",
+            name: "Кабель",
+            changes: { price: { from: 30000, to: 32000 }, stock: { from: 5, to: 0 }, is_available: { from: true, to: false } },
+          },
+        ],
+      },
+    })
+    render(<RunsTable connectionId="conn1" />)
+    const row = (await screen.findByText("O'zgarishlar, 14:00–15:00")).closest("tr")!
+    await user.click(within(row).getByRole("button", { name: "Batafsil" }))
+    const sheet = await screen.findByRole("dialog")
+    await within(sheet).findByText("Xatolar (1)")
+    expect(within(sheet).getByText("Chakana narx 0: qo'llanmadi (mahsulot bepul sotilmaydi)")).toBeInTheDocument()
+    expect(within(sheet).getByText("Ogohlantirish")).toBeInTheDocument()
+    expect(within(sheet).getByText(/Ulardan 1 tasi ogohlantirish/)).toBeInTheDocument()
+    const updated = within(sheet).getByRole("region", { name: "O'zgaradi (1)" })
+    expect(within(updated).getByText("Qoldiq:")).toBeInTheDocument()
+    expect(within(updated).getByText("Mavjud:")).toBeInTheDocument()
+  })
+
   describe("detail sheet", () => {
     const DETAIL: IntegrationRun = {
       ...FULL,

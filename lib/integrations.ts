@@ -259,6 +259,17 @@ export const ERROR_CODE_LABELS: Record<string, string> = {
   IMAGE_TOO_LARGE: "Rasm juda katta",
   IMAGE_BAD_TYPE: "Rasm turi noto'g'ri",
   IMAGE_MISSING_BODY: "Rasm fayli yo'q",
+  // Phase 2 / B3: warnings, the product itself was accepted.
+  OFFER_IGNORED: "Chakana narx 0: qo'llanmadi (mahsulot bepul sotilmaydi)",
+  CATEGORY_FALLBACK: "Tanlangan kategoriya o'chirilgan: avtomatik qoida qo'llandi",
+  IMAGE_FETCH_FAILED: "Rasm havoladan yuklab olinmadi",
+}
+
+/** Run-log entries that are warnings, not refusals: the item was still applied. */
+export const WARNING_CODES: ReadonlySet<string> = new Set(["OFFER_IGNORED", "CATEGORY_FALLBACK", "IMAGE_FETCH_FAILED"])
+
+export function isWarningCode(code: string): boolean {
+  return WARNING_CODES.has(code)
 }
 
 // ---------------------------------------------------------------------------
