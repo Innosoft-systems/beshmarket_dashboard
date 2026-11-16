@@ -60,6 +60,11 @@ describe("hiddenReasonRows", () => {
       { reason: "missing", label: "1C da yo'q", count: 2 },
     ])
   })
+  it("labels the new backend reason category_inactive", () => {
+    expect(hiddenReasonRows({ category_inactive: 4 })).toEqual([
+      { reason: "category_inactive", label: "Kategoriya hali faollashtirilmagan", count: 4 },
+    ])
+  })
   it("handles empty input", () => {
     expect(hiddenReasonRows(undefined)).toEqual([])
     expect(hiddenReasonRows({})).toEqual([])
@@ -221,11 +226,17 @@ describe("daily full (rev 3)", () => {
 
 describe("liveRefusalTarget", () => {
   it("attributes a 400 on 'live' to the mode that was switched", () => {
-    expect(liveRefusalTarget({ catalog_mode: "live" }, "x")).toBe("catalog")
-    expect(liveRefusalTarget({ offers_mode: "live" }, "x")).toBe("offers")
+    expect(liveRefusalTarget({ catalog_mode: "live" }, "Katalogni jonli rejimga hali o'tkazib bo'lmaydi")).toBe("catalog")
+    expect(liveRefusalTarget({ offers_mode: "live" }, "Narx va qoldiqni jonli rejimga hali o'tkazib bo'lmaydi")).toBe("offers")
     expect(liveRefusalTarget({ catalog_mode: "live", offers_mode: "live" }, "Katalogni jonli rejimga ...")).toBe("catalog")
-    expect(liveRefusalTarget({ catalog_mode: "live", offers_mode: "live" }, "Narx va qoldiqni ...")).toBe("offers")
-    expect(liveRefusalTarget({ catalog_mode: "dry_run" }, "x")).toBeNull()
+    expect(liveRefusalTarget({ catalog_mode: "live", offers_mode: "live" }, "Narx va qoldiqni jonli rejimga ...")).toBe("offers")
+    expect(liveRefusalTarget({ catalog_mode: "dry_run" }, "Katalogni jonli rejimga hali o'tkazib bo'lmaydi")).toBeNull()
+  })
+
+  it("ignores a 400 that is not about the live mode (RV-2b D-1)", () => {
+    const ipError = "allowed_ips: har bir qiymat IP manzil yoki CIDR (masalan 203.0.113.7 yoki 203.0.113.0/24) bo'lishi kerak"
+    expect(liveRefusalTarget({ catalog_mode: "live" }, ipError)).toBeNull()
+    expect(liveRefusalTarget({ offers_mode: "live" }, ipError)).toBeNull()
   })
 })
 

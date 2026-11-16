@@ -23,7 +23,7 @@ export default async function RestaurantIntegrationPage({
   const token = await getAccessToken()
 
   const [restaurantRes, connectionRes] = await Promise.all([
-    apiRequest<Restaurant>(`/restaurants/admin/${id}`, { accessToken: token }).catch(() => null),
+    apiRequest<Restaurant>(`/restaurants/admin/${encodeURIComponent(id)}`, { accessToken: token }).catch(() => null),
     apiRequest<IntegrationConnection | null>(
       `/integrations/1c/connections?restaurant_id=${encodeURIComponent(id)}`,
       { accessToken: token },

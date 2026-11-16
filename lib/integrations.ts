@@ -46,6 +46,7 @@ export const HIDDEN_REASON_LABELS: Record<HiddenBySyncReason, string> = {
   weighted: "Tarozi mahsuloti",
   no_price: "Narx yo'q",
   category_ignored: "Kategoriya import qilinmaydi",
+  category_inactive: "Kategoriya hali faollashtirilmagan",
 }
 
 export const RUN_STATUS_LABELS: Record<IntegrationRunSummary["status"], string> = {
@@ -305,6 +306,12 @@ export function lastDailyFullSlot(dailyFullAt: string | null | undefined, now: n
  * started from `daily_full_at − 1 h`. The dashboard only sees
  * `last_full_catalog_success_at` (set by LIVE full runs), so the badge is shown
  * only while catalog is live; in other modes the backend's `stale` flag covers it.
+ *
+ * Known approximation (RV-2b D-6): that field is the run's FINISH time, while
+ * the server rule uses the run's `first_batch_at`. A full that starts more than
+ * 1 h before `daily_full_at` and finishes after that point counts here but not
+ * on the server. The server's `stale` badge is shown next to it and stays the
+ * authority; this badge only names the reason.
  */
 export function isDailyFullMissing(
   c: Pick<IntegrationConnection, "enabled" | "catalog_mode" | "daily_full_at" | "last_full_catalog_success_at" | "createdAt">,
@@ -321,12 +328,15 @@ export function isDailyFullMissing(
 /**
  * Which mode a 400 on PATCH refused `live` for, so the form can disable that
  * "Jonli" option: catalog until B5 (panel locks), offers until B6 (stock).
- * When both were switched in one save, the server text decides.
+ * Only a refusal that talks about the live mode counts (both backend texts say
+ * "jonli rejim"): any other 400 in the same save (e.g. a bad IP) is not one
+ * (RV-2b D-1). When both modes were switched, the server text decides.
  */
 export function liveRefusalTarget(
   patch: { catalog_mode?: IntegrationMode; offers_mode?: IntegrationMode },
   message: string,
 ): "catalog" | "offers" | null {
+  if (!/jonli/i.test(message)) return null
   const catalog = patch.catalog_mode === "live"
   const offers = patch.offers_mode === "live"
   if (catalog && !offers) return "catalog"

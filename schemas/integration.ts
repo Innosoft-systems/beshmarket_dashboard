@@ -10,9 +10,15 @@ export const MAX_ALLOWED_IPS = 20
 
 const ipSchema = z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])
 
-/** An IPv4/IPv6 address or a CIDR range, as the backend's `isIpOrCidr` accepts. */
+/**
+ * An IPv4/IPv6 address or a CIDR range, as the backend DTO accepts. IPv4-mapped
+ * IPv6 (`::ffff:203.0.113.7`) is refused there with a hint, so it is refused
+ * here too (RV-2b D-1): write the plain IPv4 address instead.
+ */
 export function isValidIp(value: string): boolean {
-  return ipSchema.safeParse(value.trim()).success
+  const v = value.trim()
+  if (/^::ffff:/i.test(v)) return false
+  return ipSchema.safeParse(v).success
 }
 
 /** 'HH:mm', same pattern as the backend DTO (^([01]\d|2[0-3]):[0-5]\d$). */

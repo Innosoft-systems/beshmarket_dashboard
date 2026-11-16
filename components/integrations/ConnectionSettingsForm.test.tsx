@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { toast } from "sonner"
 import { updateConnectionAction } from "@/lib/actions/integrations"
@@ -184,6 +184,45 @@ describe("ConnectionSettingsForm", () => {
     await userEvent.setup().click(save())
     expect(await screen.findByText("Boshlanish va tugash vaqti bir xil bo'lmasin")).toBeInTheDocument()
     expect(update).not.toHaveBeenCalled()
+  })
+
+  it("an unrelated 400 does not disable 'Jonli' (RV-2b D-1)", async () => {
+    const user = userEvent.setup()
+    update.mockResolvedValue({ success: false, error: "allowed_ips: har bir qiymat IP manzil yoki CIDR bo'lishi kerak", status: 400 })
+    renderForm()
+    await user.click(screen.getByRole("combobox", { name: "Katalog (mahsulotlar)" }))
+    await user.click(await screen.findByRole("option", { name: "Jonli" }))
+    await user.click(save())
+    expect(toast.error).toHaveBeenCalled()
+    expect(screen.queryByRole("note")).not.toBeInTheDocument()
+    // The choice is kept, not reverted.
+    expect(screen.getByRole("combobox", { name: "Katalog (mahsulotlar)" })).toHaveTextContent("Jonli")
+  })
+
+  describe("refreshed connection while the form is open (RV-2b D-2)", () => {
+    it("with unsaved edits: only the edited field is sent, another admin's change is not reverted", async () => {
+      const user = userEvent.setup()
+      update.mockResolvedValue({ success: true, data: makeConnection({ stock_buffer: 5, max_deactivate_ratio: 0.3 }) })
+      const onSaved = jest.fn()
+      const { rerender } = render(<ConnectionSettingsForm connection={makeConnection()} onSaved={onSaved} />)
+
+      const buffer = screen.getByLabelText("Qoldiq zaxirasi (dona)")
+      await user.clear(buffer)
+      await user.type(buffer, "5")
+      // Another admin changed the threshold; "Yangilash" brings the fresh connection in.
+      rerender(<ConnectionSettingsForm connection={makeConnection({ max_deactivate_ratio: 0.3 })} onSaved={onSaved} />)
+      await user.click(save())
+
+      expect(update).toHaveBeenCalledWith("conn1", { stock_buffer: 5 })
+    })
+
+    it("without edits: the form shows the fresh values", async () => {
+      const { rerender } = render(<ConnectionSettingsForm connection={makeConnection()} onSaved={jest.fn()} />)
+      expect(screen.getByLabelText("Yashirish chegarasi (%)")).toHaveValue("50")
+      rerender(<ConnectionSettingsForm connection={makeConnection({ max_deactivate_ratio: 0.3 })} onSaved={jest.fn()} />)
+      await waitFor(() => expect(screen.getByLabelText("Yashirish chegarasi (%)")).toHaveValue("30"))
+      expect(save()).toBeDisabled()
+    })
   })
 
   it("empty state when 1C has not reported price types or warehouses", () => {

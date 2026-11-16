@@ -1,6 +1,6 @@
 "use server"
 
-import { getAccessToken } from "@/lib/auth/session"
+import { getAccessToken, getSessionRole } from "@/lib/auth/session"
 import { apiRequest, ApiError } from "@/lib/api/client"
 import { normaliseCategoriesData } from "@/lib/integrations"
 import type {
@@ -36,6 +36,9 @@ async function call<T>(
 ): Promise<Result<T>> {
   const token = await getAccessToken()
   if (!token) return { success: false, error: "Avtorizatsiyadan o'tilmagan" }
+  // Server actions are dispatched by id and bypass the path guard in
+  // middleware.ts; the backend also refuses non-admins (403), this is defence in depth.
+  if ((await getSessionRole()) !== "admin") return { success: false, error: "Bu amal uchun ruxsat yo'q", status: 403 }
   try {
     const res = await apiRequest<T>(endpoint, { method, body, accessToken: token })
     return { success: true, data: res.data }

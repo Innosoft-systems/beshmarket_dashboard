@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Controller, useForm, useWatch, type Control } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
@@ -67,29 +67,45 @@ export function ConnectionSettingsForm({
     defaultValues: connectionToForm(connection),
   })
 
+  // What the form was last loaded from. The PATCH diffs against this, not against
+  // the `connection` prop, which the status "Yangilash" button can refresh while
+  // the form is open: diffing against a fresher prop would send untouched stale
+  // values back and revert another admin's change (RV-2b D-2).
+  const baselineRef = useRef(connection)
+
+  // A refreshed connection: adopt it when the admin has not started editing;
+  // with unsaved edits keep the baseline, so only the edited fields are sent.
+  useEffect(() => {
+    if (connection === baselineRef.current || isDirty) return
+    baselineRef.current = connection
+    reset(connectionToForm(connection))
+  }, [connection, isDirty, reset])
+
   const offersMode = useWatch({ control, name: "offers_mode" })
   const dailyFullAt = useWatch({ control, name: "daily_full_at" })
 
   const onSubmit = async (values: ConnectionSettingsValues) => {
-    const patch = formToPatch(values, connection)
+    const baseline = baselineRef.current
+    const patch = formToPatch(values, baseline)
     if (Object.keys(patch).length === 0) {
       toast.info("O'zgarish yo'q")
       return
     }
     setSaving(true)
     try {
-      const res = await updateConnectionAction(connection._id, patch)
+      const res = await updateConnectionAction(baseline._id, patch)
       if (!res.success) {
         const target = res.status === 400 ? liveRefusalTarget(patch, res.error) : null
         if (target) {
           setLiveBlocked((prev) => ({ ...prev, [target]: res.error }))
           // Put that mode back to its saved value; the rest of the edit stays.
           const field = target === "catalog" ? "catalog_mode" : "offers_mode"
-          setValue(field, connection[field], { shouldDirty: true })
+          setValue(field, baseline[field], { shouldDirty: true })
         }
         toast.error(res.error)
         return
       }
+      baselineRef.current = res.data
       reset(connectionToForm(res.data))
       onSaved(res.data)
       toast.success("Sozlamalar saqlandi")
@@ -115,7 +131,8 @@ export function ConnectionSettingsForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+        {/* handleSubmit is called inside the event so the baseline ref is only read on submit. */}
+        <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-6" noValidate>
           {/* Modes */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <ModeField

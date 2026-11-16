@@ -94,6 +94,10 @@ export async function apiRequest<T>(
   try {
     response = await fetch(url, fetchOptions);
   } catch (networkErr) {
+    // A POST is not idempotent: the first attempt may have reached the server
+    // (e.g. a 1C connection create whose one-time secret would then be lost to
+    // a 409 on the retry). Surface the error instead.
+    if (method === 'POST') throw networkErr;
     // Retry once on network-level failure (DNS, connection reset, etc.)
     await new Promise(r => setTimeout(r, 500));
     response = await fetch(url, fetchOptions);

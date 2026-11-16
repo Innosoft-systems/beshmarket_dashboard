@@ -15,6 +15,8 @@ export type HiddenBySyncReason =
   | "weighted"
   | "no_price"
   | "category_ignored"
+  /** The product's 1C-created category has not been activated yet. */
+  | "category_inactive"
 
 export interface SeenOneCRef {
   id: string

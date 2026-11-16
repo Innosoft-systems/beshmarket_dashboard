@@ -19,7 +19,8 @@ describe("isValidIp", () => {
   it.each(["203.0.113.10", "10.0.0.1", " 192.168.1.1 ", "2001:db8::1", "::1", "203.0.113.0/24", "2001:db8::/32"])("accepts %s", (ip) => {
     expect(isValidIp(ip)).toBe(true)
   })
-  it.each(["", "256.1.1.1", "1.2.3", "1.2.3.4/33", "1.2.3.4/", "example.com", "1.2.3.4.5"])("rejects %s", (ip) => {
+  // IPv4-mapped IPv6 is refused by the backend DTO, so here too (RV-2b D-1).
+  it.each(["", "256.1.1.1", "1.2.3", "1.2.3.4/33", "1.2.3.4/", "example.com", "1.2.3.4.5", "::ffff:203.0.113.7", "::FFFF:10.0.0.1"])("rejects %s", (ip) => {
     expect(isValidIp(ip)).toBe(false)
   })
 })
