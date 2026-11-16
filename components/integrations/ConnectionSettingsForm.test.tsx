@@ -86,7 +86,9 @@ describe("ConnectionSettingsForm", () => {
     renderForm(makeConnection({ offers_mode: "live", retail_price_type_id: null }))
     await user.click(screen.getByRole("switch"))
     await user.click(save())
-    expect(await screen.findByText("Jonli rejim uchun avval chakana narx turini tanlang")).toBeInTheDocument()
+    expect(
+      await screen.findByText((t) => t.startsWith("Narx va qoldiqni 1C dan yangilash uchun: chakana narx turini tanlang (retail_price_type_id)")),
+    ).toBeInTheDocument()
     expect(update).not.toHaveBeenCalled()
   })
 
@@ -125,7 +127,7 @@ describe("ConnectionSettingsForm", () => {
     const user = userEvent.setup()
     const reason = "Narx va qoldiqni jonli rejimga hali o'tkazib bo'lmaydi: buyurtmalarda qoldiq nazorati hali yoqilmagan"
     update.mockResolvedValue({ success: false, error: reason, status: 400 })
-    renderForm(makeConnection({ retail_price_type_id: "pt-retail" }))
+    renderForm(makeConnection({ retail_price_type_id: "pt-retail", warehouse_ids: ["wh-1"], stock_buffer: 1 }))
 
     await user.click(screen.getByRole("combobox", { name: "Narx va qoldiq" }))
     await user.click(await screen.findByRole("option", { name: "Jonli" }))
@@ -228,16 +230,17 @@ describe("ConnectionSettingsForm", () => {
   it("warehouses: no mapped warehouse means no stock; warns when offers are live (B4)", () => {
     renderForm(makeConnection({ warehouse_ids: [] }))
     expect(screen.getByText(/Hech biri tanlanmasa, qoldiq qo'llanmaydi/)).toBeInTheDocument()
-    expect(screen.queryByText(/ombor tanlanmagan: 1C qoldig'i mahsulotlarga yozilmaydi/)).not.toBeInTheDocument()
+    expect(screen.queryByText("Jonli rejim uchun kamida bitta ombor kerak.")).not.toBeInTheDocument()
     cleanup()
     renderForm(makeConnection({ offers_mode: "live", retail_price_type_id: "pt-retail", warehouse_ids: [] }))
-    expect(screen.getByText(/ombor tanlanmagan: 1C qoldig'i mahsulotlarga yozilmaydi/)).toBeInTheDocument()
+    expect(screen.getByText("Jonli rejim uchun kamida bitta ombor kerak.")).toBeInTheDocument()
+    expect(screen.getByText(/Jonli rejimda kamida 1\./)).toBeInTheDocument()
   })
 
   it("offers 'Jonli' with a retail price type is sent and saved (B6 allows it)", async () => {
     const user = userEvent.setup()
     update.mockResolvedValue({ success: true, data: makeConnection({ offers_mode: "live", retail_price_type_id: "pt-retail" }) })
-    renderForm(makeConnection({ retail_price_type_id: "pt-retail", warehouse_ids: ["wh-1"] }))
+    renderForm(makeConnection({ retail_price_type_id: "pt-retail", warehouse_ids: ["wh-1"], stock_buffer: 1 }))
     await user.click(screen.getByRole("combobox", { name: "Narx va qoldiq" }))
     await user.click(await screen.findByRole("option", { name: "Jonli" }))
     await user.click(save())

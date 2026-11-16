@@ -7,6 +7,28 @@ export const STOCK_BUFFER_MAX = 1000
 export const DEACTIVATE_PERCENT_MIN = 5
 export const DEACTIVATE_PERCENT_MAX = 100
 export const MAX_ALLOWED_IPS = 20
+/** Backend MIN_LIVE_STOCK_BUFFER (ae70816, R3-2a): live offers need a buffer of at least 1. */
+export const MIN_LIVE_STOCK_BUFFER = 1
+/** New connections default to a buffer of 1 (backend schema default). */
+export const DEFAULT_STOCK_BUFFER = 1
+
+/**
+ * The backend's 400 for live offers (ae70816), word for word: one message
+ * listing what is missing. Built the same way so the admin sees the same text
+ * before saving. Returns null when nothing is missing.
+ */
+export function liveOffersMissing(v: { retail_price_type_id: string; warehouse_ids: string[]; stock_buffer: string }): string | null {
+  const missing: string[] = []
+  if (!v.retail_price_type_id) missing.push("chakana narx turini tanlang (retail_price_type_id)")
+  if (!v.warehouse_ids.length) missing.push("kamida bitta omborni tanlang (warehouse_ids)")
+  const buffer = Number(v.stock_buffer)
+  if (!(/^\d+$/.test(v.stock_buffer.trim()) && buffer >= MIN_LIVE_STOCK_BUFFER)) {
+    missing.push(
+      `qoldiq zaxirasini kamida ${MIN_LIVE_STOCK_BUFFER} qiling (stock_buffer): ilovadagi sotuvlar 1C ga darhol tushmaydi, zaxira bir donani ikki marta sotishdan saqlaydi`,
+    )
+  }
+  return missing.length ? `Narx va qoldiqni 1C dan yangilash uchun: ${missing.join("; ")}` : null
+}
 
 const ipSchema = z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])
 
@@ -65,14 +87,10 @@ export const connectionSettingsSchema = z
     heartbeat_to: hhmm("Tugashi"),
   })
   .superRefine((v, ctx) => {
-    // Mirrors the backend rule we can see (§3.3); the other half,
-    // PRODUCT_STOCK_ENFORCED, is only known to the server (400 then).
-    if (v.offers_mode === "live" && !v.retail_price_type_id) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["offers_mode"],
-        message: "Jonli rejim uchun avval chakana narx turini tanlang",
-      })
+    // Live offers: the backend's rules and text (ae70816): retail type, a warehouse, buffer >= 1.
+    const liveMissing = v.offers_mode === "live" ? liveOffersMissing(v) : null
+    if (liveMissing) {
+      ctx.addIssue({ code: "custom", path: ["offers_mode"], message: liveMissing })
     }
     // Equal ends would make an empty window (the backend would never alert).
     if (v.heartbeat_from && v.heartbeat_from === v.heartbeat_to) {
@@ -102,7 +120,7 @@ export function connectionToForm(c: IntegrationConnection): ConnectionSettingsVa
     retail_price_type_id: c.retail_price_type_id ?? "",
     promo_price_type_id: c.promo_price_type_id ?? "",
     warehouse_ids: [...(c.warehouse_ids ?? [])],
-    stock_buffer: String(c.stock_buffer ?? 0),
+    stock_buffer: String(c.stock_buffer ?? DEFAULT_STOCK_BUFFER),
     category_level: c.category_level,
     new_products_visible: c.new_products_visible,
     max_deactivate_percent: String(Math.round((c.max_deactivate_ratio ?? 0.5) * 100)),
@@ -139,7 +157,7 @@ export function formToPatch(v: ConnectionSettingsValues, c: IntegrationConnectio
   if (!sameList(v.warehouse_ids, c.warehouse_ids ?? [])) patch.warehouse_ids = [...v.warehouse_ids]
 
   const buffer = Number(v.stock_buffer)
-  if (buffer !== (c.stock_buffer ?? 0)) patch.stock_buffer = buffer
+  if (buffer !== (c.stock_buffer ?? DEFAULT_STOCK_BUFFER)) patch.stock_buffer = buffer
   if (v.category_level !== c.category_level) patch.category_level = v.category_level
   if (v.new_products_visible !== c.new_products_visible) patch.new_products_visible = v.new_products_visible
 

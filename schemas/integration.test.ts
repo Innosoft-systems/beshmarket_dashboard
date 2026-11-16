@@ -62,11 +62,43 @@ describe("connectionSettingsSchema", () => {
     expect(issues({ ...base(), max_deactivate_percent: value }).length === 0).toBe(ok)
   })
 
-  it("offers live needs a retail price type", () => {
-    expect(issues({ ...base(), offers_mode: "live" })).toEqual([
-      { path: "offers_mode", message: "Jonli rejim uchun avval chakana narx turini tanlang" },
-    ])
-    expect(issues({ ...base(), offers_mode: "live", retail_price_type_id: "pt-retail" })).toEqual([])
+  describe("live offers rules (backend ae70816, same text)", () => {
+    const BUFFER =
+      "qoldiq zaxirasini kamida 1 qiling (stock_buffer): ilovadagi sotuvlar 1C ga darhol tushmaydi, zaxira bir donani ikki marta sotishdan saqlaydi"
+    const ok = { offers_mode: "live" as const, retail_price_type_id: "pt-retail", warehouse_ids: ["wh-1"], stock_buffer: "1" }
+
+    it("passes with a retail type, a warehouse and buffer >= 1", () => {
+      expect(issues({ ...base(), ...ok })).toEqual([])
+    })
+
+    it("lists everything missing in one message, like the backend", () => {
+      expect(issues({ ...base(), offers_mode: "live", retail_price_type_id: "", warehouse_ids: [], stock_buffer: "0" })).toEqual([
+        {
+          path: "offers_mode",
+          message: `Narx va qoldiqni 1C dan yangilash uchun: chakana narx turini tanlang (retail_price_type_id); kamida bitta omborni tanlang (warehouse_ids); ${BUFFER}`,
+        },
+      ])
+    })
+
+    it.each([
+      [{ retail_price_type_id: "" }, "chakana narx turini tanlang (retail_price_type_id)"],
+      [{ warehouse_ids: [] }, "kamida bitta omborni tanlang (warehouse_ids)"],
+      [{ stock_buffer: "0" }, BUFFER],
+    ])("%j is refused", (override, part) => {
+      expect(issues({ ...base(), ...ok, ...override })).toEqual([
+        { path: "offers_mode", message: `Narx va qoldiqni 1C dan yangilash uchun: ${part}` },
+      ])
+    })
+
+    it("does not apply when offers are not live (buffer 0 is fine then)", () => {
+      expect(issues({ ...base(), offers_mode: "dry_run", warehouse_ids: [], stock_buffer: "0" })).toEqual([])
+    })
+
+    it("buffer defaults to 1 when the connection has none", () => {
+      const c = makeConnection({ stock_buffer: undefined as unknown as number })
+      expect(connectionToForm(c).stock_buffer).toBe("1")
+      expect(formToPatch(connectionToForm(c), c)).toEqual({})
+    })
   })
 
   it("promo price type must differ from retail", () => {

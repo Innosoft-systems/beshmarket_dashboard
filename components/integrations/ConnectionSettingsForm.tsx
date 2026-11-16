@@ -24,6 +24,7 @@ import {
   formToPatch,
   isValidIp,
   MAX_ALLOWED_IPS,
+  MIN_LIVE_STOCK_BUFFER,
   type ConnectionSettingsValues,
 } from "@/schemas/integration"
 import type { IntegrationConnection, IntegrationMode, SeenOneCRef } from "@/types/integration"
@@ -211,7 +212,7 @@ export function ConnectionSettingsForm({
                 </p>
                 {offersMode === "live" && field.value.length === 0 && (
                   <p className="text-xs text-amber-700 dark:text-amber-400" role="status">
-                    Narx va qoldiq jonli, lekin ombor tanlanmagan: 1C qoldig&apos;i mahsulotlarga yozilmaydi.
+                    Jonli rejim uchun kamida bitta ombor kerak.
                   </p>
                 )}
               </fieldset>
@@ -230,7 +231,10 @@ export function ConnectionSettingsForm({
                 className={cn(errors.stock_buffer && "border-destructive")}
               />
               <FieldError message={errors.stock_buffer?.message} />
-              <p className="text-xs text-muted-foreground">Sotuvga qoldiqdan shuncha kam ko&apos;rsatiladi.</p>
+              <p className="text-xs text-muted-foreground">
+                Sotuvga qoldiqdan shuncha kam ko&apos;rsatiladi.
+                {offersMode === "live" && ` Jonli rejimda kamida ${MIN_LIVE_STOCK_BUFFER}.`}
+              </p>
             </div>
 
             <div className="space-y-2">
