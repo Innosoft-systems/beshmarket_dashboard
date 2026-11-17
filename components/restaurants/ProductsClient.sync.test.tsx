@@ -88,6 +88,15 @@ const row = (name: string) => screen.getByText(name).closest("tr")!
 beforeEach(() => jest.clearAllMocks())
 
 describe("ProductsClient: 1C products (A4)", () => {
+  // First in the file: Base UI reports each message only once per process.
+  it("admin 'Kategoriyalar' is a real link, without the Base UI nativeButton error", () => {
+    const err = jest.spyOn(console, "error").mockImplementation(() => {})
+    renderList("admin")
+    expect(screen.getByRole("link", { name: /Kategoriyalar/ })).toHaveAttribute("href", "/restaurants/r1/categories")
+    expect(err.mock.calls.flat().join(" ")).not.toMatch(/nativeButton/)
+    err.mockRestore()
+  })
+
   it.each(["admin", "restaurant"] as const)("%s: hand-made rows look exactly as before", (scope) => {
     renderList(scope)
     const r = row("Lavash")

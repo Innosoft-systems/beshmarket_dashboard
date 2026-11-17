@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Power, FolderPlus, PackageX, Search, X, EyeOff, Lock } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getFullImgUrl } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
@@ -336,13 +336,12 @@ export function ProductsClient({
         </div>
 
         {scope === "admin" && restaurant?._id && (
-          <Button
-            variant="outline"
-            className="sm:ml-auto"
-            render={<Link href={`/restaurants/${restaurant._id}/categories`} />}
+          <Link
+            href={`/restaurants/${restaurant._id}/categories`}
+            className={buttonVariants({ variant: "outline", className: "sm:ml-auto" })}
           >
             <FolderPlus className="h-4 w-4 mr-1" /> Kategoriyalar
-          </Button>
+          </Link>
         )}
 
         <Button
