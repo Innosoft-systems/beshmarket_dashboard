@@ -3,6 +3,9 @@ import {
   connectionToForm,
   formToPatch,
   isValidIp,
+  LIVE_BUFFER_MESSAGE,
+  LIVE_RETAIL_MESSAGE,
+  LIVE_WAREHOUSE_MESSAGE,
   type ConnectionSettingsValues,
 } from "./integration"
 import { makeConnection } from "@/components/integrations/fixtures"
@@ -62,32 +65,34 @@ describe("connectionSettingsSchema", () => {
     expect(issues({ ...base(), max_deactivate_percent: value }).length === 0).toBe(ok)
   })
 
-  describe("live offers rules (backend ae70816, same text)", () => {
-    const BUFFER =
-      "qoldiq zaxirasini kamida 1 qiling (stock_buffer): ilovadagi sotuvlar 1C ga darhol tushmaydi, zaxira bir donani ikki marta sotishdan saqlaydi"
+  describe("live offers rules (backend ae70816), each under its own field", () => {
     const ok = { offers_mode: "live" as const, retail_price_type_id: "pt-retail", warehouse_ids: ["wh-1"], stock_buffer: "1" }
 
     it("passes with a retail type, a warehouse and buffer >= 1", () => {
       expect(issues({ ...base(), ...ok })).toEqual([])
     })
 
-    it("lists everything missing in one message, like the backend", () => {
-      expect(issues({ ...base(), offers_mode: "live", retail_price_type_id: "", warehouse_ids: [], stock_buffer: "0" })).toEqual([
-        {
-          path: "offers_mode",
-          message: `Narx va qoldiqni 1C dan yangilash uchun: chakana narx turini tanlang (retail_price_type_id); kamida bitta omborni tanlang (warehouse_ids); ${BUFFER}`,
-        },
+    it("puts every missing part on its field, without technical names", () => {
+      const got = issues({ ...base(), offers_mode: "live", retail_price_type_id: "", warehouse_ids: [], stock_buffer: "0" })
+      expect(got).toEqual([
+        { path: "retail_price_type_id", message: LIVE_RETAIL_MESSAGE },
+        { path: "warehouse_ids", message: LIVE_WAREHOUSE_MESSAGE },
+        { path: "stock_buffer", message: LIVE_BUFFER_MESSAGE },
       ])
+      expect(JSON.stringify(got.map((i) => i.message))).not.toMatch(/stock_buffer|warehouse_ids|retail_price_type_id/)
     })
 
     it.each([
-      [{ retail_price_type_id: "" }, "chakana narx turini tanlang (retail_price_type_id)"],
-      [{ warehouse_ids: [] }, "kamida bitta omborni tanlang (warehouse_ids)"],
-      [{ stock_buffer: "0" }, BUFFER],
-    ])("%j is refused", (override, part) => {
-      expect(issues({ ...base(), ...ok, ...override })).toEqual([
-        { path: "offers_mode", message: `Narx va qoldiqni 1C dan yangilash uchun: ${part}` },
-      ])
+      [{ retail_price_type_id: "" }, "retail_price_type_id", LIVE_RETAIL_MESSAGE],
+      [{ warehouse_ids: [] }, "warehouse_ids", LIVE_WAREHOUSE_MESSAGE],
+      [{ stock_buffer: "0" }, "stock_buffer", LIVE_BUFFER_MESSAGE],
+    ])("%j is refused on its field", (override, path, message) => {
+      expect(issues({ ...base(), ...ok, ...override })).toEqual([{ path, message }])
+    })
+
+    it("a non-numeric buffer gets only its range error, not the live one too", () => {
+      expect(issues({ ...base(), ...ok, stock_buffer: "abc" }).map((i) => i.path)).toEqual(["stock_buffer"])
+      expect(issues({ ...base(), ...ok, stock_buffer: "abc" })[0].message).not.toBe(LIVE_BUFFER_MESSAGE)
     })
 
     it("does not apply when offers are not live (buffer 0 is fine then)", () => {

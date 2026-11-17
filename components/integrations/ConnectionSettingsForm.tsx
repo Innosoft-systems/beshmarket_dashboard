@@ -174,8 +174,8 @@ export function ConnectionSettingsForm({
           <Controller
             control={control}
             name="warehouse_ids"
-            render={({ field }) => (
-              <fieldset className="space-y-2">
+            render={({ field, fieldState }) => (
+              <fieldset className="space-y-2" aria-invalid={!!fieldState.error}>
                 <legend className="text-sm font-medium">Omborlar</legend>
                 {warehouses.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{NO_DATA}</p>
@@ -210,7 +210,8 @@ export function ConnectionSettingsForm({
                   Qoldiq faqat tanlangan omborlar yig&apos;indisidan olinadi. Hech biri tanlanmasa, qoldiq qo&apos;llanmaydi
                   (kuzatilmaydi).
                 </p>
-                {offersMode === "live" && field.value.length === 0 && (
+                <FieldError message={fieldState.error?.message} />
+                {offersMode === "live" && field.value.length === 0 && !fieldState.error && (
                   <p className="text-xs text-amber-700 dark:text-amber-400" role="status">
                     Jonli rejim uchun kamida bitta ombor kerak.
                   </p>

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { toast } from "sonner"
 import { updateConnectionAction } from "@/lib/actions/integrations"
@@ -83,12 +83,31 @@ describe("ConnectionSettingsForm", () => {
   it("offers 'Jonli' without a retail price type is stopped client-side", async () => {
     const user = userEvent.setup()
     // Stored as live without a price type (e.g. changed elsewhere); saving anything re-validates.
-    renderForm(makeConnection({ offers_mode: "live", retail_price_type_id: null }))
+    renderForm(makeConnection({ offers_mode: "live", retail_price_type_id: null, warehouse_ids: ["wh-1"], stock_buffer: 1 }))
     await user.click(screen.getByRole("switch"))
     await user.click(save())
-    expect(
-      await screen.findByText((t) => t.startsWith("Narx va qoldiqni 1C dan yangilash uchun: chakana narx turini tanlang (retail_price_type_id)")),
-    ).toBeInTheDocument()
+    expect(await screen.findByText("Jonli rejim uchun chakana narx turini tanlang")).toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it("offers 'Jonli' with buffer 0 and no warehouse: each error under its own field, no technical names", async () => {
+    const user = userEvent.setup()
+    renderForm(makeConnection({ offers_mode: "live", retail_price_type_id: "pt-retail", warehouse_ids: [], stock_buffer: 0 }))
+    await user.click(screen.getByRole("switch"))
+    await user.click(save())
+
+    const buffer = screen.getByLabelText("Qoldiq zaxirasi (dona)")
+    const bufferError = await screen.findByText(/^Jonli rejimda zaxira kamida 1 bo'lishi kerak/)
+    expect(buffer.parentElement).toContainElement(bufferError)
+    expect(buffer).toHaveAttribute("aria-invalid", "true")
+
+    const fieldset = screen.getByRole("group", { name: "Omborlar" })
+    expect(within(fieldset).getByText("Jonli rejim uchun kamida bitta omborni tanlang")).toBeInTheDocument()
+    // The proactive hint gives way to the error.
+    expect(within(fieldset).queryByText("Jonli rejim uchun kamida bitta ombor kerak.")).not.toBeInTheDocument()
+
+    expect(screen.queryByText(/stock_buffer|warehouse_ids|retail_price_type_id/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Narx va qoldiqni 1C dan yangilash uchun/)).not.toBeInTheDocument()
     expect(update).not.toHaveBeenCalled()
   })
 

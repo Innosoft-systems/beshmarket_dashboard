@@ -12,22 +12,29 @@ export const MIN_LIVE_STOCK_BUFFER = 1
 /** New connections default to a buffer of 1 (backend schema default). */
 export const DEFAULT_STOCK_BUFFER = 1
 
+export const LIVE_RETAIL_MESSAGE = "Jonli rejim uchun chakana narx turini tanlang"
+export const LIVE_WAREHOUSE_MESSAGE = "Jonli rejim uchun kamida bitta omborni tanlang"
+export const LIVE_BUFFER_MESSAGE = `Jonli rejimda zaxira kamida ${MIN_LIVE_STOCK_BUFFER} bo'lishi kerak: ilovadagi sotuvlar 1C ga darhol tushmaydi, zaxira bir donani ikki marta sotishdan saqlaydi`
+
 /**
- * The backend's 400 for live offers (ae70816), word for word: one message
- * listing what is missing. Built the same way so the admin sees the same text
- * before saving. Returns null when nothing is missing.
+ * Live offers rules of the backend (ae70816): retail type, at least one
+ * warehouse, buffer >= 1. Each issue sits on the field the admin has to fix,
+ * in plain Uzbek (no field names). A buffer that is not a number already has
+ * its own range error, so it is not reported twice.
  */
-export function liveOffersMissing(v: { retail_price_type_id: string; warehouse_ids: string[]; stock_buffer: string }): string | null {
-  const missing: string[] = []
-  if (!v.retail_price_type_id) missing.push("chakana narx turini tanlang (retail_price_type_id)")
-  if (!v.warehouse_ids.length) missing.push("kamida bitta omborni tanlang (warehouse_ids)")
-  const buffer = Number(v.stock_buffer)
-  if (!(/^\d+$/.test(v.stock_buffer.trim()) && buffer >= MIN_LIVE_STOCK_BUFFER)) {
-    missing.push(
-      `qoldiq zaxirasini kamida ${MIN_LIVE_STOCK_BUFFER} qiling (stock_buffer): ilovadagi sotuvlar 1C ga darhol tushmaydi, zaxira bir donani ikki marta sotishdan saqlaydi`,
-    )
+export function liveOffersIssues(v: {
+  retail_price_type_id: string
+  warehouse_ids: string[]
+  stock_buffer: string
+}): { path: "retail_price_type_id" | "warehouse_ids" | "stock_buffer"; message: string }[] {
+  const issues: { path: "retail_price_type_id" | "warehouse_ids" | "stock_buffer"; message: string }[] = []
+  if (!v.retail_price_type_id) issues.push({ path: "retail_price_type_id", message: LIVE_RETAIL_MESSAGE })
+  if (!v.warehouse_ids.length) issues.push({ path: "warehouse_ids", message: LIVE_WAREHOUSE_MESSAGE })
+  const raw = v.stock_buffer.trim()
+  if (/^\d+$/.test(raw) && Number(raw) < MIN_LIVE_STOCK_BUFFER) {
+    issues.push({ path: "stock_buffer", message: LIVE_BUFFER_MESSAGE })
   }
-  return missing.length ? `Narx va qoldiqni 1C dan yangilash uchun: ${missing.join("; ")}` : null
+  return issues
 }
 
 const ipSchema = z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])
@@ -88,9 +95,8 @@ export const connectionSettingsSchema = z
   })
   .superRefine((v, ctx) => {
     // Live offers: the backend's rules and text (ae70816): retail type, a warehouse, buffer >= 1.
-    const liveMissing = v.offers_mode === "live" ? liveOffersMissing(v) : null
-    if (liveMissing) {
-      ctx.addIssue({ code: "custom", path: ["offers_mode"], message: liveMissing })
+    if (v.offers_mode === "live") {
+      for (const i of liveOffersIssues(v)) ctx.addIssue({ code: "custom", path: [i.path], message: i.message })
     }
     // Equal ends would make an empty window (the backend would never alert).
     if (v.heartbeat_from && v.heartbeat_from === v.heartbeat_to) {
