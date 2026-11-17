@@ -3,7 +3,7 @@ import Link from "next/link"
 import { ArrowLeft, Package, RefreshCcw } from "lucide-react"
 import { getAccessToken } from "@/lib/auth/session"
 import { apiRequest } from "@/lib/api/client"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { RestaurantDetailClient } from "@/components/restaurants/RestaurantDetailClient"
 import type { WalletData } from "@/components/restaurants/RestaurantWalletPanel"
 import type { Restaurant } from "@/types"
@@ -70,12 +70,18 @@ export default async function RestaurantDetailPage({
           <ArrowLeft className="h-4 w-4" /> Restoranlar
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" render={<Link href={`/restaurants/${id}/products`} />}>
+          <Link
+            href={`/restaurants/${id}/products`}
+            className={buttonVariants({ variant: "outline", size: "sm", className: "gap-2" })}
+          >
             <Package className="h-4 w-4" /> Mahsulotlar
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2" render={<Link href={`/restaurants/${id}/integration`} />}>
+          </Link>
+          <Link
+            href={`/restaurants/${id}/integration`}
+            className={buttonVariants({ variant: "outline", size: "sm", className: "gap-2" })}
+          >
             <RefreshCcw className="h-4 w-4" /> 1C integratsiya
-          </Button>
+          </Link>
         </div>
       </div>
 
