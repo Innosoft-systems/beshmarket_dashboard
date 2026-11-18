@@ -88,4 +88,74 @@ describe("order alarm", () => {
     await Promise.resolve()
     expect(warn).toHaveBeenCalledWith("[order-alarm] playback blocked:", expect.any(Error))
   })
+
+  describe("autoplay blocked after reopening (visible unlock)", () => {
+    const refusal = () => Object.assign(new Error("play() failed"), { name: "NotAllowedError" })
+    const flush = async () => {
+      for (let i = 0; i < 5; i++) await Promise.resolve()
+    }
+
+    it("the silent probe on load reports 'blocked' and notifies subscribers", async () => {
+      const seen: string[] = []
+      alarm.subscribeOrderAlarmSoundState(() => seen.push(alarm.getOrderAlarmSoundState()))
+      // instances[0] = alarm element, instances[1] = probe; make the probe refuse.
+      const RealAudio = (global as unknown as { Audio: (s: string) => FakeAudio }).Audio
+      let n = 0
+      ;(global as unknown as { Audio: unknown }).Audio = function (src: string) {
+        const a = RealAudio(src)
+        if (n++ === 1) a.play.mockImplementation(() => Promise.reject(refusal()))
+        return a
+      }
+      alarm.prewarmOrderAlarm()
+      await flush()
+      expect(alarm.getOrderAlarmSoundState()).toBe("blocked")
+      expect(seen).toEqual(["blocked"])
+    })
+
+    it("an allowed probe reports 'ready' and is paused again", async () => {
+      alarm.prewarmOrderAlarm()
+      await flush()
+      expect(alarm.getOrderAlarmSoundState()).toBe("ready")
+      expect(instances[1].pause).toHaveBeenCalled()
+      expect((instances[1] as unknown as { volume: number }).volume).toBe(0)
+    })
+
+    it("a refused order alarm is kept and rung by the 'Ovozni yoqish' click", async () => {
+      jest.spyOn(console, "warn").mockImplementation(() => {})
+      alarm.prewarmOrderAlarm()
+      await flush()
+      instances[0].play.mockImplementationOnce(() => Promise.reject(refusal()))
+      alarm.playOrderAlarm("o9", { loop: false })
+      await flush()
+      expect(alarm.getOrderAlarmSoundState()).toBe("blocked")
+
+      await expect(alarm.unlockOrderAlarm()).resolves.toBe(true)
+      expect(alarm.getOrderAlarmSoundState()).toBe("ready")
+      // muted unlock + the kept order rung again
+      expect(instances[0].play).toHaveBeenCalledTimes(3)
+      expect(instances[0].muted).toBe(false)
+    })
+
+    it("a kept ring older than a minute is dropped (no stale alarm on unlock)", async () => {
+      jest.spyOn(console, "warn").mockImplementation(() => {})
+      alarm.prewarmOrderAlarm()
+      await flush()
+      instances[0].play.mockImplementationOnce(() => Promise.reject(refusal()))
+      alarm.playOrderAlarm("old", { loop: false })
+      await flush()
+      jest.advanceTimersByTime(61_000)
+      await alarm.unlockOrderAlarm()
+      expect(instances[0].play).toHaveBeenCalledTimes(2) // refused + muted unlock only
+    })
+
+    it("a non-autoplay error does not claim sound is blocked", async () => {
+      jest.spyOn(console, "warn").mockImplementation(() => {})
+      alarm.prewarmOrderAlarm()
+      await flush()
+      instances[0].play.mockImplementationOnce(() => Promise.reject(Object.assign(new Error("x"), { name: "NotSupportedError" })))
+      alarm.playOrderAlarm("o1", { loop: false })
+      await flush()
+      expect(alarm.getOrderAlarmSoundState()).toBe("ready")
+    })
+  })
 })

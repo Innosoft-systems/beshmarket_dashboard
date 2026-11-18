@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { classifyRefreshStatus, isExpired, parseJwt, type RefreshFailure } from '@/lib/auth/token'
 
 const ACCESS_TOKEN  = 'bm_access_token'
 const REFRESH_TOKEN = 'bm_refresh_token'
@@ -6,30 +7,22 @@ const SEVEN_DAYS    = 7 * 24 * 60 * 60
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000') + '/api/v1'
 
-// ── JWT helpers (Edge-runtime safe: atob, no Buffer) ──────────────────────────
-
-function parseJwt(token: string): { exp?: number; role?: string } | null {
-  try {
-    const raw = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(raw))
-  } catch {
-    return null
-  }
-}
-
-/** Returns true when the token is absent, malformed, or within 30 s of expiry. */
-function isExpired(token: string | undefined): boolean {
-  if (!token) return true
-  const p = parseJwt(token)
-  if (!p?.exp) return true
-  return Date.now() / 1000 >= p.exp - 30
-}
+/**
+ * The restaurant panel's presence beat (every 30 s, and on every focus/online
+ * edge). It must not refresh tokens here: firing at the same moment as the
+ * sockets' client refresh, it raced them with the same refresh token and the
+ * loser logged the venue out. The route answers 401 on a stale token and the
+ * client refreshes through its single, cross-tab refresh.
+ */
+const PRESENCE_PATH = '/restaurant/presence'
 
 // ── Token refresh ─────────────────────────────────────────────────────────────
 
-async function doRefresh(
-  rt: string,
-): Promise<{ accessToken: string; refreshToken: string } | null> {
+type RefreshResult =
+  | { kind: 'ok'; accessToken: string; refreshToken: string }
+  | { kind: RefreshFailure }
+
+async function doRefresh(rt: string): Promise<RefreshResult> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method:  'POST',
@@ -37,13 +30,16 @@ async function doRefresh(
       body:    JSON.stringify({ refreshToken: rt }),
       signal:  AbortSignal.timeout(5_000),
     })
-    if (!res.ok) return null
+    if (!res.ok) return { kind: classifyRefreshStatus(res.status) }
     const json = await res.json()
     const data = json?.data ?? json
-    if (data?.accessToken && data?.refreshToken) return data
-    return null
+    if (data?.accessToken && data?.refreshToken) {
+      return { kind: 'ok', accessToken: data.accessToken, refreshToken: data.refreshToken }
+    }
+    return { kind: 'unavailable' }
   } catch {
-    return null
+    // Timeout or network error: the server is unreachable, the session is not wrong.
+    return { kind: 'unavailable' }
   }
 }
 
@@ -65,10 +61,52 @@ function applyTokens(
   response.cookies.set(REFRESH_TOKEN, rt, base)
 }
 
+// ── Server unavailable: keep the session, say so, retry ──────────────────────
+
+const RETRY_AFTER_SECONDS = 15
+
+const UNAVAILABLE_HTML = `<!doctype html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="${RETRY_AFTER_SECONDS}">
+<title>Server bilan aloqa yo'q</title>
+<style>body{font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:16px;background:#f8fafc;color:#0f172a;text-align:center}p{color:#475569}</style>
+</head><body><main>
+<h1>Server bilan aloqa yo'q</h1>
+<p>Siz tizimdan chiqmadingiz. Sahifa ${RETRY_AFTER_SECONDS} soniyadan keyin o'zi yangilanadi.</p>
+</main></body></html>`
+
+function serviceUnavailable(request: NextRequest): NextResponse {
+  const headers = { 'Cache-Control': 'no-store', 'Retry-After': String(RETRY_AFTER_SECONDS) }
+  const isDocument =
+    request.method === 'GET' &&
+    !request.headers.has('rsc') &&
+    !request.headers.has('next-action') &&
+    (request.headers.get('accept') ?? '').includes('text/html')
+  if (isDocument) {
+    return new NextResponse(UNAVAILABLE_HTML, {
+      status: 503,
+      headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' },
+    })
+  }
+  return NextResponse.json({ error: "Server bilan aloqa yo'q" }, { status: 503, headers })
+}
+
 // ── Middleware ────────────────────────────────────────────────────────────────
+
+/** Request headers without a client-supplied `x-access-token` (see step 5). */
+function trustedHeaders(request: NextRequest): Headers {
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.delete('x-access-token')
+  return requestHeaders
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  if (pathname === PRESENCE_PATH) {
+    return NextResponse.next({ request: { headers: trustedHeaders(request) } })
+  }
 
   // Pages that don't need an auth guard
   const isRestaurantLogin = pathname === '/restaurant/login'
@@ -80,9 +118,15 @@ export async function middleware(request: NextRequest) {
 
   // ── 1. Refresh access token when expired ────────────────────────────────────
   let refreshed: { accessToken: string; refreshToken: string } | null = null
+  let refreshUnavailable = false
   if (isExpired(at) && rt) {
-    refreshed = await doRefresh(rt)
-    if (refreshed) at = refreshed.accessToken
+    const result = await doRefresh(rt)
+    if (result.kind === 'ok') {
+      refreshed = { accessToken: result.accessToken, refreshToken: result.refreshToken }
+      at = refreshed.accessToken
+    } else if (result.kind === 'unavailable') {
+      refreshUnavailable = true
+    }
   }
 
   const authenticated = !isExpired(at)
@@ -90,6 +134,10 @@ export async function middleware(request: NextRequest) {
 
   // ── 2. Unauthenticated → redirect to login ──────────────────────────────────
   if (!authenticated && !isAuthPage) {
+    // The server could not answer: the session may be perfectly valid. Keep the
+    // cookies and ask to retry instead of logging the user out.
+    if (refreshUnavailable) return serviceUnavailable(request)
+
     const isRestPanel = pathname === '/restaurant' || pathname.startsWith('/restaurant/')
     const loginPath = isRestPanel ? '/restaurant/login' : '/login'
     const url = new URL(loginPath, request.url)
@@ -144,11 +192,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── 5. All good — continue and persist refreshed tokens if any ──────────────
-  const requestHeaders = new Headers(request.headers)
   // getAccessToken() trusts this header over the cookie, so a client-supplied one
   // would let anybody hand server components/actions a forged role claim.
   // Only middleware may set it.
-  requestHeaders.delete('x-access-token')
+  const requestHeaders = trustedHeaders(request)
   if (refreshed) {
     // Pass refreshed access token to server components via header
     requestHeaders.set('x-access-token', refreshed.accessToken)

@@ -28,6 +28,116 @@ interface AlarmOptions {
   loop?: boolean
 }
 
+// ── Can the alarm actually sound? ───────────────────────────────────────────
+//
+// A panel reopened after the browser was closed has had no user gesture yet,
+// and Chrome rejects an audible `play()` until it gets one. The alarm used to
+// swallow that (a console warning), so the venue simply heard nothing. The
+// state below lets the panel show a visible "Ovozni yoqish" button instead.
+
+/** "unknown" until checked; "blocked" means a click is needed before it can sound. */
+export type OrderAlarmSoundState = "unknown" | "ready" | "blocked"
+
+let soundState: OrderAlarmSoundState = "unknown"
+const soundListeners = new Set<() => void>()
+/** An order that should have rung while sound was blocked; rung on unlock. */
+let pendingRing: { orderId?: string; options: AlarmOptions; at: number } | null = null
+const PENDING_RING_MAX_AGE_MS = STOP_AFTER_MS
+let probeStarted = false
+
+function setSoundState(next: OrderAlarmSoundState): void {
+  if (soundState === next) return
+  soundState = next
+  soundListeners.forEach((l) => l())
+}
+
+export function getOrderAlarmSoundState(): OrderAlarmSoundState {
+  return soundState
+}
+
+export function subscribeOrderAlarmSoundState(listener: () => void): () => void {
+  soundListeners.add(listener)
+  return () => {
+    soundListeners.delete(listener)
+  }
+}
+
+const isAutoplayRefusal = (err: unknown) => (err as { name?: string } | null)?.name === "NotAllowedError"
+
+/**
+ * Finds out on load whether the page may play sound, with a silent probe on a
+ * separate element (volume 0 but not muted counts as audible for the autoplay
+ * policy, which is decided per page, so the result holds for the alarm too).
+ */
+function probeAutoplay(): void {
+  if (probeStarted) return
+  probeStarted = true
+  let probe: HTMLAudioElement
+  try {
+    probe = new Audio(loadedUrl ?? DEFAULT_ORDER_SOUND_URL)
+    probe.volume = 0
+  } catch {
+    return
+  }
+  let attempt: Promise<void> | undefined
+  try {
+    attempt = probe.play()
+  } catch (err) {
+    if (isAutoplayRefusal(err)) setSoundState("blocked")
+    return
+  }
+  // Very old browsers return undefined from play(); nothing to learn there.
+  attempt
+    ?.then(() => {
+      probe.pause()
+      setSoundState("ready")
+    })
+    .catch((err) => {
+      if (isAutoplayRefusal(err)) setSoundState("blocked")
+    })
+}
+
+function ringPendingIfRecent(): void {
+  const ring = pendingRing
+  pendingRing = null
+  if (ring && Date.now() - ring.at < PENDING_RING_MAX_AGE_MS) {
+    lastOrderId = null
+    playOrderAlarm(ring.orderId, ring.options)
+  }
+}
+
+/**
+ * Unlocks sound from a click (the "Ovozni yoqish" button): plays the alarm
+ * element muted for a moment, which marks the page as allowed to play, then
+ * rings an order that arrived while sound was blocked. Resolves whether sound
+ * is now allowed.
+ */
+export async function unlockOrderAlarm(): Promise<boolean> {
+  if (typeof window === "undefined") return false
+  prewarmOrderAlarm()
+  const el = audio
+  if (!el) return false
+  if (!el.paused) {
+    setSoundState("ready")
+    return true
+  }
+  el.muted = true
+  try {
+    await el.play()
+    if (stopTimer === null) {
+      el.pause()
+      el.currentTime = 0
+    }
+    setSoundState("ready")
+  } catch {
+    return false
+  } finally {
+    el.muted = false
+  }
+  ringPendingIfRecent()
+  return true
+}
+
 function swapSource(url: string): void {
   urlResolvedAt = Date.now()
   if (!audio || url === loadedUrl) return
@@ -68,9 +178,13 @@ function registerAutoplayUnlock(): void {
           el.pause()
           el.currentTime = 0
         }
+        el.muted = false
+        setSoundState("ready")
+        ringPendingIfRecent()
       })
-      .catch(() => {})
-      .finally(() => { el.muted = false })
+      .catch(() => {
+        el.muted = false
+      })
   }
   events.forEach((e) => window.addEventListener(e, unlock, { passive: true }))
 }
@@ -90,6 +204,7 @@ export function prewarmOrderAlarm(): void {
     loadedUrl = DEFAULT_ORDER_SOUND_URL
   }
   registerAutoplayUnlock()
+  probeAutoplay()
 
   const isStale = Date.now() - urlResolvedAt > URL_TTL_MS
   if (urlPromise && !isStale) return
@@ -113,9 +228,15 @@ export function playOrderAlarm(orderId?: string, options: AlarmOptions = {}): vo
 
   el.loop = options.loop ?? true
   el.currentTime = 0
-  el.play().catch((err) => {
-    console.warn("[order-alarm] playback blocked:", err)
-  })
+  el.play()
+    .then(() => setSoundState("ready"))
+    .catch((err) => {
+      console.warn("[order-alarm] playback blocked:", err)
+      if (!isAutoplayRefusal(err)) return
+      // Keep it: the "Ovozni yoqish" click rings it, so this order is not lost.
+      pendingRing = { orderId, options, at: Date.now() }
+      setSoundState("blocked")
+    })
 
   if (stopTimer) clearTimeout(stopTimer)
   stopTimer = el.loop ? setTimeout(stopOrderAlarm, STOP_AFTER_MS) : null

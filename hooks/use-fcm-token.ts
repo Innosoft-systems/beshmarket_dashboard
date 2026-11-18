@@ -7,6 +7,13 @@ import { toast } from "sonner"
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
 
+/**
+ * Fired when the user grants notification permission from a click (the
+ * restaurant panel's "Ovozni yoqish" bar). The prompt shown on load without a
+ * click is often suppressed by the browser, so registration runs again then.
+ */
+export const NOTIFICATION_PERMISSION_EVENT = "bm:notification-permission"
+
 function getFirebaseConfig(): FirebaseOptions | null {
   const config = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -94,8 +101,17 @@ export function useFcmToken(accessToken: string | null) {
 
     init()
 
+    const retry = () => {
+      if (cancelled || Notification.permission !== "granted") return
+      unsubscribe?.()
+      unsubscribe = undefined
+      void init()
+    }
+    window.addEventListener(NOTIFICATION_PERMISSION_EVENT, retry)
+
     return () => {
       cancelled = true
+      window.removeEventListener(NOTIFICATION_PERMISSION_EVENT, retry)
       unsubscribe?.()
     }
   }, [accessToken])
