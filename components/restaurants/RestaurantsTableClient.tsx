@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
-import { Search, X, MoreHorizontal, Plus, Pencil, Trash2, Power, ShoppingBag, Eye } from "lucide-react"
+import { Search, X, MoreHorizontal, Plus, Pencil, Trash2, Power, ShoppingBag, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { Restaurant } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
@@ -30,8 +30,8 @@ import { deleteRestaurantAction, setRestaurantOpenAction, toggleRestaurantVisibi
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Barcha holatlar" },
-  { value: "true", label: "Faol" },
-  { value: "false", label: "Nofaol" },
+  { value: "true", label: "Ko'rinadi" },
+  { value: "false", label: "Yashirin" },
 ] as const
 
 function ActionsCell({
@@ -45,7 +45,6 @@ function ActionsCell({
   const [editOpen, setEditOpen] = useState(false)
   const [actionType, setActionType] = useState<"delete" | "toggle" | "visibility" | null>(null)
   const [loading, setLoading] = useState(false)
-  const isMarket = restaurant.type === "market"
 
   const handleConfirm = async () => {
     setLoading(true)
@@ -64,7 +63,7 @@ function ActionsCell({
     if (result.success) {
       toast.success(
         actionType === "delete" ? "Restoran o'chirildi" :
-        actionType === "visibility" ? "Market ko'rinishi o'zgartirildi" :
+        actionType === "visibility" ? "Ko'rinish o'zgartirildi" :
         "Holat o'zgartirildi"
       )
       onAction()
@@ -92,12 +91,16 @@ function ActionsCell({
             <ShoppingBag className="h-4 w-4 mr-2" />
             Mahsulotlar
           </DropdownMenuItem>
-          {isMarket ? (
-            <DropdownMenuItem onClick={() => { setActionType("visibility"); setConfirmOpen(true) }}>
-              <Power className="h-4 w-4 mr-2 text-amber-600" />
-              {restaurant.is_active ? "Mijozlardan yashirish" : "Mijozlarga ko'rsatish"}
-            </DropdownMenuItem>
-          ) : (
+          {/* Hiding (is_active) is for every venue type: the app stops listing
+              the venue and orders are refused. Open/close stays restaurant-only
+              (a market's hours are not driven from here). */}
+          <DropdownMenuItem onClick={() => { setActionType("visibility"); setConfirmOpen(true) }}>
+            {restaurant.is_active
+              ? <EyeOff className="h-4 w-4 mr-2 text-amber-600" />
+              : <Eye className="h-4 w-4 mr-2 text-amber-600" />}
+            {restaurant.is_active ? "Mijozlardan yashirish" : "Mijozlarga ko'rsatish"}
+          </DropdownMenuItem>
+          {restaurant.type !== "market" && (
             <DropdownMenuItem onClick={() => { setActionType("toggle"); setConfirmOpen(true) }}>
               <Power className="h-4 w-4 mr-2 text-amber-600" />
               {restaurant.is_open ? "Yopish" : "Ochish"}
@@ -130,7 +133,9 @@ function ActionsCell({
             actionType === "delete"
               ? `"${restaurant.name}" ni o'chirishni xohlaysizmi?`
               : actionType === "visibility"
-              ? `"${restaurant.name}" ni mijozlarga ${restaurant.is_active ? "yashirish" : "ko'rsatish"}ni xohlaysizmi?`
+              ? restaurant.is_active
+                ? `"${restaurant.name}" mijozlardan yashirilsinmi? Ilovada ko'rinmaydi va yangi buyurtma qabul qilinmaydi.`
+                : `"${restaurant.name}" mijozlarga ko'rsatilsinmi?`
               : `"${restaurant.name}" ni ${restaurant.is_open ? "yopish" : "ochish"}ni xohlaysizmi?`
           }
           confirmLabel={actionType === "delete" ? "O'chirish" : "Tasdiqlash"}
@@ -225,13 +230,12 @@ export function RestaurantsTableClient({
       header: "Holati",
       cell: ({ row }) => {
         const active = row.getValue("is_active") as boolean
-        const isMarket = row.original.type === "market"
         return (
           <Badge
             variant={active ? "secondary" : "destructive"}
             className={active ? "bg-green-100 text-green-700 border-green-200" : ""}
           >
-            {isMarket ? (active ? "Ko'rinadi" : "Yashirin") : (active ? "Faol" : "Nofaol")}
+            {active ? "Ko'rinadi" : "Yashirin"}
           </Badge>
         )
       },
