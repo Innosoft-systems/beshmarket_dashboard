@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { refreshAccessToken } from "@/lib/auth/refresh-client"
+import { hardNavigate } from "@/lib/auth/navigate"
 
 /** Comfortably inside the server's 2-minute window, so one lost beat is harmless. */
 const HEARTBEAT_INTERVAL_MS = 30_000
@@ -21,6 +23,10 @@ const HEARTBEAT_INTERVAL_MS = 30_000
  * The beat goes to a route handler, not a Server Action: action ids are hashed
  * per build, so across a deploy a tab that is already open beats against an id
  * the new build does not have and the venue gets closed with nobody at fault.
+ *
+ * A 401 means the access token went stale. The beat refreshes through the
+ * shared client refresh (one per browser, retried while the server is down)
+ * and beats again; only a refresh that is definitely refused goes to login.
  */
 export function PresenceHeartbeat() {
   const router = useRouter()
@@ -33,13 +39,25 @@ export function PresenceHeartbeat() {
     const beat = async () => {
       if (cancelled) return
 
-      let payload: { is_open?: boolean; instance?: string }
-      try {
-        const res = await fetch("/restaurant/presence", {
+      const send = () =>
+        fetch("/restaurant/presence", {
           method: "POST",
           cache: "no-store",
           signal: AbortSignal.timeout(10_000),
         })
+
+      let payload: { is_open?: boolean; instance?: string }
+      try {
+        let res = await send()
+        if (res.status === 401) {
+          const token = await refreshAccessToken()
+          if (cancelled) return
+          if (!token) {
+            hardNavigate("/restaurant/login")
+            return
+          }
+          res = await send()
+        }
         if (!res.ok) return
         payload = await res.json()
       } catch {
