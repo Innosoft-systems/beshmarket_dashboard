@@ -43,6 +43,12 @@ export async function logoutAction(): Promise<void> {
   redirect("/login")
 }
 
+/** The restaurant panel's "Chiqish": back to the restaurant login, not the admin one. */
+export async function restaurantLogoutAction(): Promise<void> {
+  await clearAuthTokens()
+  redirect("/restaurant/login")
+}
+
 export async function restaurantLoginAction(
   _prevState: RestaurantLoginFormState,
   formData: FormData,
