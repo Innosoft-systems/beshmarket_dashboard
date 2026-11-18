@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation"
 import { adminLogin, restaurantLogin } from "@/lib/api/auth"
-import { setAuthTokens, clearAuthTokens } from "@/lib/auth/session"
-import { ApiError } from "@/lib/api/client"
+import { setAuthTokens, clearAuthTokens, getAccessToken } from "@/lib/auth/session"
+import { apiRequest, ApiError } from "@/lib/api/client"
 
 export interface LoginFormState {
   error?: string;
@@ -43,8 +43,26 @@ export async function logoutAction(): Promise<void> {
   redirect("/login")
 }
 
-/** The restaurant panel's "Chiqish": back to the restaurant login, not the admin one. */
+/**
+ * The restaurant panel's "Chiqish". It revokes this device's session on the
+ * server first (B8: the session id is in the access token, so other devices
+ * stay logged in), then clears the cookies and goes to the restaurant login.
+ * The server call is best effort: an expired token or an unreachable server
+ * must not keep anybody from logging out of this device.
+ */
 export async function restaurantLogoutAction(): Promise<void> {
+  const accessToken = await getAccessToken()
+  if (accessToken) {
+    try {
+      await apiRequest("/auth/logout", {
+        method: "POST",
+        accessToken,
+        signal: AbortSignal.timeout(5_000),
+      })
+    } catch {
+      // Logged out locally anyway; the session then expires on its own.
+    }
+  }
   await clearAuthTokens()
   redirect("/restaurant/login")
 }
