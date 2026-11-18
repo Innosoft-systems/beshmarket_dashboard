@@ -7,6 +7,7 @@ import { RestaurantSocketProvider } from "@/components/restaurant-panel/Restaura
 import { PresenceHeartbeat } from "@/components/restaurant-panel/PresenceHeartbeat"
 import { RestaurantNotificationBell } from "@/components/layout/RestaurantNotificationBell"
 import { MarketVisibilityToggle } from "@/components/restaurant-panel/MarketVisibilityToggle"
+import { SoundUnlockBanner } from "@/components/restaurant-panel/SoundUnlockBanner"
 import { apiRequest } from "@/lib/api/client"
 import type { UnreadCountResponse } from "@/types/api"
 import { Restaurant } from "@/types"
@@ -48,6 +49,7 @@ export default async function RestaurantLayout({ children }: { children: React.R
             />
           </div>
         </header>
+        <SoundUnlockBanner />
         <div className="flex-1 overflow-auto p-4 md:p-6">
           {children}
         </div>

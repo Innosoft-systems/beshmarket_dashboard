@@ -35,10 +35,19 @@ export function useRestaurantSocket(accessToken: string | null) {
     prewarmOrderAlarm()
 
     function createSocket(token: string): Socket {
+      // No reconnectionAttempts cap: after 5 failures (a Wi-Fi drop, a laptop
+      // asleep for a minute) socket.io used to give up for good, and the panel
+      // stayed silent for new orders until somebody reloaded it.
       const socket = io(`${API_URL}/orders`, {
         auth: { token },
         transports: ["websocket"],
-        reconnectionAttempts: 5,
+        reconnectionDelayMax: 10_000,
+      })
+
+      // Orders that came in while disconnected never produce an event: reload
+      // the server data so they show up.
+      socket.io.on("reconnect", () => {
+        throttledRefresh()
       })
 
       socket.on("order.new", (payload: { orderId: string; orderNumber: string; total: number }) => {
@@ -97,7 +106,19 @@ export function useRestaurantSocket(accessToken: string | null) {
 
     socketRef.current = createSocket(accessToken)
 
+    // Back on screen or back online: reconnect at once rather than waiting for
+    // the next backoff step (or after socket.io stopped trying).
+    const wake = () => {
+      if (document.visibilityState === "hidden") return
+      const s = socketRef.current
+      if (s && !s.connected && !s.active) s.connect()
+    }
+    document.addEventListener("visibilitychange", wake)
+    window.addEventListener("online", wake)
+
     return () => {
+      document.removeEventListener("visibilitychange", wake)
+      window.removeEventListener("online", wake)
       stopOrderAlarm()
       socketRef.current?.disconnect()
       socketRef.current = null
