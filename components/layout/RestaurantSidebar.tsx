@@ -27,7 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { logoutAction } from "@/lib/actions/auth"
+import { restaurantLogoutAction } from "@/lib/actions/auth"
 
 const items = [
   { title: "Bosh sahifa", url: "/restaurant", icon: LayoutDashboard },
@@ -98,7 +98,7 @@ export function RestaurantSidebar({ name, logo }: Props) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
-        <form action={logoutAction}>
+        <form action={restaurantLogoutAction}>
           <button
             type="submit"
             className="flex w-full items-center gap-2 rounded-md p-3 text-base text-red-500 hover:bg-red-500/10"
