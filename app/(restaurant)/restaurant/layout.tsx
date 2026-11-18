@@ -7,7 +7,7 @@ import { RestaurantSocketProvider } from "@/components/restaurant-panel/Restaura
 import { PresenceHeartbeat } from "@/components/restaurant-panel/PresenceHeartbeat"
 import { RestaurantNotificationBell } from "@/components/layout/RestaurantNotificationBell"
 import { OrderSoundBanner, OrderSoundControl } from "@/components/restaurant-panel/OrderSound"
-import { MarketVisibilityToggle } from "@/components/restaurant-panel/MarketVisibilityToggle"
+import { VenueVisibilityToggle } from "@/components/restaurant-panel/VenueVisibilityToggle"
 import { apiRequest } from "@/lib/api/client"
 import type { UnreadCountResponse } from "@/types/api"
 import { Restaurant } from "@/types"
@@ -44,8 +44,8 @@ export default async function RestaurantLayout({ children }: { children: React.R
             <OrderSoundControl />
           </div>
           <div className="flex items-center gap-3">
-            {restaurant?.type === "market" && (
-              <MarketVisibilityToggle isActive={restaurant.is_active ?? false} />
+            {restaurant && (
+              <VenueVisibilityToggle isActive={restaurant.is_active ?? false} />
             )}
             <RestaurantNotificationBell
               accessToken={token}
