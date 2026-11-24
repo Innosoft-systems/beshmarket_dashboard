@@ -20,42 +20,61 @@ interface ApiResponse<T> {
   status: number;
 }
 
-// Singleton mutex: prevents concurrent 401 handlers from firing multiple refreshes
-let refreshPromise: Promise<string | null> | null = null;
+interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
+// Refreshes in flight, keyed by the refresh token being spent. Tokens rotate, so
+// concurrent 401s of one session must share a single refresh. This module is
+// shared by every user of the server, so nothing here may outlive the request or
+// be reachable without presenting that same refresh token.
+const inflightRefreshes = new Map<string, Promise<TokenPair | null>>();
+
+async function requestNewTokens(refreshToken: string): Promise<TokenPair | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const tokens = json?.data ?? json;
+
+    return tokens?.accessToken && tokens?.refreshToken
+      ? { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 async function tryRefreshToken(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise;
+  // Read this request's own cookie before looking at any shared state.
+  let refreshToken: string | undefined;
+  try { refreshToken = await getRefreshToken(); } catch {}
+  if (!refreshToken) return null;
 
-  refreshPromise = (async () => {
-    try {
-      const refreshToken = await getRefreshToken();
-      if (!refreshToken) return null;
+  // No await between get and set, so two callers cannot both start a refresh.
+  const key = refreshToken;
+  let refresh = inflightRefreshes.get(key);
+  if (!refresh) {
+    // Chained .finally always runs after the set below, even if fetch throws synchronously.
+    refresh = requestNewTokens(key).finally(() => { inflightRefreshes.delete(key); });
+    inflightRefreshes.set(key, refresh);
+  }
 
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-        signal: AbortSignal.timeout(10_000),
-      });
+  const tokens = await refresh;
+  if (!tokens) return null;
 
-      if (!res.ok) return null;
-
-      const json = await res.json();
-      const tokens = json?.data ?? json;
-
-      if (tokens?.accessToken && tokens?.refreshToken) {
-        try { await setAuthTokens(tokens.accessToken, tokens.refreshToken); } catch {}
-        return tokens.accessToken as string;
-      }
-      return null;
-    } catch {
-      return null;
-    } finally {
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
+  // Cookies belong to a request, so every caller writes its own: the one that
+  // started the refresh may be a render, which is not allowed to set cookies.
+  try { await setAuthTokens(tokens.accessToken, tokens.refreshToken); } catch {}
+  return tokens.accessToken;
 }
 
 export async function apiRequest<T>(
@@ -103,7 +122,7 @@ export async function apiRequest<T>(
     response = await fetch(url, fetchOptions);
   }
 
-  // 401 — try refresh token (mutex-protected)
+  // 401 — refresh this session's token (shared with its concurrent requests) and replay
   if (response.status === 401 && accessToken) {
     const newToken = await tryRefreshToken();
     if (newToken) {
