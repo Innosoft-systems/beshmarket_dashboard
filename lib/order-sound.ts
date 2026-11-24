@@ -9,16 +9,22 @@ export function resolveOrderSoundUrl(path?: string | null): string {
   return path.startsWith("/") ? path : `/${path}`
 }
 
-export async function fetchOrderSoundUrl(): Promise<string> {
+/**
+ * The configured order sound, or `null` when it could not be determined — so the
+ * caller can keep the sound it already has and ask again later, instead of
+ * mistaking a network failure for "the default sound is configured".
+ */
+export async function fetchOrderSoundUrl(): Promise<string | null> {
   try {
     const response = await fetch(`${API_URL}/api/v1/settings/order-notification-sound`, {
       cache: "no-store",
+      signal: AbortSignal.timeout?.(10_000),
     })
-    if (!response.ok) return DEFAULT_ORDER_SOUND_URL
+    if (!response.ok) return null
     const json = await response.json()
     const data = json?.data ?? json
     return resolveOrderSoundUrl(data?.url)
   } catch {
-    return DEFAULT_ORDER_SOUND_URL
+    return null
   }
 }

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { updateOrderStatusAction, updateKitchenStatusAction, cancelOrderAction } from "@/lib/actions/orders"
 import { useOrderSocket, NewOrderPayload, StatusUpdatedPayload } from "@/hooks/use-order-socket"
+import { stopOrderAlarm } from "@/lib/order-alarm"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { kitchenStateOf, kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording"
 import { resolveOrderDateRange } from "@/lib/order-period"
@@ -81,6 +82,8 @@ function ActionsCell({ order, onAction, scope = "admin" }: { order: Order; onAct
     const result = await updateOrderStatusAction(order._id, status)
     setLoading(false)
     if (result.success) {
+      // Not before: a failed accept leaves the order unanswered, so it rings on.
+      if (scope === "restaurant") stopOrderAlarm(order._id)
       toast.success("Status yangilandi")
       onAction()
     } else {
@@ -264,6 +267,13 @@ export function OrdersTableClient({
     prevStatsRef.current = initialStats
     setStats(initialStats)
   }
+
+  // Answered elsewhere (another device, the admin): no socket event tells the
+  // restaurant panel so, but any refresh of this list does.
+  useEffect(() => {
+    if (scope !== "restaurant") return
+    orders.forEach((o) => { if (o.status !== "pending") stopOrderAlarm(o._id) })
+  }, [orders, scope])
 
   const handleNewOrder = useCallback((payload: NewOrderPayload) => {
     const newOrder: Order = {

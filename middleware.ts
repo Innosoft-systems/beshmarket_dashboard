@@ -70,6 +70,12 @@ function applyTokens(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // A service worker script must not be redirected, and this one holds no secrets.
+  // Reads only, so nothing but the file itself is reachable without a session.
+  if (pathname === '/firebase-messaging-sw.js' && (request.method === 'GET' || request.method === 'HEAD')) {
+    return NextResponse.next()
+  }
+
   // Pages that don't need an auth guard
   const isRestaurantLogin = pathname === '/restaurant/login'
   const isAdminLogin      = pathname === '/login'

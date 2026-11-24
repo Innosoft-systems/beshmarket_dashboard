@@ -36,6 +36,7 @@ import { OrderReceiptDialog } from "@/components/orders/OrderReceipt";
 import { kitchenStateOf, kitchenWording, venueTypeOf, type VenueType } from "@/lib/order-wording";
 import { resolveBackHref } from "@/lib/order-period";
 import { isSafeInternalUrl } from "@/lib/utils/safe-url";
+import { stopOrderAlarm } from "@/lib/order-alarm";
 
 // Admin uchun ruxsat etilgan status o'tishlari
 const ADMIN_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
@@ -190,6 +191,11 @@ export function OrderDetailClient({
   const [assigningCourier, setAssigningCourier] = useState(false);
   const [kitchenLoading, setKitchenLoading] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+
+  // Opening the order is what its alarm was asking for. Other orders ring on.
+  useEffect(() => {
+    if (scope === "restaurant") stopOrderAlarm(order._id);
+  }, [scope, order._id]);
 
   const restaurantTransitions: Record<
     string,

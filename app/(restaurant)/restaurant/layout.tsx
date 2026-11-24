@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { RestaurantSocketProvider } from "@/components/restaurant-panel/RestaurantSocketProvider"
 import { PresenceHeartbeat } from "@/components/restaurant-panel/PresenceHeartbeat"
 import { RestaurantNotificationBell } from "@/components/layout/RestaurantNotificationBell"
+import { OrderSoundBanner, OrderSoundControl } from "@/components/restaurant-panel/OrderSound"
 import { MarketVisibilityToggle } from "@/components/restaurant-panel/MarketVisibilityToggle"
 import { apiRequest } from "@/lib/api/client"
 import type { UnreadCountResponse } from "@/types/api"
@@ -37,7 +38,11 @@ export default async function RestaurantLayout({ children }: { children: React.R
       <RestaurantSidebar name={restaurant?.name} logo={restaurant?.logo} />
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-muted/30">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
-          <SidebarTrigger />
+          {/* On the left: order toasts cover the right side of the header. */}
+          <div className="flex items-center gap-2">
+            <SidebarTrigger />
+            <OrderSoundControl />
+          </div>
           <div className="flex items-center gap-3">
             {restaurant?.type === "market" && (
               <MarketVisibilityToggle isActive={restaurant.is_active ?? false} />
@@ -48,6 +53,7 @@ export default async function RestaurantLayout({ children }: { children: React.R
             />
           </div>
         </header>
+        <OrderSoundBanner />
         <div className="flex-1 overflow-auto p-4 md:p-6">
           {children}
         </div>

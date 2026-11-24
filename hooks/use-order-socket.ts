@@ -108,7 +108,15 @@ export function useOrderSocket(
     return () => {
       socketRef.current?.disconnect()
       socketRef.current = null
-      stopOrderAlarm()
     }
   }, [accessToken])
+
+  // Only on a real unmount: a rotated token must not cut the chime short. And only
+  // for a hook that had a socket: the restaurant's order list passes `null`, and
+  // leaving it must not touch the panel's own alarm.
+  const hasToken = Boolean(accessToken)
+  useEffect(() => {
+    if (!hasToken) return
+    return () => stopOrderAlarm()
+  }, [hasToken])
 }

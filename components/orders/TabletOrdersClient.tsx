@@ -373,8 +373,15 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
     }
   }, [activeTab, orders])
 
+  // Answered elsewhere (another tablet, the admin): no socket event says so, but
+  // any refresh of this list does.
+  useEffect(() => {
+    orders.forEach((order) => {
+      if (order.status !== "pending") stopOrderAlarm(order._id)
+    })
+  }, [orders])
+
   const openTab = (tab: QueueTab) => {
-    stopOrderAlarm()
     setActiveTab(tab)
     setUnreadByTab((current) =>
       current[tab] === 0 ? current : { ...current, [tab]: 0 },
@@ -409,11 +416,12 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
 
   const acceptOrder = async () => {
     if (!selectedOrder) return
-    stopOrderAlarm()
     setActionLoading("accept")
     const result = await updateOrderStatusAction(selectedOrder._id, "accepted")
     setActionLoading(null)
+    // Not before: a failed accept leaves the order unanswered, so it rings on.
     if (!result.success) return toast.error(result.error || "Buyurtma qabul qilinmadi")
+    stopOrderAlarm(selectedOrder._id)
     updateLocalOrder(selectedOrder._id, { status: "accepted", kitchen_status: "preparing" }, "preparing")
     toast.success("Buyurtma qabul qilindi")
     router.refresh()
@@ -421,7 +429,6 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
 
   const markReady = async () => {
     if (!selectedOrder) return
-    stopOrderAlarm()
     setActionLoading("ready")
     const result = await updateKitchenStatusAction(selectedOrder._id, "ready")
     setActionLoading(null)
@@ -433,7 +440,6 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
 
   const cancelOrder = async () => {
     if (!selectedOrder) return
-    stopOrderAlarm()
     setActionLoading("cancel")
     const isPending = selectedOrder.status === "pending"
     const result = isPending
@@ -441,6 +447,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
       : await cancelOrderAction(selectedOrder._id, "Restoran tomonidan bekor qilindi")
     setActionLoading(null)
     if (!result.success) return toast.error(result.error || "Amal bajarilmadi")
+    stopOrderAlarm(selectedOrder._id)
     updateLocalOrder(selectedOrder._id, { status: isPending ? "rejected" : "cancelled" }, "completed")
     setCancelOpen(false)
     toast.success(isPending ? "Buyurtma rad etildi" : "Buyurtma bekor qilindi")
@@ -453,7 +460,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
   const canMarkReady = selectedOrder && selectedOrder.status !== "pending" && !isFinal && selectedOrder.kitchen_status !== "ready"
 
   return (
-    <div className="h-[calc(100dvh-7rem)] min-h-160 overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(36,54,30,0.08)] lg:grid lg:grid-cols-[minmax(19rem,35%)_1fr]">
+    <div className="h-[calc(100dvh-7rem-var(--order-sound-banner,0px))] min-h-[calc(40rem-var(--order-sound-banner,0px))] overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(36,54,30,0.08)] lg:grid lg:grid-cols-[minmax(19rem,35%)_1fr]">
       <aside className={`${mobileDetailOpen ? "hidden lg:flex" : "flex"} h-full min-h-0 flex-col bg-[#f3f5f1]`}>
         <div className="px-4 pb-3 pt-5 sm:px-5">
           <div className="flex items-center justify-between gap-3">
@@ -496,7 +503,12 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => openTab(tab.id)}
+                onClick={() => {
+                  // Looking at the list of new orders acknowledges all of them;
+                  // the other tabs do not.
+                  if (tab.id === "new") stopOrderAlarm()
+                  openTab(tab.id)
+                }}
                 className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-medium transition-[background-color,color,box-shadow,transform,opacity] duration-300 active:scale-[0.98] ${
                   active
                     ? "bg-[#283326] text-white"
@@ -527,7 +539,7 @@ export function TabletOrdersClient({ initialOrders, restaurantName, venueType }:
                   now={now}
                   venueType={venueType}
                   onClick={() => {
-                    stopOrderAlarm()
+                    stopOrderAlarm(order._id)
                     setSelectedId(order._id)
                     setMobileDetailOpen(true)
                   }}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition, useCallback, useRef } from "react"
+import { useState, useEffect, useTransition, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { io, Socket } from "socket.io-client"
 import { Bell, CheckCheck } from "lucide-react"
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { useFcmToken } from "@/hooks/use-fcm-token"
 import { refreshAccessToken } from "@/lib/auth/refresh-client"
 import { toast } from "sonner"
-import { playOrderAlarm, prewarmOrderAlarm, stopOrderAlarm } from "@/lib/order-alarm"
+import { leaveOrderAlarm, playOrderAlarm, prewarmOrderAlarm, stopOrderAlarm } from "@/lib/order-alarm"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -63,12 +63,6 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
     prewarmOrderAlarm()
   }, [])
 
-  const stopSound = useCallback(() => stopOrderAlarm(), [])
-  const playSound = useCallback(
-    (orderId?: string) => playOrderAlarm(orderId, { loop: false }),
-    [],
-  )
-
   // WebSocket connection for real-time notifications
   useEffect(() => {
     if (!accessToken) return
@@ -81,13 +75,24 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
     socket.on("restaurant.notification", (payload: NotificationPayload) => {
       setUnread(prev => prev + 1)
       setNotifications(prev => [payload, ...prev].slice(0, 20))
-      if (payload.type === "new_order") playSound(payload.data?.orderId)
+      const orderId = payload.data?.orderId
+      // Every other type means the order has moved on (cancelled by the server
+      // or the customer, picked up, delivered), so there is nothing left to
+      // answer. There is no event for "accepted on another device".
+      if (payload.type === "new_order") playOrderAlarm(orderId)
+      else if (orderId) stopOrderAlarm(orderId)
       const icon = TYPE_ICONS[payload.type] || "🔔"
       toast.info(`${icon} ${payload.title}`, {
         description: payload.body,
         duration: 8000,
         action: payload.data?.link
-          ? { label: "Ko'rish", onClick: () => router.push(payload.data!.link) }
+          ? {
+              label: "Ko'rish",
+              onClick: () => {
+                if (orderId) stopOrderAlarm(orderId)
+                router.push(payload.data!.link)
+              },
+            }
           : undefined,
       })
     })
@@ -108,11 +113,10 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
 
     socketRef.current = socket
     return () => { socket.disconnect() }
-  }, [accessToken, playSound]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    return () => { stopSound() }
-  }, [stopSound])
+  // Only on a real unmount: a token change above must not silence the alarm.
+  useEffect(() => () => leaveOrderAlarm(), [])
 
   const loadNotifications = async () => {
     if (loaded) return
@@ -137,7 +141,8 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
   }
 
-  const markOne = async (id: string, link?: string) => {
+  const markOne = async (id: string, link?: string, orderId?: string) => {
+    if (orderId) stopOrderAlarm(orderId)
     setNotifications(prev => prev.map(n => n._id === id ? { ...n, is_read: true } : n))
     setUnread(prev => Math.max(0, prev - 1))
     await fetch(`${API_URL}/api/v1/restaurant-notifications/${id}/read`, {
@@ -151,7 +156,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
   }
 
   const handleToggle = () => {
-    stopSound()
+    stopOrderAlarm()
     setOpen(v => !v)
     if (!open) loadNotifications()
   }
@@ -199,7 +204,7 @@ export function RestaurantNotificationBell({ accessToken, initialCount }: Props)
               notifications.map((n) => (
                 <button
                   key={n._id}
-                  onClick={() => markOne(n._id, n.data?.link)}
+                  onClick={() => markOne(n._id, n.data?.link, n.data?.orderId)}
                   className={`w-full text-left px-4 py-3 border-b last:border-0 hover:bg-muted/30 transition-colors flex items-start gap-3 ${!n.is_read ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}`}
                 >
                   <span className="text-lg mt-0.5 shrink-0">{TYPE_ICONS[n.type] || "🔔"}</span>
