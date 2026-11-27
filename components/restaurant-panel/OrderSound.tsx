@@ -4,6 +4,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react"
 import { BellOff, BellRing, Volume2, VolumeX } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { requestNotificationPermissionFromClick } from "@/hooks/use-fcm-token"
 import {
   getInitialOrderSoundState,
   getOrderSoundState,
@@ -25,6 +26,9 @@ function useOrderSound() {
 }
 
 async function playTest() {
+  // Same click: push permission is otherwise only asked on load, where the
+  // browser often hides the prompt. Not awaited, so the sound test is not delayed.
+  void requestNotificationPermissionFromClick()
   const result = await testOrderSound()
   if (result === "ok") {
     toast.success("Ovoz yoqildi", {

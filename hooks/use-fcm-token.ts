@@ -7,6 +7,29 @@ import { toast } from "sonner"
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
 
+/**
+ * Fired when the user grants notification permission from a click (the
+ * restaurant panel's "Ovozni yoqish" / "Ovozni sinash" buttons). The prompt shown on load without a
+ * click is often suppressed by the browser, so registration runs again then.
+ */
+export const NOTIFICATION_PERMISSION_EVENT = "bm:notification-permission"
+
+/**
+ * Asks for notification permission from a click, when it is still undecided.
+ * Call it synchronously inside the click handler: the browser only shows the
+ * prompt during the user's gesture. A grant re-runs push registration.
+ */
+export function requestNotificationPermissionFromClick(): Promise<NotificationPermission | null> {
+  if (typeof window === "undefined" || !("Notification" in window)) return Promise.resolve(null)
+  if (Notification.permission !== "default") return Promise.resolve(Notification.permission)
+  return Notification.requestPermission()
+    .then((permission) => {
+      if (permission === "granted") window.dispatchEvent(new Event(NOTIFICATION_PERMISSION_EVENT))
+      return permission
+    })
+    .catch(() => null)
+}
+
 function getFirebaseConfig(): FirebaseOptions | null {
   const config = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -94,8 +117,17 @@ export function useFcmToken(accessToken: string | null) {
 
     init()
 
+    const retry = () => {
+      if (cancelled || Notification.permission !== "granted") return
+      unsubscribe?.()
+      unsubscribe = undefined
+      void init()
+    }
+    window.addEventListener(NOTIFICATION_PERMISSION_EVENT, retry)
+
     return () => {
       cancelled = true
+      window.removeEventListener(NOTIFICATION_PERMISSION_EVENT, retry)
       unsubscribe?.()
     }
   }, [accessToken])
