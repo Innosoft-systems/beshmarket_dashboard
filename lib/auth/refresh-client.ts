@@ -1,5 +1,11 @@
 // Client-side token refresh — calls the /api/refresh route handler
 //
+// Browser only. The module state below (`inflight`, `lastObtained`) belongs to
+// one tab of one user. On the server a module is shared by every user of the
+// process (see ed3422e), so "client-only" fails the build if server code
+// imports this, and refreshAccessToken() refuses to run there.
+import "client-only"
+//
 // Refresh tokens rotate, and the backend keeps one per account: two refreshes
 // sent with the same token race, and the loser logs the user out (now or at
 // the next refresh). So:
@@ -70,6 +76,8 @@ function withCrossTabLock(fn: () => Promise<string | null>): Promise<string | nu
 }
 
 export function refreshAccessToken(): Promise<string | null> {
+  // Never on the server: the state below would be shared between users.
+  if (typeof window === "undefined") return Promise.resolve(null)
   if (!inflight) {
     inflight = withCrossTabLock(refreshUntilSettled).finally(() => {
       inflight = null
